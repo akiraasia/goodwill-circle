@@ -1,0 +1,98 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/instrumentserif/v4/jizDREVNn1dOx-zrZ2X3pZvkTi182zIZj1bIkNo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/instrumentserif/v4/jizBREVNn1dOx-zrZ2X3pZvkThUY0TY7ikbI.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_nVMrMxCp50ojIa1ZL7.woff2") format("woff2");
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-cream: var(--cream);
+  --color-clay: var(--clay);
+  --color-ember: var(--ember);
+  --color-ink: var(--ink);
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Warm humanitarian palette */
+  --cream: oklch(0.97 0.018 80);
+  --clay: oklch(0.62 0.13 45);
+  --ember: oklch(0.55 0.18 38);
+  --ink: oklch(0.22 0.02 60);
+  --gold: oklch(0.82 0.12 85);
+
+  --background: var(--cream);
+  --foreground: var(--ink);
+  --card: oklch(0.99 0.01 80);
+  --card-foreground: var(--ink);
+  --primary: var(--ember);
+  --primary-foreground: var(--cream);
+  --secondary: oklch(0.92 0.03 75);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.93 0.02 75);
+  --muted-foreground: oklch(0.45 0.03 60);
+  --accent: var(--gold);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: var(--cream);
+  --border: oklch(0.88 0.025 75);
+  --input: oklch(0.92 0.02 75);
+  --ring: var(--ember);
+  --popover: var(--card);
+  --popover-foreground: var(--ink);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+}

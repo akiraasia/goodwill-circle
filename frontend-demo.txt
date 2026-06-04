@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goodwill Circle</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --white: #FFFFFF;
+    --red: #C0392B;
+    --red-soft: #E8534A;
+    --red-muted: #F2A39E;
+    --yellow: #F5C842;
+    --yellow-soft: #FDE680;
+    --yellow-pale: #FEF9E4;
+    --tan1: #E3DCCA;
+    --tan2: #B8B8A3;
+    --tan3: #7A6E59;
+    --text-dark: #1A1714;
+    --text-mid: #4A4540;
+    --text-light: #8A8580;
+    --shadow-sm: 0 2px 8px rgba(26,23,20,0.06);
+    --shadow-md: 0 8px 32px rgba(26,23,20,0.10);
+    --shadow-lg: 0 24px 64px rgba(26,23,20,0.14);
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #EEE9E1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 16px 60px;
+    gap: 32px;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .site-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--tan3);
+    font-weight: 400;
+  }
+
+  /* ── Screen wrapper ── */
+  .screen {
+    width: 100%;
+    max-width: 390px;
+    background: var(--white);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .screen-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tan3);
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+  }
+  .status-bar .time { font-variant-numeric: tabular-nums; }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .status-icons span { font-size: 13px; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 0;
+  }
+  .top-bar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text-dark);
+  }
+  .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--cream);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    color: var(--text-mid);
+    transition: background 0.2s;
+  }
+  .icon-btn:hover { background: var(--tan1); }
+
+  /* ══════════════════════════
+     SCREEN 1: LOGIN
+  ══════════════════════════ */
+  .login-hero {
+    background: var(--yellow-pale);
+    padding: 40px 28px 28px;
+    text-align: center;
+    position: relative;
+  }
+  .login-logo {
+    width: 64px; height: 64px;
+    background: var(--yellow);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 20px;
+    box-shadow: 0 4px 20px rgba(245,200,66,0.45);
+  }
+  .login-hero h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--text-dark);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .login-hero p {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.55;
+  }
+  .login-body { padding: 28px 28px 32px; display: flex; flex-direction: column; gap: 12px; }
+
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--white);
+    border: 1.5px solid var(--tan1);
+    border-radius: 100px;
+    padding: 14px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-google:hover { border-color: var(--tan2); box-shadow: var(--shadow-sm); }
+  .g-icon { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg,#EA4335 25%,#FBBC04 25% 50%,#34A853 50% 75%,#4285F4 75%); }
+
+  .divider { display: flex; align-items: center; gap: 12px; color: var(--text-light); font-size: 12px; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background: var(--tan1); }
+
+  .input-field {
+    border: 1.5px solid var(--tan1);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-dark);
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--cream);
+  }
+  .input-field::placeholder { color: var(--text-light); }
+  .input-field:focus { border-color: var(--red-soft); background: var(--white); }
+
+  .btn-primary {
+    background: var(--red);
+    color: var(--white);
+    border: none;
+    border-radius: 100px;
+    padding: 15px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:hover { background: var(--red-soft); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(192,57,43,0.25); }
+
+  .login-footer { text-align: center; font-size: 13px; color: var(--text-light); }
+  .login-footer a { color: var(--red); text-decoration: none; font-weight: 500; }
+
+  /* ══════════════════════════
+     SCREEN 2: HOME / FEED
+  ══════════════════════════ */
+  .home-header {
+    background: var(--cream);
+    padding: 16px 20px 18px;
+  }
+  .greeting { font-size: 13px; color: var(--text-light); margin-bottom: 2px; }
+  .greeting strong { color: var(--text-dark); font-weight: 600; }
+  .home-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 14px;
+  }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--white);
+    border-radius: 100px;
+    padding: 10px 16px;
+    border: 1.5px solid var(--tan1);
+  }
+  .search-bar span { font-size: 15px; }
+  .search-bar input {
+    border: none; background: transparent; outline: none;
+    font-size: 13px; color: var(--text-dark); width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .search-bar input::placeholder { color: var(--text-light); }
+
+  .category-row {
+    display: flex; gap: 8px;
+    padding: 14px 20px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .category-row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 100px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    border: none;
+  }
+  .chip.active { background: var(--red); color: var(--white); }
+  .chip:not(.active) { background: var(--cream); color: var(--text-mid); }
+  .chip:not(.active):hover { background: var(--tan1); }
+
+  .feed { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  .request-card {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1.5px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .request-card:hover { border-color: var(--tan2); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .request-card.urgent::before {
+    content:'';
+    position: absolute; left:0; top:0; bottom:0;
+    width: 4px; background: var(--red);
+    border-radius: 4px 0 0 4px;
+  }
+  .request-card.featured::before {
+    content:'';
+    position: absolute; left:0; top:0; bottom:0;
+    width: 4px; background: var(--yellow);
+    border-radius: 4px 0 0 4px;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text-dark); line-height: 1.3; padding-left: 10px; }
+  .level-badge {
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .level-1 { background: var(--yellow-pale); color: #9A7D00; }
+  .level-2 { background: #FEF0EE; color: var(--red); }
+  .level-3 { background: #F0F5FF; color: #2563EB; }
+  .card-desc { font-size: 12px; color: var(--text-light); line-height: 1.5; margin-bottom: 10px; padding-left: 10px; }
+  .card-meta { display: flex; align-items: center; gap: 10px; padding-left: 10px; }
+  .cat-tag {
+    font-size: 11px; font-weight: 600;
+    color: var(--tan3);
+    background: var(--white);
+    padding: 3px 9px;
+    border-radius: 100px;
+  }
+  .card-by { font-size: 11px; color: var(--text-light); margin-left: auto; }
+  .credits-pill {
+    background: var(--yellow);
+    color: var(--text-dark);
+    font-size: 11px; font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 100px;
+  }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    display: flex;
+    border-top: 1px solid var(--tan1);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 0 12px;
+    cursor: pointer;
+    gap: 3px;
+    border: none; background: transparent;
+    transition: all 0.15s;
+  }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-light); }
+  .nav-item.active .nav-label { color: var(--red); }
+  .nav-item.active .nav-icon { filter: grayscale(0); }
+
+  .nav-create {
+    width: 48px; height: 48px;
+    background: var(--red);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    color: white;
+    box-shadow: 0 4px 16px rgba(192,57,43,0.35);
+    margin-top: -16px;
+    border: 3px solid white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-create:hover { transform: scale(1.08); }
+
+  /* ══════════════════════════
+     SCREEN 3: CREATE REQUEST
+  ══════════════════════════ */
+  .create-header {
+    background: var(--yellow-pale);
+    padding: 16px 20px 20px;
+  }
+  .back-btn {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text-mid); font-weight: 500;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border: none; background: none;
+  }
+  .create-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text-dark);
+  }
+  .create-header p { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+  .create-form { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text-mid); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .textarea-field {
+    border: 1.5px solid var(--tan1);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text-dark);
+    outline: none;
+    resize: none;
+    background: var(--cream);
+    line-height: 1.5;
+    min-height: 80px;
+    transition: border-color 0.2s;
+  }
+  .textarea-field:focus { border-color: var(--red-soft); background: var(--white); }
+
+  .select-field {
+    border: 1.5px solid var(--tan1);
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text-dark);
+    background: var(--cream);
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .level-selector { display: flex; gap: 8px; }
+  .level-opt {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--tan1);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-size: 12px; font-weight: 600;
+    background: var(--cream);
+    color: var(--text-mid);
+  }
+  .level-opt span { display: block; font-size: 18px; margin-bottom: 4px; }
+  .level-opt.sel { border-color: var(--red); background: #FEF0EE; color: var(--red); }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+  .toggle-info { font-size: 13px; font-weight: 500; color: var(--text-dark); }
+  .toggle-info small { display: block; font-size: 11px; color: var(--text-light); font-weight: 400; margin-top: 2px; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--tan1);
+    border-radius: 100px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--yellow); }
+  .toggle::after {
+    content:'';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .toggle.on::after { left: 23px; }
+
+  /* ══════════════════════════
+     SCREEN 4: REQUEST DETAIL
+  ══════════════════════════ */
+  .detail-hero {
+    background: var(--cream);
+    padding: 16px 20px 20px;
+  }
+  .detail-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .detail-tag {
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .tag-red { background: var(--red); color: white; }
+  .tag-yellow { background: var(--yellow); color: var(--text-dark); }
+  .tag-beige { background: var(--tan1); color: var(--tan3); }
+  .detail-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text-dark);
+    line-height: 1.3;
+    margin-bottom: 14px;
+  }
+  .poster-row { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .av-red { background: #FEF0EE; color: var(--red); }
+  .av-yellow { background: var(--yellow-pale); color: #9A7D00; }
+  .av-tan { background: var(--tan1); color: var(--tan3); }
+  .poster-info { flex: 1; }
+  .poster-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+  .poster-sub { font-size: 11px; color: var(--text-light); }
+  .credits-big {
+    background: var(--yellow);
+    color: var(--text-dark);
+    font-size: 13px; font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 100px;
+  }
+
+  .detail-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .detail-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-light); margin-bottom: 6px; }
+  .detail-desc { font-size: 14px; color: var(--text-mid); line-height: 1.65; }
+
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .info-tile {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .info-tile .label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-light); margin-bottom: 4px; }
+  .info-tile .value { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+
+  .accept-btn-wrap { padding: 0 20px 28px; }
+  .btn-accept {
+    width: 100%;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-accept:hover { background: var(--red-soft); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(192,57,43,0.28); }
+
+  /* ══════════════════════════
+     SCREEN 5: PROFILE
+  ══════════════════════════ */
+  .profile-hero {
+    background: linear-gradient(160deg, var(--yellow-pale) 0%, var(--cream) 100%);
+    padding: 28px 20px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .profile-avatar {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: var(--yellow);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; color: var(--text-dark);
+    box-shadow: 0 4px 16px rgba(245,200,66,0.35);
+    flex-shrink: 0;
+  }
+  .profile-info h2 { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text-dark); }
+  .profile-info p { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+  .edit-btn {
+    margin-left: auto; margin-top: 2px;
+    background: var(--white);
+    border: 1.5px solid var(--tan1);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-mid);
+    cursor: pointer;
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+
+  .stats-row {
+    display: flex;
+    border-bottom: 1px solid var(--tan1);
+  }
+  .stat-item {
+    flex: 1;
+    text-align: center;
+    padding: 16px 0;
+    position: relative;
+  }
+  .stat-item + .stat-item::before {
+    content:''; position:absolute; left:0; top:20%; bottom:20%;
+    width:1px; background: var(--tan1);
+  }
+  .stat-num { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--text-dark); }
+  .stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-light); margin-top: 2px; }
+
+  .credits-banner {
+    margin: 16px 20px 0;
+    background: var(--yellow);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .credits-banner .icon { font-size: 22px; }
+  .credits-banner .info { flex: 1; }
+  .credits-banner .info strong { font-size: 15px; color: var(--text-dark); font-weight: 700; }
+  .credits-banner .info small { display: block; font-size: 11px; color: var(--tan3); }
+  .credits-banner .amount { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text-dark); }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 10px; }
+  .section-header h3 { font-family: 'DM Serif Display', serif; font-size: 17px; color: var(--text-dark); }
+  .section-header a { font-size: 12px; color: var(--red); font-weight: 500; text-decoration: none; }
+
+  .post-list { padding: 0 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .post-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .post-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .post-text { flex: 1; }
+  .post-title { font-size: 13px; font-weight: 500; color: var(--text-dark); }
+  .post-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .post-status {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px; border-radius: 100px;
+  }
+  .st-done { background: #E6F9EE; color: #1A7A40; }
+  .st-open { background: var(--yellow-pale); color: #9A7D00; }
+
+  /* ══════════════════════════
+     SCREEN 6: CAMPAIGN
+  ══════════════════════════ */
+  .camp-header {
+    background: linear-gradient(145deg, #FEF0EE 0%, var(--cream) 100%);
+    padding: 16px 20px 22px;
+  }
+  .camp-header h2 { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text-dark); margin-bottom: 2px; }
+  .camp-header p { font-size: 13px; color: var(--text-light); }
+
+  .camp-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .camp-card {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1.5px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .camp-card:hover { border-color: var(--tan2); box-shadow: var(--shadow-md); }
+  .camp-card-top { padding: 16px; }
+  .camp-card-icon-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .camp-icon { font-size: 28px; }
+  .camp-name { font-size: 15px; font-weight: 600; color: var(--text-dark); line-height: 1.3; }
+  .camp-org { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .camp-desc { font-size: 13px; color: var(--text-mid); line-height: 1.55; margin-bottom: 12px; }
+
+  .progress-bar-wrap { height: 6px; background: var(--tan1); border-radius: 100px; overflow: hidden; margin-bottom: 8px; }
+  .progress-fill { height: 100%; border-radius: 100px; background: var(--red); }
+
+  .camp-stats { display: flex; align-items: center; gap: 14px; }
+  .camp-stat { font-size: 12px; color: var(--text-light); }
+  .camp-stat strong { color: var(--text-dark); font-weight: 600; }
+
+  .camp-footer {
+    border-top: 1px solid var(--tan1);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .vol-avatars { display: flex; }
+  .vol-av {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    margin-left: -6px;
+  }
+  .vol-avatars .vol-av:first-child { margin-left: 0; }
+  .vol-more { font-size: 11px; color: var(--text-light); margin-left: 8px; }
+
+  .btn-join {
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 8px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-join:hover { background: var(--red-soft); }
+
+  /* ══ Responsive grid layout for demo ══ */
+  @media (min-width: 900px) {
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 390px);
+      gap: 40px;
+      justify-content: center;
+    }
+  }
+  @media (max-width: 899px) {
+    .screens-grid {
+      display: flex; flex-direction: column; align-items: center; gap: 36px;
+      width: 100%;
+    }
+  }
+
+  /* micro animation */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(18px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .screen { animation: fadeUp 0.55s ease both; }
+  .screen:nth-child(1) { animation-delay: 0.05s; }
+  .screen:nth-child(2) { animation-delay: 0.12s; }
+  .screen:nth-child(3) { animation-delay: 0.19s; }
+  .screen:nth-child(4) { animation-delay: 0.26s; }
+  .screen:nth-child(5) { animation-delay: 0.33s; }
+  .screen:nth-child(6) { animation-delay: 0.40s; }
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <h1>Goodwill Circle · MVP Frontend</h1>
+</div>
+
+<div class="screens-grid">
+
+  <!-- ═══ SCREEN 1: LOGIN ═══ -->
+  <div>
+    <div class="screen-label">01 · Login</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="login-hero">
+        <div class="login-logo">🤝</div>
+        <h2>Welcome to<br>Goodwill Circle</h2>
+        <p>Help others, earn goodwill,<br>build a better community.</p>
+      </div>
+      <div class="login-body">
+        <button class="btn-google"><div class="g-icon"></div> Continue with Google</button>
+        <div class="divider">or sign in with email</div>
+        <input class="input-field" type="email" placeholder="Email address">
+        <input class="input-field" type="password" placeholder="Password">
+        <button class="btn-primary">Sign In</button>
+        <div class="login-footer">New here? <a href="#">Create account</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 2: HOME FEED ═══ -->
+  <div>
+    <div class="screen-label">02 · Home · Help Feed</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="home-header">
+        <div class="greeting">Good morning, <strong>Arjun 👋</strong></div>
+        <h2>Help Needed Nearby</h2>
+        <div class="search-bar"><span>🔍</span><input placeholder="Search requests…"></div>
+      </div>
+      <div class="category-row">
+        <button class="chip active">All</button>
+        <button class="chip">🎓 Education</button>
+        <button class="chip">💼 Career</button>
+        <button class="chip">🍱 Food</button>
+        <button class="chip">🏥 Medical</button>
+      </div>
+      <div class="feed">
+        <div class="request-card urgent">
+          <div class="card-top">
+            <div class="card-title">Need help understanding my medical reports</div>
+            <div class="level-badge level-2">Urgent</div>
+          </div>
+          <div class="card-desc">My mother's kidney function reports came in and I can't understand what the GFR levels mean. Any doctor or nursing student?</div>
+          <div class="card-meta">
+            <span class="cat-tag">🏥 Medical</span>
+            <span class="credits-pill">+15 ✦</span>
+            <span class="card-by">Anonymous</span>
+          </div>
+        </div>
+        <div class="request-card featured">
+          <div class="card-top">
+            <div class="card-title">Resume review for fresher — IT role</div>
+            <div class="level-badge level-1">Low</div>
+          </div>
+          <div class="card-desc">Looking for someone to review my resume before I apply for campus placements next week.</div>
+          <div class="card-meta">
+            <span class="cat-tag">💼 Career</span>
+            <span class="credits-pill">+5 ✦</span>
+            <span class="card-by">Priya S.</span>
+          </div>
+        </div>
+        <div class="request-card">
+          <div class="card-top">
+            <div class="card-title">Python doubt — recursion & memoization</div>
+            <div class="level-badge level-3">Medium</div>
+          </div>
+          <div class="card-desc">Stuck on dynamic programming assignments. Need a 30-min walkthrough on recursion trees.</div>
+          <div class="card-meta">
+            <span class="cat-tag">🎓 Education</span>
+            <span class="credits-pill">+8 ✦</span>
+            <span class="card-by">Rajan M.</span>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+        <button class="nav-item"><span class="nav-icon">📣</span><span class="nav-label">Campaigns</span></button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:4px;"><div class="nav-create">＋</div></div>
+        <button class="nav-item"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 3: CREATE REQUEST ═══ -->
+  <div>
+    <div class="screen-label">03 · Create Request</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="create-header">
+        <button class="back-btn">← Back</button>
+        <h2>Ask for Help</h2>
+        <p>Be specific — better details attract better helpers.</p>
+      </div>
+      <div class="create-form">
+        <div class="form-group">
+          <div class="form-label">Title</div>
+          <input class="input-field" placeholder="What do you need help with?">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Description</div>
+          <textarea class="textarea-field" placeholder="Share more context — the more you share, the easier it is for others to help…"></textarea>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Category</div>
+          <select class="select-field">
+            <option>🎓 Education</option>
+            <option>💼 Career</option>
+            <option>🍱 Food</option>
+            <option>🏥 Medical</option>
+            <option>🏠 Housing</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Urgency Level</div>
+          <div class="level-selector">
+            <div class="level-opt"><span>🌿</span>Low</div>
+            <div class="level-opt sel"><span>⚡</span>Medium</div>
+            <div class="level-opt"><span>🔴</span>Urgent</div>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">Post Anonymously<small>Your name will be hidden</small></div>
+          <div class="toggle on"></div>
+        </div>
+        <button class="btn-primary">Post Request →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 4: REQUEST DETAIL ═══ -->
+  <div>
+    <div class="screen-label">04 · Request Details</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="detail-hero">
+        <button class="back-btn">← Help Feed</button>
+        <div class="detail-tags">
+          <span class="detail-tag tag-red">🔴 Urgent</span>
+          <span class="detail-tag tag-yellow">🏥 Medical</span>
+          <span class="detail-tag tag-beige">Bangalore</span>
+        </div>
+        <div class="detail-title">Need help understanding my mother's kidney reports</div>
+        <div class="poster-row">
+          <div class="avatar av-red">AN</div>
+          <div class="poster-info">
+            <div class="poster-name">Anonymous</div>
+            <div class="poster-sub">Posted 20 min ago</div>
+          </div>
+          <div class="credits-big">+15 ✦</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div>
+          <div class="detail-section-title">About this request</div>
+          <div class="detail-desc">My mother received kidney function test results and the GFR levels seem concerning but I don't fully understand the report. We are quite anxious. If you are a doctor, nurse, or medical student who can help explain what the readings mean and what steps to take next, that would be incredibly helpful.</div>
+        </div>
+        <div class="info-grid">
+          <div class="info-tile"><div class="label">Category</div><div class="value">🏥 Medical</div></div>
+          <div class="info-tile"><div class="label">Level</div><div class="value">🔴 Urgent</div></div>
+          <div class="info-tile"><div class="label">Credits</div><div class="value">15 ✦ Goodwill</div></div>
+          <div class="info-tile"><div class="label">Helpers</div><div class="value">0 so far</div></div>
+        </div>
+      </div>
+      <div class="accept-btn-wrap">
+        <button class="btn-accept">🤝 Accept &amp; Help Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 5: PROFILE ═══ -->
+  <div>
+    <div class="screen-label">05 · Profile</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="profile-hero">
+        <div class="profile-avatar">AK</div>
+        <div class="profile-info">
+          <h2>Arjun Kumar</h2>
+          <p>Member since Jan 2025</p>
+        </div>
+        <button class="edit-btn">Edit</button>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">14</div><div class="stat-label">Helped</div></div>
+        <div class="stat-item"><div class="stat-num">6</div><div class="stat-label">Requested</div></div>
+        <div class="stat-item"><div class="stat-num">3</div><div class="stat-label">Campaigns</div></div>
+      </div>
+      <div class="credits-banner">
+        <div class="icon">✦</div>
+        <div class="info">
+          <strong>Goodwill Credits</strong>
+          <small>Earned by helping others</small>
+        </div>
+        <div class="amount">142</div>
+      </div>
+      <div class="section-header">
+        <h3>Recent Posts</h3>
+        <a href="#">See all</a>
+      </div>
+      <div class="post-list">
+        <div class="post-item">
+          <div class="post-dot" style="background:var(--red)"></div>
+          <div class="post-text">
+            <div class="post-title">Helped with Python recursion</div>
+            <div class="post-sub">Career · 3 days ago</div>
+          </div>
+          <div class="post-status st-done">Done</div>
+        </div>
+        <div class="post-item">
+          <div class="post-dot" style="background:var(--yellow)"></div>
+          <div class="post-text">
+            <div class="post-title">Resume review for placement</div>
+            <div class="post-sub">Career · 1 week ago</div>
+          </div>
+          <div class="post-status st-done">Done</div>
+        </div>
+        <div class="post-item">
+          <div class="post-dot" style="background:var(--tan2)"></div>
+          <div class="post-text">
+            <div class="post-title">Need grocery delivery help</div>
+            <div class="post-sub">Food · Posted today</div>
+          </div>
+          <div class="post-status st-open">Open</div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+        <button class="nav-item"><span class="nav-icon">📣</span><span class="nav-label">Campaigns</span></button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:4px;"><div class="nav-create">＋</div></div>
+        <button class="nav-item active"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 6: CAMPAIGNS ═══ -->
+  <div>
+    <div class="screen-label">06 · Campaigns</div>
+    <div class="screen">
+      <div class="status-bar"><span class="time">9:41</span><div class="status-icons"><span>●●●</span><span>WiFi</span><span>🔋</span></div></div>
+      <div class="camp-header">
+        <h2>Active Campaigns</h2>
+        <p>Join a cause. Make a difference together.</p>
+      </div>
+      <div class="camp-list">
+        <div class="camp-card">
+          <div class="camp-card-top">
+            <div class="camp-card-icon-row">
+              <div class="camp-icon">📚</div>
+              <div><div class="camp-name">Free Tuition for Class 10 Students</div><div class="camp-org">Teach For India · Bangalore</div></div>
+            </div>
+            <div class="camp-desc">Volunteer teachers needed for weekend sessions covering Maths and Science for underprivileged students preparing for board exams.</div>
+            <div class="progress-bar-wrap"><div class="progress-fill" style="width:68%"></div></div>
+            <div class="camp-stats">
+              <div class="camp-stat"><strong>34</strong> / 50 volunteers</div>
+              <div class="camp-stat">🕐 12 days left</div>
+            </div>
+          </div>
+          <div class="camp-footer">
+            <div class="vol-avatars">
+              <div class="vol-av av-red">AK</div>
+              <div class="vol-av av-yellow">PR</div>
+              <div class="vol-av av-tan">SM</div>
+              <div class="vol-av" style="background:var(--tan1);color:var(--tan3)">+4</div>
+            </div>
+            <button class="btn-join">Join Campaign →</button>
+          </div>
+        </div>
+        <div class="camp-card">
+          <div class="camp-card-top">
+            <div class="camp-card-icon-row">
+              <div class="camp-icon">🥗</div>
+              <div><div class="camp-name">Weekend Meals for Shelter Residents</div><div class="camp-org">Feeding India · HSR Layout</div></div>
+            </div>
+            <div class="camp-desc">Cook or deliver meals every Sunday morning. Just 2 hours of your time can feed 50 people at the community shelter.</div>
+            <div class="progress-bar-wrap"><div class="progress-fill" style="width:42%; background:var(--yellow)"></div></div>
+            <div class="camp-stats">
+              <div class="camp-stat"><strong>21</strong> / 50 volunteers</div>
+              <div class="camp-stat">🕐 Open-ended</div>
+            </div>
+          </div>
+          <div class="camp-footer">
+            <div class="vol-avatars">
+              <div class="vol-av av-yellow">RK</div>
+              <div class="vol-av av-red">NS</div>
+            </div>
+            <button class="btn-join">Join Campaign →</button>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+        <button class="nav-item active"><span class="nav-icon">📣</span><span class="nav-label">Campaigns</span></button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:4px;"><div class="nav-create">＋</div></div>
+        <button class="nav-item"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screens-grid -->
+
+</body>
+</html>
