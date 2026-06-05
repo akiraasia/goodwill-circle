@@ -51,6 +51,23 @@ class Campaign {
     );
   }
 
+  Campaign copyWith({String? creatorName, String? creatorPhoto}) {
+    return Campaign(
+      id: id,
+      creatorId: creatorId,
+      title: title,
+      description: description,
+      goalAmount: goalAmount,
+      currentAmount: currentAmount,
+      supportersCount: supportersCount,
+      status: status,
+      endDate: endDate,
+      createdAt: createdAt,
+      creatorName: creatorName ?? this.creatorName,
+      creatorPhoto: creatorPhoto ?? this.creatorPhoto,
+    );
+  }
+
   double get progressPercentage {
     if (goalAmount <= 0) return 0;
     final progress = currentAmount / goalAmount;

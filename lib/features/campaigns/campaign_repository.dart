@@ -16,20 +16,51 @@ class CampaignRepository {
   Future<List<Campaign>> getActiveCampaigns() async {
     final data = await _client
         .from('campaigns')
-        .select('*, profiles(name, photo_url)')
+        .select()
         .eq('status', 'active')
         .order('created_at', ascending: false);
 
-    return data.map((json) => Campaign.fromJson(json)).toList();
+    final campaigns = data.map((json) => Campaign.fromJson(json)).toList();
+    return _attachCreatorProfiles(campaigns);
   }
 
   Future<Campaign> getCampaignDetails(String campaignId) async {
     final data = await _client
         .from('campaigns')
-        .select('*, profiles(name, photo_url)')
+        .select()
         .eq('id', campaignId)
         .single();
-    return Campaign.fromJson(data);
+    final campaign = Campaign.fromJson(data);
+    final campaigns = await _attachCreatorProfiles([campaign]);
+    return campaigns.first;
+  }
+
+  Future<List<Campaign>> _attachCreatorProfiles(
+    List<Campaign> campaigns,
+  ) async {
+    final creatorIds = campaigns
+        .map((campaign) => campaign.creatorId)
+        .toSet()
+        .toList();
+
+    if (creatorIds.isEmpty) return campaigns;
+
+    final profilesData = await _client
+        .from('profiles')
+        .select('id, name, photo_url')
+        .inFilter('id', creatorIds);
+    final profilesById = {
+      for (final profile in profilesData) profile['id'] as String: profile,
+    };
+
+    return campaigns.map((campaign) {
+      final profile = profilesById[campaign.creatorId];
+      if (profile == null) return campaign;
+      return campaign.copyWith(
+        creatorName: profile['name'] as String?,
+        creatorPhoto: profile['photo_url'] as String?,
+      );
+    }).toList();
   }
 
   Future<void> createCampaign({
