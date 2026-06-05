@@ -98,9 +98,40 @@ class CampaignRepository {
   Future<List<CampaignDonation>> getCampaignDonations(String campaignId) async {
     final data = await _client
         .from('campaign_donations')
-        .select('*, profiles(name, photo_url)')
+        .select()
         .eq('campaign_id', campaignId)
         .order('created_at', ascending: false);
-    return data.map((json) => CampaignDonation.fromJson(json)).toList();
+    final donations = data
+        .map((json) => CampaignDonation.fromJson(json))
+        .toList();
+    return _attachDonorProfiles(donations);
+  }
+
+  Future<List<CampaignDonation>> _attachDonorProfiles(
+    List<CampaignDonation> donations,
+  ) async {
+    final donorIds = donations
+        .map((donation) => donation.donorId)
+        .toSet()
+        .toList();
+
+    if (donorIds.isEmpty) return donations;
+
+    final profilesData = await _client
+        .from('profiles')
+        .select('id, name, photo_url')
+        .inFilter('id', donorIds);
+    final profilesById = {
+      for (final profile in profilesData) profile['id'] as String: profile,
+    };
+
+    return donations.map((donation) {
+      final profile = profilesById[donation.donorId];
+      if (profile == null) return donation;
+      return donation.copyWith(
+        donorName: profile['name'] as String?,
+        donorPhoto: profile['photo_url'] as String?,
+      );
+    }).toList();
   }
 }

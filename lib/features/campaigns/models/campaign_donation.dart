@@ -33,4 +33,16 @@ class CampaignDonation {
           : null,
     );
   }
+
+  CampaignDonation copyWith({String? donorName, String? donorPhoto}) {
+    return CampaignDonation(
+      id: id,
+      campaignId: campaignId,
+      donorId: donorId,
+      amount: amount,
+      createdAt: createdAt,
+      donorName: donorName ?? this.donorName,
+      donorPhoto: donorPhoto ?? this.donorPhoto,
+    );
+  }
 }
