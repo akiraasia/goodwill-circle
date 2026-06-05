@@ -4,6 +4,9 @@
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS phone TEXT;
 
+ALTER TABLE public.request_volunteers
+  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -62,7 +65,8 @@ BEGIN
   IF v_request.status = 'completed' THEN RAISE EXCEPTION 'Request already completed'; END IF;
 
   UPDATE public.request_volunteers
-  SET status = 'completion_requested'
+  SET status = 'completion_requested',
+      completion_message = NULLIF(p_message, '')
   WHERE request_id = p_request_id
     AND volunteer_id = auth.uid()
     AND status IN ('accepted', 'completion_requested');

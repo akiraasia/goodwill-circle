@@ -7,7 +7,10 @@ class Campaign {
   final int currentAmount;
   final int supportersCount;
   final int membersCount;
+  final int votesCount;
   final bool isJoined;
+  final bool isVoted;
+  final String? imageUrl;
   final String status;
   final DateTime? endDate;
   final DateTime createdAt;
@@ -24,7 +27,10 @@ class Campaign {
     required this.currentAmount,
     required this.supportersCount,
     this.membersCount = 0,
+    this.votesCount = 0,
     this.isJoined = false,
+    this.isVoted = false,
+    this.imageUrl,
     required this.status,
     this.endDate,
     required this.createdAt,
@@ -42,6 +48,8 @@ class Campaign {
       currentAmount: json['current_amount'] as int? ?? 0,
       supportersCount: json['supporters_count'] as int? ?? 0,
       membersCount: json['members_count'] as int? ?? 0,
+      votesCount: json['votes_count'] as int? ?? 0,
+      imageUrl: json['image_url'] as String?,
       status: json['status'] as String? ?? 'active',
       endDate: json['end_date'] != null
           ? DateTime.parse(json['end_date'] as String)
@@ -59,8 +67,11 @@ class Campaign {
   Campaign copyWith({
     String? creatorName,
     String? creatorPhoto,
+    String? imageUrl,
     int? membersCount,
+    int? votesCount,
     bool? isJoined,
+    bool? isVoted,
   }) {
     return Campaign(
       id: id,
@@ -71,7 +82,10 @@ class Campaign {
       currentAmount: currentAmount,
       supportersCount: supportersCount,
       membersCount: membersCount ?? this.membersCount,
+      votesCount: votesCount ?? this.votesCount,
       isJoined: isJoined ?? this.isJoined,
+      isVoted: isVoted ?? this.isVoted,
+      imageUrl: imageUrl ?? this.imageUrl,
       status: status,
       endDate: endDate,
       createdAt: createdAt,

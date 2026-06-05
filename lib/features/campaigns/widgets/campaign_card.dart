@@ -79,6 +79,16 @@ class CampaignCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
+          if (campaign.imageUrl != null && campaign.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(campaign.imageUrl!, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           ClipRRect(
             borderRadius: BorderRadius.circular(100),
             child: LinearProgressIndicator(
@@ -112,7 +122,7 @@ class CampaignCard extends StatelessWidget {
               Icon(Icons.groups_outlined, size: 16, color: AppColors.textLight),
               const SizedBox(width: AppSpacing.xs),
               Text(
-                '${campaign.membersCount} joined',
+                '${campaign.membersCount} joined - ${campaign.votesCount} votes',
                 style: AppTypography.textTheme.labelSmall,
               ),
               const Spacer(),

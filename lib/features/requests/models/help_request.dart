@@ -7,6 +7,7 @@ class HelpRequest {
   final String status;
   final int goodwillReward;
   final int volunteersCount;
+  final String? imageUrl;
   final DateTime createdAt;
 
   // We might want to join the creator's name/photo
@@ -17,6 +18,7 @@ class HelpRequest {
   final String? contactPhoto;
   final String? contactPhone;
   final String? myVolunteerStatus;
+  final String? completionMessage;
 
   HelpRequest({
     required this.id,
@@ -27,6 +29,7 @@ class HelpRequest {
     required this.status,
     required this.goodwillReward,
     required this.volunteersCount,
+    this.imageUrl,
     required this.createdAt,
     this.creatorName,
     this.creatorPhoto,
@@ -35,6 +38,7 @@ class HelpRequest {
     this.contactPhoto,
     this.contactPhone,
     this.myVolunteerStatus,
+    this.completionMessage,
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,7 @@ class HelpRequest {
       status: json['status'] as String,
       goodwillReward: json['goodwill_reward'] as int? ?? 0,
       volunteersCount: json['volunteers_count'] as int? ?? 0,
+      imageUrl: json['image_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       creatorName: json['profiles'] != null
           ? json['profiles']['name'] as String?
@@ -68,6 +73,7 @@ class HelpRequest {
     String? contactPhoto,
     String? contactPhone,
     String? myVolunteerStatus,
+    String? completionMessage,
   }) {
     return HelpRequest(
       id: id,
@@ -78,6 +84,7 @@ class HelpRequest {
       status: status,
       goodwillReward: goodwillReward,
       volunteersCount: volunteersCount,
+      imageUrl: imageUrl,
       createdAt: createdAt,
       creatorName: creatorName ?? this.creatorName,
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
@@ -86,6 +93,7 @@ class HelpRequest {
       contactPhoto: contactPhoto ?? this.contactPhoto,
       contactPhone: contactPhone ?? this.contactPhone,
       myVolunteerStatus: myVolunteerStatus ?? this.myVolunteerStatus,
+      completionMessage: completionMessage ?? this.completionMessage,
     );
   }
 
@@ -99,6 +107,7 @@ class HelpRequest {
       'status': status,
       'goodwill_reward': goodwillReward,
       'volunteers_count': volunteersCount,
+      'image_url': imageUrl,
       'created_at': createdAt.toIso8601String(),
     };
   }

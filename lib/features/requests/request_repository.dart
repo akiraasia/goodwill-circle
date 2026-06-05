@@ -24,10 +24,7 @@ class RequestRepository {
 
     final volunteersData = requestIds.isEmpty
         ? <Map<String, dynamic>>[]
-        : await _client
-              .from('request_volunteers')
-              .select('request_id, volunteer_id, status')
-              .inFilter('request_id', requestIds);
+        : await _fetchRequestVolunteers(requestIds);
 
     final profileIds = {
       ...requests.map((request) => request.creatorId),
@@ -59,11 +56,12 @@ class RequestRepository {
 
       Map<String, dynamic>? contactProfile;
       if (currentUserId == request.creatorId && volunteers.isNotEmpty) {
-        contactProfile = profilesById[volunteers.first['volunteer_id']];
-        myVolunteer = volunteers.firstWhere(
+        final selectedVolunteer = volunteers.firstWhere(
           (volunteer) => volunteer['status'] == 'completion_requested',
           orElse: () => volunteers.first,
         );
+        contactProfile = profilesById[selectedVolunteer['volunteer_id']];
+        myVolunteer = selectedVolunteer;
       } else if (currentUserId != request.creatorId) {
         contactProfile = creatorProfile;
       }
@@ -76,8 +74,26 @@ class RequestRepository {
         contactPhoto: contactProfile?['photo_url'] as String?,
         contactPhone: contactProfile?['phone'] as String?,
         myVolunteerStatus: myVolunteer?['status'] as String?,
+        completionMessage: myVolunteer?['completion_message'] as String?,
       );
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRequestVolunteers(
+    List<String> requestIds,
+  ) async {
+    try {
+      return await _client
+          .from('request_volunteers')
+          .select('request_id, volunteer_id, status, completion_message')
+          .inFilter('request_id', requestIds);
+    } on PostgrestException catch (e) {
+      if (!e.message.toLowerCase().contains('completion_message')) rethrow;
+      return _client
+          .from('request_volunteers')
+          .select('request_id, volunteer_id, status')
+          .inFilter('request_id', requestIds);
+    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchProfiles(List<String> ids) async {
@@ -100,14 +116,24 @@ class RequestRepository {
     required String description,
     required String category,
     required int reward,
+    String? imageUrl,
   }) async {
-    await _client.from('help_requests').insert({
+    final payload = {
       'creator_id': _client.auth.currentUser!.id,
       'title': title,
       'description': description,
       'category': category,
       'goodwill_reward': reward,
-    });
+      'image_url': imageUrl,
+    };
+
+    try {
+      await _client.from('help_requests').insert(payload);
+    } on PostgrestException catch (e) {
+      if (!e.message.toLowerCase().contains('image_url')) rethrow;
+      payload.remove('image_url');
+      await _client.from('help_requests').insert(payload);
+    }
   }
 
   Future<void> volunteerForRequest(String requestId) async {

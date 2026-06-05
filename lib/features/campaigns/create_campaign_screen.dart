@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/campaigns/campaign_controller.dart';
+import 'package:goodwill_circle/shared/services/media_upload_service.dart';
 
 class CreateCampaignScreen extends ConsumerStatefulWidget {
   const CreateCampaignScreen({super.key});
@@ -16,6 +17,8 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
   final _descriptionController = TextEditingController();
   final _goalController = TextEditingController();
   DateTime? _selectedDate;
+  String? _imageUrl;
+  bool _isUploadingImage = false;
 
   @override
   void dispose() {
@@ -51,6 +54,7 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
         description: description,
         goalAmount: goal,
         endDate: _selectedDate,
+        imageUrl: _imageUrl,
       );
 
       final state = ref.read(campaignControllerProvider);
@@ -126,6 +130,56 @@ class _CreateCampaignScreenState extends ConsumerState<CreateCampaignScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _isUploadingImage
+                          ? null
+                          : () async {
+                              final scaffoldMessenger = ScaffoldMessenger.of(
+                                context,
+                              );
+                              setState(() => _isUploadingImage = true);
+                              try {
+                                final url =
+                                    await MediaUploadService.pickAndUploadImage(
+                                      folder: 'campaigns',
+                                    );
+                                if (mounted && url != null) {
+                                  setState(() => _imageUrl = url);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Image upload failed: $e'),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isUploadingImage = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.photo_outlined),
+                      label: Text(
+                        _isUploadingImage
+                            ? 'Uploading...'
+                            : _imageUrl == null
+                            ? 'Add campaign photo'
+                            : 'Change campaign photo',
+                      ),
+                    ),
+                    if (_imageUrl != null) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(_imageUrl!, fit: BoxFit.cover),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     ListTile(
                       shape: RoundedRectangleBorder(

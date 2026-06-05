@@ -10,7 +10,8 @@ class AppScaffold extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/campaigns')) return 1;
-    if (location.startsWith('/profile')) return 2;
+    if (location.startsWith('/confessions')) return 2;
+    if (location.startsWith('/profile')) return 3;
     return 0; // default to requests
   }
 
@@ -23,6 +24,9 @@ class AppScaffold extends StatelessWidget {
         context.go('/campaigns');
         break;
       case 2:
+        context.go('/confessions');
+        break;
+      case 3:
         context.go('/profile');
         break;
     }

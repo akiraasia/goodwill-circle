@@ -53,6 +53,7 @@ class CampaignController extends Notifier<CampaignState> {
     required String description,
     required int goalAmount,
     DateTime? endDate,
+    String? imageUrl,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -61,6 +62,7 @@ class CampaignController extends Notifier<CampaignState> {
         description: description,
         goalAmount: goalAmount,
         endDate: endDate,
+        imageUrl: imageUrl,
       );
       await loadCampaigns();
     } catch (e) {
@@ -72,6 +74,17 @@ class CampaignController extends Notifier<CampaignState> {
     state = state.copyWith(error: null);
     try {
       await _repository.joinCampaign(campaignId);
+      await loadCampaigns();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> voteForCampaign(String campaignId) async {
+    state = state.copyWith(error: null);
+    try {
+      await _repository.voteForCampaign(campaignId);
       await loadCampaigns();
     } catch (e) {
       state = state.copyWith(error: e.toString());
@@ -103,4 +116,12 @@ final campaignDonationsProvider = FutureProvider.family((
 ) async {
   final repository = ref.read(campaignRepositoryProvider);
   return repository.getCampaignDonations(campaignId);
+});
+
+final campaignCommentsProvider = FutureProvider.family((
+  ref,
+  String campaignId,
+) async {
+  final repository = ref.read(campaignRepositoryProvider);
+  return repository.getCampaignComments(campaignId);
 });

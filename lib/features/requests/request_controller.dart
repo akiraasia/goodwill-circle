@@ -49,6 +49,7 @@ class RequestController extends Notifier<RequestState> {
     required String description,
     required String category,
     required int reward,
+    String? imageUrl,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -57,6 +58,7 @@ class RequestController extends Notifier<RequestState> {
         description: description,
         category: category,
         reward: reward,
+        imageUrl: imageUrl,
       );
       await loadRequests();
     } catch (e) {

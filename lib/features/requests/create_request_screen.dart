@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/requests/request_controller.dart';
+import 'package:goodwill_circle/shared/services/media_upload_service.dart';
 
 class CreateRequestScreen extends ConsumerStatefulWidget {
   const CreateRequestScreen({super.key});
@@ -16,6 +17,8 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   final _descriptionController = TextEditingController();
   String _selectedCategory = 'Other';
   String _selectedUrgency = 'normal';
+  String? _imageUrl;
+  bool _isUploadingImage = false;
 
   final List<String> _categories = [
     'Education',
@@ -53,6 +56,7 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
         description: description,
         category: _selectedCategory,
         reward: reward,
+        imageUrl: _imageUrl,
       );
 
       final state = ref.read(requestControllerProvider);
@@ -115,6 +119,56 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                           ? 'Enter a description'
                           : null,
                     ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _isUploadingImage
+                          ? null
+                          : () async {
+                              final scaffoldMessenger = ScaffoldMessenger.of(
+                                context,
+                              );
+                              setState(() => _isUploadingImage = true);
+                              try {
+                                final url =
+                                    await MediaUploadService.pickAndUploadImage(
+                                      folder: 'requests',
+                                    );
+                                if (mounted && url != null) {
+                                  setState(() => _imageUrl = url);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Image upload failed: $e'),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isUploadingImage = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.photo_outlined),
+                      label: Text(
+                        _isUploadingImage
+                            ? 'Uploading...'
+                            : _imageUrl == null
+                            ? 'Add photo'
+                            : 'Change photo',
+                      ),
+                    ),
+                    if (_imageUrl != null) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(_imageUrl!, fit: BoxFit.cover),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedCategory,

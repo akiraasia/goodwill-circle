@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/profile/profile_controller.dart';
 import 'package:goodwill_circle/features/gamification/gamification_controller.dart';
 import 'package:goodwill_circle/features/gamification/character_system.dart';
+import 'package:goodwill_circle/features/profile/widgets/impact_graph.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:goodwill_circle/shared/widgets/stat_card.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
@@ -180,6 +181,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               // Analytics Section
               const SectionHeader(title: 'Analytics'),
+              ImpactGraph(stats: stats),
+              const SizedBox(height: AppSpacing.md),
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),

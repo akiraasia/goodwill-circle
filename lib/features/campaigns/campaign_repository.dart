@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/campaigns/models/campaign.dart';
+import 'package:goodwill_circle/features/campaigns/models/campaign_comment.dart';
 import 'package:goodwill_circle/features/campaigns/models/campaign_update.dart';
 import 'package:goodwill_circle/features/campaigns/models/campaign_donation.dart';
 
@@ -21,7 +22,9 @@ class CampaignRepository {
         .order('created_at', ascending: false);
 
     final campaigns = data.map((json) => Campaign.fromJson(json)).toList();
-    return _attachMembershipState(await _attachCreatorProfiles(campaigns));
+    return _attachCampaignSocialState(
+      await _attachMembershipState(await _attachCreatorProfiles(campaigns)),
+    );
   }
 
   Future<Campaign> getCampaignDetails(String campaignId) async {
@@ -31,8 +34,8 @@ class CampaignRepository {
         .eq('id', campaignId)
         .single();
     final campaign = Campaign.fromJson(data);
-    final campaigns = await _attachMembershipState(
-      await _attachCreatorProfiles([campaign]),
+    final campaigns = await _attachCampaignSocialState(
+      await _attachMembershipState(await _attachCreatorProfiles([campaign])),
     );
     return campaigns.first;
   }
@@ -70,14 +73,24 @@ class CampaignRepository {
     required String description,
     required int goalAmount,
     DateTime? endDate,
+    String? imageUrl,
   }) async {
-    await _client.from('campaigns').insert({
+    final payload = {
       'creator_id': _client.auth.currentUser!.id,
       'title': title,
       'description': description,
       'goal_amount': goalAmount,
       'end_date': endDate?.toIso8601String(),
-    });
+      'image_url': imageUrl,
+    };
+
+    try {
+      await _client.from('campaigns').insert(payload);
+    } on PostgrestException catch (e) {
+      if (!e.message.toLowerCase().contains('image_url')) rethrow;
+      payload.remove('image_url');
+      await _client.from('campaigns').insert(payload);
+    }
   }
 
   Future<void> donateToCampaign(String campaignId, int amount) async {
@@ -96,6 +109,50 @@ class CampaignRepository {
       'campaign_id': campaignId,
       'user_id': userId,
     }, onConflict: 'campaign_id,user_id');
+  }
+
+  Future<void> voteForCampaign(String campaignId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _client.from('campaign_votes').upsert({
+      'campaign_id': campaignId,
+      'user_id': userId,
+    }, onConflict: 'campaign_id,user_id');
+  }
+
+  Future<List<Campaign>> _attachCampaignSocialState(
+    List<Campaign> campaigns,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    final campaignIds = campaigns.map((campaign) => campaign.id).toList();
+    if (campaignIds.isEmpty) return campaigns;
+
+    try {
+      final votesData = await _client
+          .from('campaign_votes')
+          .select('campaign_id, user_id')
+          .inFilter('campaign_id', campaignIds);
+      final votesByCampaign = <String, int>{};
+      final votedCampaignIds = <String>{};
+
+      for (final vote in votesData) {
+        final campaignId = vote['campaign_id'] as String;
+        votesByCampaign[campaignId] = (votesByCampaign[campaignId] ?? 0) + 1;
+        if (userId != null && vote['user_id'] == userId) {
+          votedCampaignIds.add(campaignId);
+        }
+      }
+
+      return campaigns.map((campaign) {
+        return campaign.copyWith(
+          votesCount: votesByCampaign[campaign.id] ?? campaign.votesCount,
+          isVoted: votedCampaignIds.contains(campaign.id),
+        );
+      }).toList();
+    } on PostgrestException {
+      return campaigns;
+    }
   }
 
   Future<List<Campaign>> _attachMembershipState(
@@ -151,6 +208,53 @@ class CampaignRepository {
         .map((json) => CampaignDonation.fromJson(json))
         .toList();
     return _attachDonorProfiles(donations);
+  }
+
+  Future<List<CampaignComment>> getCampaignComments(String campaignId) async {
+    final data = await _client
+        .from('campaign_comments')
+        .select()
+        .eq('campaign_id', campaignId)
+        .order('created_at', ascending: false);
+    final comments = data
+        .map((json) => CampaignComment.fromJson(json))
+        .toList();
+    return _attachCommentProfiles(comments);
+  }
+
+  Future<void> addCampaignComment(String campaignId, String message) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || message.trim().isEmpty) return;
+
+    await _client.from('campaign_comments').insert({
+      'campaign_id': campaignId,
+      'user_id': userId,
+      'message': message.trim(),
+    });
+  }
+
+  Future<List<CampaignComment>> _attachCommentProfiles(
+    List<CampaignComment> comments,
+  ) async {
+    final userIds = comments.map((comment) => comment.userId).toSet().toList();
+    if (userIds.isEmpty) return comments;
+
+    final profilesData = await _client
+        .from('profiles')
+        .select('id, name, photo_url')
+        .inFilter('id', userIds);
+    final profilesById = {
+      for (final profile in profilesData) profile['id'] as String: profile,
+    };
+
+    return comments.map((comment) {
+      final profile = profilesById[comment.userId];
+      if (profile == null) return comment;
+      return comment.copyWith(
+        userName: profile['name'] as String?,
+        userPhoto: profile['photo_url'] as String?,
+      );
+    }).toList();
   }
 
   Future<List<CampaignDonation>> _attachDonorProfiles(

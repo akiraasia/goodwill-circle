@@ -29,6 +29,7 @@ class RequestCard extends StatelessWidget {
     final isHelping = request.myVolunteerStatus != null;
     final isCompletionRequested =
         request.myVolunteerStatus == 'completion_requested';
+    final helperName = request.contactName ?? 'Helper';
     final authorName = request.creatorName ?? 'Community member';
     final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
 
@@ -101,6 +102,16 @@ class RequestCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
+          if (request.imageUrl != null && request.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(request.imageUrl!, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (request.contactPhone != null &&
               request.contactPhone!.trim().isNotEmpty) ...[
             Wrap(
@@ -139,6 +150,43 @@ class RequestCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
           ],
+          if (isCreator && isCompletionRequested) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.yellowPale,
+                border: Border.all(color: AppColors.yellow),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.rate_review, size: 18),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          '$helperName requested completion',
+                          style: AppTypography.textTheme.labelLarge,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (request.completionMessage != null &&
+                      request.completionMessage!.trim().isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      request.completionMessage!,
+                      style: AppTypography.textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Row(
             children: [
               Icon(Icons.people_outline, size: 16, color: AppColors.textLight),
@@ -152,13 +200,9 @@ class RequestCard extends StatelessWidget {
                 height: 36,
                 child: isCreator
                     ? ElevatedButton.icon(
-                        onPressed: onComplete,
+                        onPressed: isCompletionRequested ? onComplete : null,
                         icon: const Icon(Icons.check_circle, size: 16),
-                        label: Text(
-                          request.myVolunteerStatus == 'completion_requested'
-                              ? 'Confirm'
-                              : 'Complete',
-                        ),
+                        label: Text(isCompletionRequested ? 'Confirm' : 'Wait'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           padding: const EdgeInsets.symmetric(horizontal: 12),

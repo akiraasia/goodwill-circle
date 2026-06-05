@@ -16,10 +16,12 @@ class CampaignDetailsScreen extends ConsumerStatefulWidget {
 
 class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
   final _donationController = TextEditingController();
+  final _commentController = TextEditingController();
 
   @override
   void dispose() {
     _donationController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -105,10 +107,55 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
     }
   }
 
+  Future<void> _voteForCampaign(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(campaignRepositoryProvider)
+          .voteForCampaign(widget.campaignId);
+      ref.invalidate(campaignDetailsProvider(widget.campaignId));
+      ref.read(campaignControllerProvider.notifier).loadCampaigns();
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Vote counted.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  Future<void> _addComment(BuildContext context) async {
+    final message = _commentController.text.trim();
+    if (message.isEmpty) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(campaignRepositoryProvider)
+          .addCampaignComment(widget.campaignId, message);
+      _commentController.clear();
+      ref.invalidate(campaignCommentsProvider(widget.campaignId));
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Comment posted.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final campaignAsync = ref.watch(campaignDetailsProvider(widget.campaignId));
     final updatesAsync = ref.watch(campaignUpdatesProvider(widget.campaignId));
+    final commentsAsync = ref.watch(
+      campaignCommentsProvider(widget.campaignId),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Campaign Details')),
@@ -151,6 +198,20 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
+                if (campaign.imageUrl != null &&
+                    campaign.imageUrl!.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(
+                        campaign.imageUrl!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
                 Text(
                   'Impact Progress',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -189,11 +250,26 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
                     const Icon(Icons.people, color: Colors.grey),
                     const SizedBox(width: 8),
                     Text(
-                      '${campaign.supportersCount} Supporters - ${campaign.membersCount} joined',
+                      '${campaign.supportersCount} Supporters - ${campaign.membersCount} joined - ${campaign.votesCount} votes',
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: campaign.isVoted
+                        ? null
+                        : () => _voteForCampaign(context),
+                    icon: Icon(
+                      campaign.isVoted
+                          ? Icons.how_to_vote
+                          : Icons.how_to_vote_outlined,
+                    ),
+                    label: Text(campaign.isVoted ? 'Voted' : 'Vote Support'),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -283,6 +359,66 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Text('Error loading updates: $e'),
+                ),
+                const Divider(height: 48),
+                Text(
+                  'Comments',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _commentController,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Add support or a question',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: () => _addComment(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                commentsAsync.when(
+                  data: (comments) {
+                    if (comments.isEmpty) {
+                      return const Text('No comments yet.');
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundImage:
+                                comment.userPhoto != null &&
+                                    comment.userPhoto!.isNotEmpty
+                                ? NetworkImage(comment.userPhoto!)
+                                : null,
+                            child:
+                                comment.userPhoto == null ||
+                                    comment.userPhoto!.isEmpty
+                                ? const Icon(Icons.person_outline)
+                                : null,
+                          ),
+                          title: Text(comment.userName ?? 'Supporter'),
+                          subtitle: Text(comment.message),
+                          trailing: Text(
+                            timeago.format(comment.createdAt),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Text('Error loading comments: $e'),
                 ),
               ],
             ),
