@@ -67,6 +67,17 @@ class CampaignController extends Notifier<CampaignState> {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
+
+  Future<void> joinCampaign(String campaignId) async {
+    state = state.copyWith(error: null);
+    try {
+      await _repository.joinCampaign(campaignId);
+      await loadCampaigns();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
 }
 
 // Controller specifically for fetching details of a single campaign (updates, etc)

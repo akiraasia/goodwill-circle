@@ -19,29 +19,80 @@ class RequestRepository {
         .order('created_at', ascending: false);
 
     final requests = data.map((json) => HelpRequest.fromJson(json)).toList();
-    final creatorIds = requests
-        .map((request) => request.creatorId)
-        .toSet()
-        .toList();
+    final requestIds = requests.map((request) => request.id).toList();
+    final currentUserId = _client.auth.currentUser?.id;
 
-    if (creatorIds.isEmpty) return requests;
+    final volunteersData = requestIds.isEmpty
+        ? <Map<String, dynamic>>[]
+        : await _client
+              .from('request_volunteers')
+              .select('request_id, volunteer_id, status')
+              .inFilter('request_id', requestIds);
 
-    final profilesData = await _client
-        .from('profiles')
-        .select('id, name, photo_url')
-        .inFilter('id', creatorIds);
+    final profileIds = {
+      ...requests.map((request) => request.creatorId),
+      ...volunteersData.map((volunteer) => volunteer['volunteer_id'] as String),
+    }.toList();
+
+    if (profileIds.isEmpty) return requests;
+
+    final profilesData = await _fetchProfiles(profileIds);
     final profilesById = {
       for (final profile in profilesData) profile['id'] as String: profile,
     };
+    final volunteersByRequest = <String, List<Map<String, dynamic>>>{};
+    for (final volunteer in volunteersData) {
+      final requestId = volunteer['request_id'] as String;
+      volunteersByRequest.putIfAbsent(requestId, () => []).add(volunteer);
+    }
 
     return requests.map((request) {
-      final profile = profilesById[request.creatorId];
-      if (profile == null) return request;
+      final creatorProfile = profilesById[request.creatorId];
+      final volunteers = volunteersByRequest[request.id] ?? const [];
+      Map<String, dynamic>? myVolunteer;
+      for (final volunteer in volunteers) {
+        if (volunteer['volunteer_id'] == currentUserId) {
+          myVolunteer = volunteer;
+          break;
+        }
+      }
+
+      Map<String, dynamic>? contactProfile;
+      if (currentUserId == request.creatorId && volunteers.isNotEmpty) {
+        contactProfile = profilesById[volunteers.first['volunteer_id']];
+        myVolunteer = volunteers.firstWhere(
+          (volunteer) => volunteer['status'] == 'completion_requested',
+          orElse: () => volunteers.first,
+        );
+      } else if (currentUserId != request.creatorId) {
+        contactProfile = creatorProfile;
+      }
+
       return request.copyWith(
-        creatorName: profile['name'] as String?,
-        creatorPhoto: profile['photo_url'] as String?,
+        creatorName: creatorProfile?['name'] as String?,
+        creatorPhoto: creatorProfile?['photo_url'] as String?,
+        creatorPhone: creatorProfile?['phone'] as String?,
+        contactName: contactProfile?['name'] as String?,
+        contactPhoto: contactProfile?['photo_url'] as String?,
+        contactPhone: contactProfile?['phone'] as String?,
+        myVolunteerStatus: myVolunteer?['status'] as String?,
       );
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchProfiles(List<String> ids) async {
+    try {
+      return await _client
+          .from('profiles')
+          .select('id, name, photo_url, phone')
+          .inFilter('id', ids);
+    } on PostgrestException catch (e) {
+      if (!e.message.toLowerCase().contains('phone')) rethrow;
+      return _client
+          .from('profiles')
+          .select('id, name, photo_url')
+          .inFilter('id', ids);
+    }
   }
 
   Future<void> createRequest({
@@ -60,6 +111,14 @@ class RequestRepository {
   }
 
   Future<void> volunteerForRequest(String requestId) async {
+    final existing = await _client
+        .from('request_volunteers')
+        .select('id')
+        .eq('request_id', requestId)
+        .eq('volunteer_id', _client.auth.currentUser!.id)
+        .maybeSingle();
+    if (existing != null) return;
+
     // 1. Add to request_volunteers
     await _client.from('request_volunteers').insert({
       'request_id': requestId,
@@ -89,6 +148,16 @@ class RequestRepository {
     await _client.rpc(
       'mark_request_completed',
       params: {'p_request_id': requestId},
+    );
+  }
+
+  Future<void> requestCompletionReview({
+    required String requestId,
+    String? message,
+  }) async {
+    await _client.rpc(
+      'request_help_completion_review',
+      params: {'p_request_id': requestId, 'p_message': message},
     );
   }
 }

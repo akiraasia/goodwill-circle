@@ -12,6 +12,11 @@ class HelpRequest {
   // We might want to join the creator's name/photo
   final String? creatorName;
   final String? creatorPhoto;
+  final String? creatorPhone;
+  final String? contactName;
+  final String? contactPhoto;
+  final String? contactPhone;
+  final String? myVolunteerStatus;
 
   HelpRequest({
     required this.id,
@@ -25,6 +30,11 @@ class HelpRequest {
     required this.createdAt,
     this.creatorName,
     this.creatorPhoto,
+    this.creatorPhone,
+    this.contactName,
+    this.contactPhoto,
+    this.contactPhone,
+    this.myVolunteerStatus,
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) {
@@ -44,10 +54,21 @@ class HelpRequest {
       creatorPhoto: json['profiles'] != null
           ? json['profiles']['photo_url'] as String?
           : null,
+      creatorPhone: json['profiles'] != null
+          ? json['profiles']['phone'] as String?
+          : null,
     );
   }
 
-  HelpRequest copyWith({String? creatorName, String? creatorPhoto}) {
+  HelpRequest copyWith({
+    String? creatorName,
+    String? creatorPhoto,
+    String? creatorPhone,
+    String? contactName,
+    String? contactPhoto,
+    String? contactPhone,
+    String? myVolunteerStatus,
+  }) {
     return HelpRequest(
       id: id,
       creatorId: creatorId,
@@ -60,6 +81,11 @@ class HelpRequest {
       createdAt: createdAt,
       creatorName: creatorName ?? this.creatorName,
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
+      creatorPhone: creatorPhone ?? this.creatorPhone,
+      contactName: contactName ?? this.contactName,
+      contactPhoto: contactPhoto ?? this.contactPhoto,
+      contactPhone: contactPhone ?? this.contactPhone,
+      myVolunteerStatus: myVolunteerStatus ?? this.myVolunteerStatus,
     );
   }
 

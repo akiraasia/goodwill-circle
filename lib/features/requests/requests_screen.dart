@@ -156,6 +156,20 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                       ),
                                     );
                                   },
+                                  onRequestCompletion: (message) async {
+                                    await controller.requestCompletionReview(
+                                      requestId: request.id,
+                                      message: message,
+                                    );
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Sent to helpee for confirmation.',
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),

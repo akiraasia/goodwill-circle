@@ -68,6 +68,30 @@ class CampaignsScreen extends ConsumerWidget {
                                   onTap: () {
                                     context.push('/campaign/${campaign.id}');
                                   },
+                                  onJoin: () async {
+                                    try {
+                                      await controller.joinCampaign(
+                                        campaign.id,
+                                      );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Joined campaign.'),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(content: Text('Error: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
                                 );
                               },
                             ),

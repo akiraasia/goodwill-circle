@@ -9,14 +9,20 @@ import 'package:goodwill_circle/core/theme/app_icons.dart';
 class CampaignCard extends StatelessWidget {
   final Campaign campaign;
   final VoidCallback onTap;
+  final VoidCallback? onJoin;
 
-  const CampaignCard({super.key, required this.campaign, required this.onTap});
+  const CampaignCard({
+    super.key,
+    required this.campaign,
+    required this.onTap,
+    this.onJoin,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
       onTap: onTap,
-      isFeatured: campaign.progressPercentage > 0.8, // Demo logic for featured
+      isFeatured: campaign.progressPercentage > 0.8,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -87,7 +93,7 @@ class CampaignCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${campaign.currentAmount} / ${campaign.goalAmount} ✦',
+                '${campaign.currentAmount} / ${campaign.goalAmount} credits',
                 style: AppTypography.textTheme.titleSmall?.copyWith(
                   color: AppColors.textDark,
                 ),
@@ -97,6 +103,26 @@ class CampaignCard extends StatelessWidget {
                 style: AppTypography.textTheme.labelMedium?.copyWith(
                   color: AppColors.textLight,
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Icon(Icons.groups_outlined, size: 16, color: AppColors.textLight),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                '${campaign.membersCount} joined',
+                style: AppTypography.textTheme.labelSmall,
+              ),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: campaign.isJoined ? null : onJoin,
+                icon: Icon(
+                  campaign.isJoined ? Icons.check : Icons.group_add_outlined,
+                  size: 16,
+                ),
+                label: Text(campaign.isJoined ? 'Joined' : 'Join'),
               ),
             ],
           ),

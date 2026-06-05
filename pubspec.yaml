@@ -39,6 +39,7 @@ dependencies:
   supabase_flutter: ^2.12.4
   google_fonts: ^8.1.0
   timeago: ^3.7.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

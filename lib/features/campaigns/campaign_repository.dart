@@ -21,7 +21,7 @@ class CampaignRepository {
         .order('created_at', ascending: false);
 
     final campaigns = data.map((json) => Campaign.fromJson(json)).toList();
-    return _attachCreatorProfiles(campaigns);
+    return _attachMembershipState(await _attachCreatorProfiles(campaigns));
   }
 
   Future<Campaign> getCampaignDetails(String campaignId) async {
@@ -31,7 +31,9 @@ class CampaignRepository {
         .eq('id', campaignId)
         .single();
     final campaign = Campaign.fromJson(data);
-    final campaigns = await _attachCreatorProfiles([campaign]);
+    final campaigns = await _attachMembershipState(
+      await _attachCreatorProfiles([campaign]),
+    );
     return campaigns.first;
   }
 
@@ -84,6 +86,50 @@ class CampaignRepository {
       'donate_to_campaign',
       params: {'p_campaign_id': campaignId, 'p_amount': amount},
     );
+  }
+
+  Future<void> joinCampaign(String campaignId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _client.from('campaign_members').upsert({
+      'campaign_id': campaignId,
+      'user_id': userId,
+    }, onConflict: 'campaign_id,user_id');
+  }
+
+  Future<List<Campaign>> _attachMembershipState(
+    List<Campaign> campaigns,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    final campaignIds = campaigns.map((campaign) => campaign.id).toList();
+    if (campaignIds.isEmpty) return campaigns;
+
+    try {
+      final membersData = await _client
+          .from('campaign_members')
+          .select('campaign_id, user_id')
+          .inFilter('campaign_id', campaignIds);
+      final countsByCampaign = <String, int>{};
+      final joinedCampaignIds = <String>{};
+
+      for (final member in membersData) {
+        final campaignId = member['campaign_id'] as String;
+        countsByCampaign[campaignId] = (countsByCampaign[campaignId] ?? 0) + 1;
+        if (userId != null && member['user_id'] == userId) {
+          joinedCampaignIds.add(campaignId);
+        }
+      }
+
+      return campaigns.map((campaign) {
+        return campaign.copyWith(
+          membersCount: countsByCampaign[campaign.id] ?? campaign.membersCount,
+          isJoined: joinedCampaignIds.contains(campaign.id),
+        );
+      }).toList();
+    } on PostgrestException {
+      return campaigns;
+    }
   }
 
   Future<List<CampaignUpdate>> getCampaignUpdates(String campaignId) async {

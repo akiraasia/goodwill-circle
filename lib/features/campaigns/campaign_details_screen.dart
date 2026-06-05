@@ -84,6 +84,27 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
     );
   }
 
+  Future<void> _joinCampaign(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(campaignRepositoryProvider)
+          .joinCampaign(widget.campaignId);
+      ref.invalidate(campaignDetailsProvider(widget.campaignId));
+      ref.read(campaignControllerProvider.notifier).loadCampaigns();
+
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Joined campaign.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final campaignAsync = ref.watch(campaignDetailsProvider(widget.campaignId));
@@ -167,10 +188,31 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
                   children: [
                     const Icon(Icons.people, color: Colors.grey),
                     const SizedBox(width: 8),
-                    Text('${campaign.supportersCount} Supporters'),
+                    Text(
+                      '${campaign.supportersCount} Supporters - ${campaign.membersCount} joined',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: campaign.isJoined
+                        ? null
+                        : () => _joinCampaign(context),
+                    icon: Icon(
+                      campaign.isJoined
+                          ? Icons.check
+                          : Icons.group_add_outlined,
+                    ),
+                    label: Text(
+                      campaign.isJoined
+                          ? 'Joined Campaign'
+                          : 'Join Campaign Feed',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

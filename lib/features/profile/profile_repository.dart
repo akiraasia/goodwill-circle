@@ -37,6 +37,7 @@ class ProfileRepository {
           'name': profile.name,
           'bio': profile.bio,
           'photo_url': profile.photoUrl,
+          'phone': profile.phone,
         })
         .eq('id', profile.id);
   }

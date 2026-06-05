@@ -55,13 +55,17 @@ class ProfileController extends Notifier<ProfileState> {
     }
   }
 
-  Future<void> updateProfile({String? name, String? bio}) async {
+  Future<void> updateProfile({String? name, String? bio, String? phone}) async {
     if (state.profile == null) return;
 
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final updatedProfile = state.profile!.copyWith(name: name, bio: bio);
+      final updatedProfile = state.profile!.copyWith(
+        name: name,
+        bio: bio,
+        phone: phone,
+      );
 
       await _repository.updateProfile(updatedProfile);
 

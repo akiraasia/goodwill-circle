@@ -25,6 +25,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isSignUp = false;
@@ -51,10 +52,23 @@ class _AuthScreenState extends State<AuthScreen> {
         final response = await Supabase.instance.client.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          data: {'full_name': _nameController.text.trim(), 'avatar_url': ''},
+          data: {
+            'full_name': _nameController.text.trim(),
+            'avatar_url': '',
+            'phone': _phoneController.text.trim(),
+          },
         );
         if (mounted) {
           if (response.session != null) {
+            try {
+              await Supabase.instance.client
+                  .from('profiles')
+                  .update({'phone': _phoneController.text.trim()})
+                  .eq('id', response.user!.id);
+            } on PostgrestException {
+              // Older Supabase schemas may not have the phone column yet.
+            }
+            if (!mounted) return;
             context.go('/app');
             return;
           }
@@ -168,6 +182,16 @@ class _AuthScreenState extends State<AuthScreen> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone number',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 TextFormField(
                   controller: _emailController,
@@ -224,6 +248,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }

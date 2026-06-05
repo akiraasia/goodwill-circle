@@ -82,4 +82,19 @@ class RequestController extends Notifier<RequestState> {
       state = state.copyWith(error: e.toString());
     }
   }
+
+  Future<void> requestCompletionReview({
+    required String requestId,
+    String? message,
+  }) async {
+    try {
+      await _repository.requestCompletionReview(
+        requestId: requestId,
+        message: message,
+      );
+      await loadRequests();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
 }
