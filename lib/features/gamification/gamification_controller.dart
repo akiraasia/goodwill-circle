@@ -51,38 +51,40 @@ class GamificationController extends Notifier<GamificationState> {
 
     state = state.copyWith(isLoading: true, error: null);
 
+    final errors = <String>[];
+    var badges = <UserBadge>[];
+    GoodwillChainSummary? chainSummary;
+
     try {
-      // 1. Fetch Badges
       final badgesData = await _client
           .from('user_badges')
           .select('*, badges(*)')
           .eq('user_id', userId)
           .order('awarded_at', ascending: false);
+      badges = badgesData.map((json) => UserBadge.fromJson(json)).toList();
+    } catch (e) {
+      errors.add('badges unavailable');
+    }
 
-      final badges = badgesData
-          .map((json) => UserBadge.fromJson(json))
-          .toList();
-
-      // 2. Fetch Goodwill Chain
+    try {
       final chainData = await _client.rpc(
         'get_user_goodwill_chain',
         params: {'p_user_id': userId},
       );
-
-      GoodwillChainSummary? chainSummary;
       if (chainData != null) {
         chainSummary = GoodwillChainSummary.fromJson(
           chainData as Map<String, dynamic>,
         );
       }
-
-      state = state.copyWith(
-        badges: badges,
-        chainSummary: chainSummary,
-        isLoading: false,
-      );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      errors.add('chain unavailable');
     }
+
+    state = state.copyWith(
+      badges: badges,
+      chainSummary: chainSummary,
+      isLoading: false,
+      error: errors.isEmpty ? null : errors.join(', '),
+    );
   }
 }

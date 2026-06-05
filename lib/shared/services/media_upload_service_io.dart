@@ -1,26 +1,20 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
-import 'dart:html' as html;
-import 'dart:typed_data';
-
+import 'package:image_picker/image_picker.dart';
 import 'package:goodwill_circle/shared/services/photo_upload_exception.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MediaUploadService {
+  static final ImagePicker _picker = ImagePicker();
+
   static Future<String?> pickAndUploadImage({required String folder}) async {
-    final input = html.FileUploadInputElement()
-      ..accept = 'image/*'
-      ..multiple = false;
-    input.click();
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
+    if (image == null) return null;
 
-    await input.onChange.first;
-    final file = input.files?.first;
-    if (file == null) return null;
-
-    final reader = html.FileReader()..readAsArrayBuffer(file);
-    await reader.onLoad.first;
-    final bytes = Uint8List.view(reader.result as ByteBuffer);
-    final extension = _extensionFor(file.name);
+    final bytes = await image.readAsBytes();
+    final extension = _extensionFor(image.name);
     final userId = Supabase.instance.client.auth.currentUser?.id ?? 'anon';
     final path =
         '$folder/$userId/${DateTime.now().millisecondsSinceEpoch}.$extension';
@@ -32,9 +26,7 @@ class MediaUploadService {
             path,
             bytes,
             fileOptions: FileOptions(
-              contentType: file.type.isEmpty
-                  ? _contentType(extension)
-                  : file.type,
+              contentType: image.mimeType ?? _contentType(extension),
               upsert: false,
             ),
           );
