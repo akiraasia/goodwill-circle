@@ -6,6 +6,7 @@ import 'package:goodwill_circle/features/profile/profile_controller.dart';
 import 'package:goodwill_circle/features/gamification/gamification_controller.dart';
 import 'package:goodwill_circle/features/gamification/character_system.dart';
 import 'package:goodwill_circle/features/profile/widgets/impact_graph.dart';
+import 'package:goodwill_circle/features/profile/widgets/badges_section.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:goodwill_circle/shared/widgets/stat_card.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
@@ -24,6 +25,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileControllerProvider);
+    final gamificationState = ref.watch(gamificationControllerProvider);
 
     if (profileState.isLoading && profileState.profile == null) {
       return const Scaffold(
@@ -203,16 +205,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: AppSpacing.md),
               const SectionHeader(title: 'Badges & Chains'),
-              AppCard(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  child: Center(
-                    child: Text(
-                      'More gamification features coming soon!',
-                      style: AppTypography.textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
+              BadgesSection(
+                stats: stats,
+                gamificationState: gamificationState,
               ),
             ],
           ),
