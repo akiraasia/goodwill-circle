@@ -1,0 +1,28 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DDD0EE"/>
+      <stop offset="100%" stop-color="#CAB8E0"/>
+    </linearGradient>
+    <linearGradient id="border10" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B89ACC"/>
+      <stop offset="100%" stop-color="#8B6BAE"/>
+    </linearGradient>
+    <radialGradient id="glow10" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8B6BAE" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#8B6BAE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg10)" stroke="url(#border10)" stroke-width="3"/>
+  <circle cx="24" cy="24" r="18" fill="url(#glow10)"/>
+  <path d="M24 10 L14 14.5 L14 24 C14 29.5 18.5 34 24 36.5 C29.5 34 34 29.5 34 24 L34 14.5 Z" fill="#8B6BAE"/>
+  <path d="M24 12.5 L16 16.5 L16 24 C16 28.5 19.5 32.5 24 34.5 C28.5 32.5 32 28.5 32 24 L32 16.5 Z" fill="#B89ACC"/>
+  <path d="M24 17 L25.4 21.5 L30 21.5 L26.3 24.2 L27.7 28.7 L24 26 L20.3 28.7 L21.7 24.2 L18 21.5 L22.6 21.5 Z" fill="#8B6BAE"/>
+  <path d="M24 18.5 L25 21.8 L28.5 21.8 L25.8 23.7 L26.8 27 L24 25 L21.2 27 L22.2 23.7 L19.5 21.8 L23 21.8 Z" fill="#DDD0EE"/>
+  <circle cx="14" cy="14" r="1.5" fill="#B89ACC" opacity="0.8"/>
+  <circle cx="34" cy="14" r="1.5" fill="#B89ACC" opacity="0.8"/>
+  <circle cx="10" cy="24" r="1" fill="#B89ACC" opacity="0.6"/>
+  <circle cx="38" cy="24" r="1" fill="#B89ACC" opacity="0.6"/>
+  <circle cx="14" cy="34" r="1.5" fill="#B89ACC" opacity="0.8"/>
+  <circle cx="34" cy="34" r="1.5" fill="#B89ACC" opacity="0.8"/>
+</svg>

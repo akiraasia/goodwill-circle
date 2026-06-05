@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goodwill Circle — Badge Design System</title>
+<style>
+  :root {
+    --bg: #FAF7F4;
+    --surface: #FFFFFF;
+    --surface2: #F5F0EA;
+    --text: #2C2018;
+    --text2: #6B5B4E;
+    --border: #E8DDD4;
+    --accent: #C8734A;
+
+    /* Tier Colors */
+    --bronze-1: #CD7F4A; --bronze-2: #E8A87C; --bronze-3: #F5D5B8; --bronze-bg: #FFF5EE;
+    --silver-1: #8C9BAE; --silver-2: #B8C5D4; --silver-3: #DDE5EE; --silver-bg: #F0F4F8;
+    --gold-1: #C9923A; --gold-2: #E8B86D; --gold-3: #F5D99A; --gold-bg: #FFFBF0;
+    --platinum-1: #7A8FAF; --platinum-2: #A8BCCF; --platinum-3: #D4E0EC; --platinum-bg: #F0F5FA;
+    --diamond-1: #8B6BAE; --diamond-2: #B89ACC; --diamond-3: #DDD0EE; --diamond-bg: #F8F4FF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 48px 24px; }
+
+  h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 6px; color: var(--text); }
+  h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+  h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  p { color: var(--text2); font-size: 0.92rem; }
+
+  .subtitle { font-size: 1rem; color: var(--text2); margin-bottom: 48px; }
+
+  .section { margin-bottom: 64px; }
+
+  /* BADGE GRID */
+  .badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+  }
+
+  .badge-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .badge-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .badge-preview {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .badge-info { flex: 1; }
+  .badge-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
+  .badge-tier {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+
+  .tier-bronze { background: var(--bronze-bg); color: var(--bronze-1); }
+  .tier-silver { background: var(--silver-bg); color: var(--silver-1); }
+  .tier-gold { background: var(--gold-bg); color: var(--gold-1); }
+  .tier-platinum { background: var(--platinum-bg); color: var(--platinum-1); }
+  .tier-diamond { background: var(--diamond-bg); color: var(--diamond-1); }
+
+  .badge-description { font-size: 0.88rem; color: var(--text2); }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+
+  .spec-item { }
+  .spec-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 2px; }
+  .spec-value { font-size: 0.82rem; color: var(--text); font-family: 'Courier New', monospace; }
+
+  .color-chips { display: flex; gap: 6px; margin-top: 4px; }
+  .chip {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(0,0,0,0.08);
+    flex-shrink: 0;
+  }
+  .chip-label { font-size: 0.75rem; font-family: monospace; }
+
+  /* DESIGN SYSTEM */
+  .ds-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px; }
+  .ds-tier {
+    border-radius: 16px;
+    padding: 20px 14px;
+    text-align: center;
+  }
+  .ds-tier-name { font-weight: 800; font-size: 0.9rem; margin-bottom: 8px; }
+  .ds-tier-swatches { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+  .ds-swatch { width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid rgba(0,0,0,0.1); }
+  .ds-tier-desc { font-size: 0.75rem; color: var(--text2); }
+
+  /* DARK MODE PREVIEW */
+  .dark-preview {
+    background: #1C1612;
+    border-radius: 20px;
+    padding: 32px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .dark-badge-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .dark-badge-label { font-size: 0.75rem; color: #9E8F85; text-align: center; }
+
+  /* TOKEN TABLE */
+  .token-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .token-table th { text-align: left; padding: 10px 14px; background: var(--surface2); border-bottom: 2px solid var(--border); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+  .token-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .token-table tr:last-child td { border-bottom: none; }
+  .mono { font-family: monospace; font-size: 0.82rem; }
+
+  /* FIGMA HIERARCHY */
+  .figma-tree { background: var(--surface2); border-radius: 16px; padding: 24px; font-family: monospace; font-size: 0.85rem; line-height: 2; }
+  .figma-tree .indent-1 { margin-left: 20px; }
+  .figma-tree .indent-2 { margin-left: 40px; }
+  .figma-tree .indent-3 { margin-left: 60px; }
+  .figma-tree .frame { color: #8B6BAE; }
+  .figma-tree .component { color: #C9923A; }
+  .figma-tree .layer { color: #2C7A4B; }
+  .figma-tree .variant { color: #3A7AC9; }
+
+  svg { display: block; }
+
+  .sizes-row { display: flex; gap: 16px; align-items: flex-end; }
+
+  .section-divider {
+    border: none;
+    border-top: 1.5px solid var(--border);
+    margin: 48px 0;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div style="margin-bottom:48px;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+      <svg width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="20" fill="#C8734A"/>
+        <path d="M20 10 C16 10 12 14 12 18 C12 24 20 30 20 30 C20 30 28 24 28 18 C28 14 24 10 20 10Z" fill="white" opacity="0.95"/>
+      </svg>
+      <div>
+        <h1>Goodwill Circle</h1>
+        <div class="subtitle">Complete Badge Design System · v1.0 · Material Design 3 Inspired</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESIGN SYSTEM OVERVIEW -->
+  <div class="section">
+    <h2>Tier Design System</h2>
+    <div class="ds-grid">
+      <div class="ds-tier" style="background:#FFF5EE;">
+        <div class="ds-tier-name" style="color:#CD7F4A;">Bronze</div>
+        <div class="ds-tier-swatches">
+          <div class="ds-swatch" style="background:#CD7F4A;"></div>
+          <div class="ds-swatch" style="background:#E8A87C;"></div>
+          <div class="ds-swatch" style="background:#F5D5B8;"></div>
+        </div>
+        <div class="ds-tier-desc">#CD7F4A · #E8A87C · #F5D5B8</div>
+      </div>
+      <div class="ds-tier" style="background:#F0F4F8;">
+        <div class="ds-tier-name" style="color:#8C9BAE;">Silver</div>
+        <div class="ds-tier-swatches">
+          <div class="ds-swatch" style="background:#8C9BAE;"></div>
+          <div class="ds-swatch" style="background:#B8C5D4;"></div>
+          <div class="ds-swatch" style="background:#DDE5EE;"></div>
+        </div>
+        <div class="ds-tier-desc">#8C9BAE · #B8C5D4 · #DDE5EE</div>
+      </div>
+      <div class="ds-tier" style="background:#FFFBF0;">
+        <div class="ds-tier-name" style="color:#C9923A;">Gold</div>
+        <div class="ds-tier-swatches">
+          <div class="ds-swatch" style="background:#C9923A;"></div>
+          <div class="ds-swatch" style="background:#E8B86D;"></div>
+          <div class="ds-swatch" style="background:#F5D99A;"></div>
+        </div>
+        <div class="ds-tier-desc">#C9923A · #E8B86D · #F5D99A</div>
+      </div>
+      <div class="ds-tier" style="background:#F0F5FA;">
+        <div class="ds-tier-name" style="color:#7A8FAF;">Platinum</div>
+        <div class="ds-tier-swatches">
+          <div class="ds-swatch" style="background:#7A8FAF;"></div>
+          <div class="ds-swatch" style="background:#A8BCCF;"></div>
+          <div class="ds-swatch" style="background:#D4E0EC;"></div>
+        </div>
+        <div class="ds-tier-desc">#7A8FAF · #A8BCCF · #D4E0EC</div>
+      </div>
+      <div class="ds-tier" style="background:#F8F4FF;">
+        <div class="ds-tier-name" style="color:#8B6BAE;">Diamond</div>
+        <div class="ds-tier-swatches">
+          <div class="ds-swatch" style="background:#8B6BAE;"></div>
+          <div class="ds-swatch" style="background:#B89ACC;"></div>
+          <div class="ds-swatch" style="background:#DDD0EE;"></div>
+        </div>
+        <div class="ds-tier-desc">#8B6BAE · #B89ACC · #DDD0EE</div>
+      </div>
+    </div>
+
+    <!-- SHAPE SYSTEM -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>Shape System</h3>
+        <p style="margin-bottom:16px;">All badges use a squircle (superellipse) outer container with 40% corner radius relative to size. This provides a premium, modern feel consistent with Material Design 3.</p>
+        <div style="display:flex;gap:16px;align-items:center;justify-content:center;padding:16px;">
+          <!-- Squircle shapes at different sizes -->
+          <svg width="48" height="48" viewBox="0 0 48 48">
+            <rect x="2" y="2" width="44" height="44" rx="14" fill="#F5D5B8" stroke="#CD7F4A" stroke-width="2"/>
+          </svg>
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <rect x="2" y="2" width="60" height="60" rx="18" fill="#DDE5EE" stroke="#8C9BAE" stroke-width="2.5"/>
+          </svg>
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <rect x="2" y="2" width="76" height="76" rx="22" fill="#F5D99A" stroke="#C9923A" stroke-width="3"/>
+          </svg>
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <rect x="2" y="2" width="92" height="92" rx="26" fill="#DDD0EE" stroke="#8B6BAE" stroke-width="3"/>
+          </svg>
+        </div>
+        <p style="text-align:center;font-size:0.78rem;">48px · 64px · 80px · 96px</p>
+      </div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>Border Treatment by Tier</h3>
+        <table class="token-table" style="margin-top:8px;">
+          <tr><th>Tier</th><th>Border Style</th><th>Width</th><th>Effect</th></tr>
+          <tr><td>Bronze</td><td class="mono">solid #CD7F4A</td><td>2px</td><td>None</td></tr>
+          <tr><td>Silver</td><td class="mono">solid #8C9BAE</td><td>2.5px</td><td>Inner glow</td></tr>
+          <tr><td>Gold</td><td class="mono">solid #C9923A</td><td>3px</td><td>Drop shadow</td></tr>
+          <tr><td>Platinum</td><td class="mono">gradient stroke</td><td>3px</td><td>Shimmer</td></tr>
+          <tr><td>Diamond</td><td class="mono">gradient stroke</td><td>3.5px</td><td>Glow + shadow</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- ALL 10 BADGES -->
+  <div class="section">
+    <h2>Badge Collection · All 10 Badges</h2>
+    <div class="badge-grid">
+
+      <!-- 1. FIRST HELPER -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <!-- 48px -->
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D5B8"/>
+                  <stop offset="100%" stop-color="#EEC49E"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg1)" stroke="#CD7F4A" stroke-width="2"/>
+              <!-- Left hand -->
+              <path d="M11 30 C11 26 13 22 17 20 L17 15 C17 13.5 18 13 19 13 C20 13 21 13.5 21 15 L21 22 C22 21 23.5 20.5 24 22 C24.5 20.5 26 21 26 22.5 C27 21.5 28.5 22 28.5 23.5 L28.5 28 C28.5 30 27 32 25 33 L22 33 C18 33 15 32 13 30.5 Z" fill="#CD7F4A" opacity="0.9"/>
+              <!-- Right hand (mirror) -->
+              <path d="M37 30 C37 26 35 22 31 20 L31 15 C31 13.5 30 13 29 13 C28 13 27 13.5 27 15 L27 22 C26 21 24.5 20.5 24 22 C23.5 20.5 22 21 22 22.5 C21 21.5 19.5 22 19.5 23.5 L19.5 28 C19.5 30 21 32 23 33 L26 33 C30 33 33 32 35 30.5 Z" fill="#E8A87C" opacity="0.85"/>
+              <!-- Highlight spark -->
+              <circle cx="24" cy="24" r="2" fill="#FFFFFF" opacity="0.6"/>
+            </svg>
+            <!-- 128px -->
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg1b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D5B8"/>
+                  <stop offset="100%" stop-color="#EEC49E"/>
+                </linearGradient>
+                <filter id="sh1">
+                  <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#CD7F4A" flood-opacity="0.25"/>
+                </filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg1b)" stroke="#CD7F4A" stroke-width="4" filter="url(#sh1)"/>
+              <!-- Left hand large -->
+              <path d="M28 82 C28 70 34 58 46 52 L46 38 C46 34 49 32 52 32 C55 32 58 34 58 38 L58 58 C61 56 65 55 66 60 C67 55 71 56 71 60 C74 57 78 59 78 64 L78 74 C78 80 74 86 68 88 L58 88 C46 88 38 84 32 80 Z" fill="#CD7F4A" opacity="0.9"/>
+              <!-- Right hand large -->
+              <path d="M100 82 C100 70 94 58 82 52 L82 38 C82 34 79 32 76 32 C73 32 70 34 70 38 L70 58 C67 56 63 55 62 60 C61 55 57 56 57 60 C54 57 50 59 50 64 L50 74 C50 80 54 86 60 88 L70 88 C82 88 90 84 96 80 Z" fill="#E8A87C" opacity="0.85"/>
+              <!-- White spark center -->
+              <circle cx="64" cy="64" r="8" fill="#FFFFFF" opacity="0.5"/>
+              <circle cx="64" cy="64" r="4" fill="#FFFFFF" opacity="0.7"/>
+              <!-- Bronze accent dots -->
+              <circle cx="24" cy="108" r="4" fill="#CD7F4A" opacity="0.5"/>
+              <circle cx="64" cy="114" r="5" fill="#CD7F4A" opacity="0.5"/>
+              <circle cx="104" cy="108" r="4" fill="#CD7F4A" opacity="0.5"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">First Helper</div>
+            <span class="badge-tier tier-bronze">Bronze</span>
+            <div style="margin-top:6px;" class="badge-description">First act of kindness — two warm hands outstretched in a gesture of offering and support.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#CD7F4A;"></div><span class="chip-label">#CD7F4A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#E8A87C;"></div><span class="chip-label">#E8A87C</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#F5D5B8;"></div><span class="chip-label">#F5D5B8</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:#CD7F4A;"></div><span class="chip-label">2px solid</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → path[left-hand] → path[right-hand] → circle[glow]</div></div>
+        </div>
+      </div>
+
+      <!-- 2. KIND HEART -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDE5EE"/>
+                  <stop offset="100%" stop-color="#C8D5E4"/>
+                </linearGradient>
+                <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#8C9BAE" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#8C9BAE" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg2)" stroke="#8C9BAE" stroke-width="2.5"/>
+              <circle cx="24" cy="24" r="16" fill="url(#glow2)"/>
+              <path d="M24 34 C24 34 12 26 12 19 C12 15 15 12 18.5 12 C21 12 23 13.5 24 15 C25 13.5 27 12 29.5 12 C33 12 36 15 36 19 C36 26 24 34 24 34Z" fill="#8C9BAE"/>
+              <path d="M24 32 C24 32 14 25 14 19.5 C14 16.5 16.5 14.5 19 14.5 C21 14.5 23 15.5 24 17 C25 15.5 27 14.5 29 14.5 C31.5 14.5 34 16.5 34 19.5 C34 25 24 32 24 32Z" fill="#B8C5D4"/>
+              <path d="M20 18 C20 17 21 16 22 17 L22 21 L20 18Z" fill="white" opacity="0.6"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg2b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDE5EE"/>
+                  <stop offset="100%" stop-color="#C8D5E4"/>
+                </linearGradient>
+                <radialGradient id="glow2b" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#8C9BAE" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#8C9BAE" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="sh2"><feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#8C9BAE" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg2b)" stroke="#8C9BAE" stroke-width="5" filter="url(#sh2)"/>
+              <circle cx="64" cy="64" r="42" fill="url(#glow2b)"/>
+              <path d="M64 92 C64 92 30 70 30 50 C30 40 38 32 48 32 C56 32 61 36 64 40 C67 36 72 32 80 32 C90 32 98 40 98 50 C98 70 64 92 64 92Z" fill="#8C9BAE"/>
+              <path d="M64 88 C64 88 34 68 34 50 C34 42 41 36 50 36 C57 36 62 40 64 44 C66 40 71 36 78 36 C87 36 94 42 94 50 C94 68 64 88 64 88Z" fill="#B8C5D4"/>
+              <path d="M64 84 C64 84 40 66 40 50 C40 44 45 39.5 52 40 C57 40 61 43 64 47 C67 43 71 40 76 40 C83 39.5 88 44 88 50 C88 66 64 84 64 84Z" fill="#DDE5EE" opacity="0.6"/>
+              <!-- glow rays -->
+              <circle cx="64" cy="64" r="44" fill="none" stroke="#8C9BAE" stroke-width="1" opacity="0.2"/>
+              <circle cx="64" cy="64" r="50" fill="none" stroke="#8C9BAE" stroke-width="0.5" opacity="0.1"/>
+              <!-- highlight -->
+              <path d="M52 42 C52 40 55 38 57 40 L57 48 L52 42Z" fill="white" opacity="0.5"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Kind Heart</div>
+            <span class="badge-tier tier-silver">Silver</span>
+            <div style="margin-top:6px;" class="badge-description">Layered heart with soft radial glow — depth achieved through three stacked heart paths in silver tones.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#8C9BAE;"></div><span class="chip-label">#8C9BAE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#B8C5D4;"></div><span class="chip-label">#B8C5D4</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#DDE5EE;"></div><span class="chip-label">#DDE5EE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:#8C9BAE;"></div><span class="chip-label">2.5px + glow</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → circle[glow-radial] → path[heart-dark] → path[heart-mid] → path[heart-highlight]</div></div>
+        </div>
+      </div>
+
+      <!-- 3. COMMUNITY BUILDER -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDE5EE"/>
+                  <stop offset="100%" stop-color="#C8D5E4"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg3)" stroke="#8C9BAE" stroke-width="2.5"/>
+              <!-- Connection lines -->
+              <line x1="24" y1="16" x2="16" y2="30" stroke="#8C9BAE" stroke-width="1.5" opacity="0.6"/>
+              <line x1="24" y1="16" x2="32" y2="30" stroke="#8C9BAE" stroke-width="1.5" opacity="0.6"/>
+              <line x1="16" y1="30" x2="32" y2="30" stroke="#8C9BAE" stroke-width="1.5" opacity="0.6"/>
+              <!-- Top person -->
+              <circle cx="24" cy="13" r="3.5" fill="#8C9BAE"/>
+              <path d="M20 20 Q24 17 28 20 L28 22 Q24 20 20 22 Z" fill="#8C9BAE"/>
+              <!-- Bottom left person -->
+              <circle cx="13" cy="31" r="3.5" fill="#B8C5D4"/>
+              <path d="M9 38 Q13 35 17 38 L17 40 Q13 38 9 40 Z" fill="#B8C5D4"/>
+              <!-- Bottom right person -->
+              <circle cx="35" cy="31" r="3.5" fill="#B8C5D4"/>
+              <path d="M31 38 Q35 35 39 38 L39 40 Q35 38 31 40 Z" fill="#B8C5D4"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg3b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDE5EE"/>
+                  <stop offset="100%" stop-color="#C8D5E4"/>
+                </linearGradient>
+                <filter id="sh3"><feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#8C9BAE" flood-opacity="0.25"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg3b)" stroke="#8C9BAE" stroke-width="5" filter="url(#sh3)"/>
+              <!-- Connection lines -->
+              <line x1="64" y1="32" x2="36" y2="78" stroke="#8C9BAE" stroke-width="3" opacity="0.5"/>
+              <line x1="64" y1="32" x2="92" y2="78" stroke="#8C9BAE" stroke-width="3" opacity="0.5"/>
+              <line x1="36" y1="78" x2="92" y2="78" stroke="#8C9BAE" stroke-width="3" opacity="0.5"/>
+              <!-- Dots at midpoints -->
+              <circle cx="50" cy="55" r="4" fill="#8C9BAE" opacity="0.3"/>
+              <circle cx="78" cy="55" r="4" fill="#8C9BAE" opacity="0.3"/>
+              <circle cx="64" cy="78" r="4" fill="#8C9BAE" opacity="0.3"/>
+              <!-- Top person -->
+              <circle cx="64" cy="26" r="10" fill="#8C9BAE"/>
+              <path d="M50 48 Q64 40 78 48 L78 56 Q64 48 50 56 Z" fill="#8C9BAE"/>
+              <!-- Bottom left person -->
+              <circle cx="30" cy="80" r="10" fill="#B8C5D4"/>
+              <path d="M16 102 Q30 94 44 102 L44 110 Q30 102 16 110 Z" fill="#B8C5D4"/>
+              <!-- Bottom right person -->
+              <circle cx="98" cy="80" r="10" fill="#B8C5D4"/>
+              <path d="M84 102 Q98 94 112 102 L112 110 Q98 102 84 110 Z" fill="#B8C5D4"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Community Builder</div>
+            <span class="badge-tier tier-silver">Silver</span>
+            <div style="margin-top:6px;" class="badge-description">Three stylized figures connected by lines in a triangular arrangement — network of mutual support.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#8C9BAE;"></div><span class="chip-label">#8C9BAE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#B8C5D4;"></div><span class="chip-label">#B8C5D4</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#DDE5EE;"></div><span class="chip-label">#DDE5EE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Accents</div><div class="color-chips"><div class="chip" style="background:#8C9BAE;opacity:0.3;"></div><span class="chip-label">Connection dots</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → line[connections×3] → circle[node-dots] → g[person-top] → g[person-bl] → g[person-br]</div></div>
+        </div>
+      </div>
+
+      <!-- 4. TRUSTED HELPER -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg4" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg4)" stroke="#C9923A" stroke-width="3"/>
+              <!-- Shield -->
+              <path d="M24 10 L12 15 L12 26 C12 32 17 37 24 40 C31 37 36 32 36 26 L36 15 Z" fill="#C9923A"/>
+              <path d="M24 12 L14 17 L14 26 C14 31 18 35 24 38 C30 35 34 31 34 26 L34 17 Z" fill="#E8B86D"/>
+              <!-- Heart inside shield -->
+              <path d="M24 30 C24 30 18 26 18 22.5 C18 20.5 19.5 19 21.5 19 C22.5 19 23.5 19.8 24 21 C24.5 19.8 25.5 19 26.5 19 C28.5 19 30 20.5 30 22.5 C30 26 24 30 24 30Z" fill="#C9923A"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg4b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+                <filter id="sh4"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#C9923A" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg4b)" stroke="#C9923A" stroke-width="5.5" filter="url(#sh4)"/>
+              <path d="M64 20 L26 34 L26 64 C26 84 42 100 64 108 C86 100 102 84 102 64 L102 34 Z" fill="#C9923A"/>
+              <path d="M64 26 L32 38 L32 64 C32 80 46 94 64 102 C82 94 96 80 96 64 L96 38 Z" fill="#E8B86D"/>
+              <path d="M64 32 L38 42 L38 64 C38 78 50 90 64 96 C78 90 90 78 90 64 L90 42 Z" fill="#F5D99A" opacity="0.7"/>
+              <!-- Heart inside shield -->
+              <path d="M64 82 C64 82 46 70 46 60 C46 54 51 49 57 49 C60.5 49 63 51 64 54 C65 51 67.5 49 71 49 C77 49 82 54 82 60 C82 70 64 82 64 82Z" fill="#C9923A"/>
+              <path d="M64 78 C64 78 50 68 50 60 C50 55.5 54 52 58 52 C61 52 63 54 64 56 C65 54 67 52 70 52 C74 52 78 55.5 78 60 C78 68 64 78 64 78Z" fill="#E8B86D"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Trusted Helper</div>
+            <span class="badge-tier tier-gold">Gold</span>
+            <div style="margin-top:6px;" class="badge-description">Layered shield in gold tones with a warm heart inset — emblem of reliability and care.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#C9923A;"></div><span class="chip-label">#C9923A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#E8B86D;"></div><span class="chip-label">#E8B86D</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#F5D99A;"></div><span class="chip-label">#F5D99A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:#C9923A;"></div><span class="chip-label">3px + shadow</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → path[shield-outer] → path[shield-mid] → path[shield-inner] → path[heart-dark] → path[heart-light]</div></div>
+        </div>
+      </div>
+
+      <!-- 5. MENTOR -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg5)" stroke="#C9923A" stroke-width="3"/>
+              <!-- Book -->
+              <rect x="10" y="18" width="28" height="20" rx="3" fill="#C9923A"/>
+              <rect x="10" y="18" width="14" height="20" rx="3" fill="#E8B86D"/>
+              <line x1="24" y1="18" x2="24" y2="38" stroke="#C9923A" stroke-width="1.5"/>
+              <!-- Pages lines -->
+              <line x1="13" y1="24" x2="22" y2="24" stroke="white" stroke-width="1" opacity="0.7"/>
+              <line x1="13" y1="27" x2="22" y2="27" stroke="white" stroke-width="1" opacity="0.7"/>
+              <line x1="13" y1="30" x2="22" y2="30" stroke="white" stroke-width="1" opacity="0.5"/>
+              <!-- Star above book -->
+              <path d="M24 10 L25.2 13.6 L29 13.6 L26 15.8 L27.1 19.4 L24 17.2 L20.9 19.4 L22 15.8 L19 13.6 L22.8 13.6 Z" fill="#E8B86D"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg5b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+                <filter id="sh5"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#C9923A" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg5b)" stroke="#C9923A" stroke-width="5.5" filter="url(#sh5)"/>
+              <!-- Open book -->
+              <path d="M22 48 L22 92 C22 94 24 96 26 96 L64 88 L102 96 C104 96 106 94 106 92 L106 48 C106 46 104 44 102 44 L64 52 L26 44 C24 44 22 46 22 48Z" fill="#C9923A"/>
+              <path d="M22 48 L22 92 C22 94 24 96 26 96 L64 88 L64 52 L26 44 C24 44 22 46 22 48Z" fill="#E8B86D"/>
+              <line x1="64" y1="52" x2="64" y2="88" stroke="#C9923A" stroke-width="2"/>
+              <!-- Lines on left page -->
+              <line x1="32" y1="62" x2="58" y2="60" stroke="white" stroke-width="2" opacity="0.7"/>
+              <line x1="32" y1="70" x2="58" y2="68" stroke="white" stroke-width="2" opacity="0.7"/>
+              <line x1="32" y1="78" x2="58" y2="76" stroke="white" stroke-width="1.5" opacity="0.5"/>
+              <!-- Lines on right page -->
+              <line x1="70" y1="60" x2="96" y2="62" stroke="white" stroke-width="2" opacity="0.5"/>
+              <line x1="70" y1="68" x2="96" y2="70" stroke="white" stroke-width="2" opacity="0.5"/>
+              <!-- Star -->
+              <path d="M64 18 L67.2 28 L78 28 L69.4 34 L72.6 44 L64 38 L55.4 44 L58.6 34 L50 28 L60.8 28 Z" fill="#E8B86D"/>
+              <path d="M64 22 L66.4 29.5 L74.5 29.5 L68 33.8 L70.4 41.3 L64 37 L57.6 41.3 L60 33.8 L53.5 29.5 L61.6 29.5 Z" fill="#F5D99A"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Mentor</div>
+            <span class="badge-tier tier-gold">Gold</span>
+            <div style="margin-top:6px;" class="badge-description">Open book with a 5-point star above — knowledge shared creates light for others.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#C9923A;"></div><span class="chip-label">#C9923A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#E8B86D;"></div><span class="chip-label">#E8B86D</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#F5D99A;"></div><span class="chip-label">#F5D99A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Star Fill</div><div class="color-chips"><div class="chip" style="background:#F5D99A;"></div><span class="chip-label">#F5D99A highlight</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → path[book-right] → path[book-left] → line[spine] → line[text-lines×5] → path[star-outer] → path[star-inner]</div></div>
+        </div>
+      </div>
+
+      <!-- 6. LIFESAVER -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg6)" stroke="#C9923A" stroke-width="3"/>
+              <!-- Heart background -->
+              <path d="M24 36 C24 36 11 28 11 20.5 C11 17 14 14 17.5 14 C20 14 22.5 15.5 24 17.5 C25.5 15.5 28 14 30.5 14 C34 14 37 17 37 20.5 C37 28 24 36 24 36Z" fill="#E8B86D" opacity="0.7"/>
+              <!-- Medical cross -->
+              <rect x="20" y="14" width="8" height="20" rx="2" fill="#C9923A"/>
+              <rect x="14" y="20" width="20" height="8" rx="2" fill="#C9923A"/>
+              <!-- White plus highlight -->
+              <rect x="21.5" y="15.5" width="5" height="17" rx="1.5" fill="#E8B86D" opacity="0.5"/>
+              <rect x="15.5" y="21.5" width="17" height="5" rx="1.5" fill="#E8B86D" opacity="0.5"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg6b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5D99A"/>
+                  <stop offset="100%" stop-color="#ECC87A"/>
+                </linearGradient>
+                <filter id="sh6"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#C9923A" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg6b)" stroke="#C9923A" stroke-width="5.5" filter="url(#sh6)"/>
+              <!-- Heart bg -->
+              <path d="M64 96 C64 96 24 72 24 50 C24 40 32 32 44 32 C52 32 59 36 64 42 C69 36 76 32 84 32 C96 32 104 40 104 50 C104 72 64 96 64 96Z" fill="#E8B86D" opacity="0.65"/>
+              <!-- Cross -->
+              <rect x="51" y="30" width="26" height="68" rx="6" fill="#C9923A"/>
+              <rect x="30" y="51" width="68" height="26" rx="6" fill="#C9923A"/>
+              <!-- Highlight cross arms -->
+              <rect x="54" y="33" width="20" height="62" rx="5" fill="#E8B86D" opacity="0.45"/>
+              <rect x="33" y="54" width="62" height="20" rx="5" fill="#E8B86D" opacity="0.45"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Lifesaver</div>
+            <span class="badge-tier tier-gold">Gold</span>
+            <div style="margin-top:6px;" class="badge-description">Medical cross layered over a soft warm heart — emergency care meets compassion.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#C9923A;"></div><span class="chip-label">#C9923A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Heart BG</div><div class="color-chips"><div class="chip" style="background:#E8B86D;"></div><span class="chip-label">#E8B86D 70%</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#F5D99A;"></div><span class="chip-label">#F5D99A</span></div></div>
+          <div class="spec-item"><div class="spec-label">Cross arms</div><div class="color-chips"><div class="chip" style="background:#C9923A;"></div><span class="chip-label">Rounded rect rx=6</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → path[heart-soft] → rect[cross-vert] → rect[cross-horiz] → rect[highlight-vert] → rect[highlight-horiz]</div></div>
+        </div>
+      </div>
+
+      <!-- 7. CAMPAIGN CHAMPION -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg7" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#D4E0EC"/>
+                  <stop offset="100%" stop-color="#BECFDF"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg7)" stroke="url(#grad7s)" stroke-width="3"/>
+              <defs>
+                <linearGradient id="grad7s" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#A8BCCF"/>
+                  <stop offset="100%" stop-color="#7A8FAF"/>
+                </linearGradient>
+              </defs>
+              <!-- Megaphone body -->
+              <path d="M14 20 L14 28 L20 28 L30 34 L30 14 L20 20 Z" fill="#7A8FAF"/>
+              <rect x="14" y="20" width="6" height="8" rx="1" fill="#A8BCCF"/>
+              <!-- Rays -->
+              <line x1="32" y1="24" x2="38" y2="24" stroke="#7A8FAF" stroke-width="2" stroke-linecap="round"/>
+              <line x1="31" y1="19" x2="36" y2="16" stroke="#7A8FAF" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+              <line x1="31" y1="29" x2="36" y2="32" stroke="#7A8FAF" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+              <line x1="32.5" y1="15" x2="36" y2="11" stroke="#7A8FAF" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+              <line x1="32.5" y1="33" x2="36" y2="37" stroke="#7A8FAF" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg7b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#D4E0EC"/>
+                  <stop offset="100%" stop-color="#BECFDF"/>
+                </linearGradient>
+                <linearGradient id="border7" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#A8BCCF"/>
+                  <stop offset="100%" stop-color="#7A8FAF"/>
+                </linearGradient>
+                <filter id="sh7"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#7A8FAF" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg7b)" stroke="url(#border7)" stroke-width="5.5" filter="url(#sh7)"/>
+              <!-- Megaphone -->
+              <path d="M26 52 L26 76 L48 76 L82 94 L82 34 L48 52 Z" fill="#7A8FAF"/>
+              <rect x="26" y="52" width="22" height="24" rx="4" fill="#A8BCCF"/>
+              <!-- Bell circle on right -->
+              <circle cx="88" cy="64" r="14" fill="none" stroke="#7A8FAF" stroke-width="3" opacity="0.4"/>
+              <!-- Rays expanding right -->
+              <line x1="88" y1="44" x2="88" y2="36" stroke="#7A8FAF" stroke-width="3" stroke-linecap="round"/>
+              <line x1="88" y1="84" x2="88" y2="92" stroke="#7A8FAF" stroke-width="3" stroke-linecap="round"/>
+              <line x1="104" y1="52" x2="110" y2="46" stroke="#7A8FAF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+              <line x1="104" y1="76" x2="110" y2="82" stroke="#7A8FAF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+              <line x1="108" y1="64" x2="116" y2="64" stroke="#7A8FAF" stroke-width="3" stroke-linecap="round"/>
+              <!-- handle -->
+              <rect x="28" y="76" width="8" height="14" rx="4" fill="#7A8FAF" opacity="0.8"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Campaign Champion</div>
+            <span class="badge-tier tier-platinum">Platinum</span>
+            <div style="margin-top:6px;" class="badge-description">Megaphone emitting expanding rays — amplifying impact across the community.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#7A8FAF;"></div><span class="chip-label">#7A8FAF</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#A8BCCF;"></div><span class="chip-label">#A8BCCF</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#D4E0EC;"></div><span class="chip-label">#D4E0EC</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:linear-gradient(135deg,#A8BCCF,#7A8FAF);"></div><span class="chip-label">Gradient stroke</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → path[megaphone-body] → rect[mouth-piece] → circle[bell-ring] → line[rays×5] → rect[handle]</div></div>
+        </div>
+      </div>
+
+      <!-- 8. CHAIN BUILDER -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg8" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#D4E0EC"/>
+                  <stop offset="100%" stop-color="#BECFDF"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg8)" stroke="#7A8FAF" stroke-width="3"/>
+              <!-- Chain links - 3 interlocked ovals -->
+              <!-- Link 1 -->
+              <rect x="8" y="19" width="14" height="10" rx="5" fill="none" stroke="#7A8FAF" stroke-width="3"/>
+              <!-- Link 2 (overlaps both) -->
+              <rect x="17" y="19" width="14" height="10" rx="5" fill="none" stroke="#A8BCCF" stroke-width="3"/>
+              <!-- Link 3 -->
+              <rect x="26" y="19" width="14" height="10" rx="5" fill="none" stroke="#7A8FAF" stroke-width="3"/>
+              <!-- Cover for interlocking effect -->
+              <rect x="22" y="21" width="4" height="6" fill="#D4E0EC"/>
+              <rect x="13" y="21" width="4" height="6" fill="#D4E0EC"/>
+              <!-- Small heart at center link -->
+              <path d="M24 22 C24 22 21 20.5 21 22.5 C21 24 24 25.5 24 25.5 C24 25.5 27 24 27 22.5 C27 20.5 24 22 24 22Z" fill="#A8BCCF"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg8b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#D4E0EC"/>
+                  <stop offset="100%" stop-color="#BECFDF"/>
+                </linearGradient>
+                <filter id="sh8"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#7A8FAF" flood-opacity="0.3"/></filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg8b)" stroke="#7A8FAF" stroke-width="5.5" filter="url(#sh8)"/>
+              <!-- Chain with 5 links in arc -->
+              <!-- Link 1 bottom-left -->
+              <ellipse cx="32" cy="80" rx="16" ry="10" fill="none" stroke="#A8BCCF" stroke-width="6" transform="rotate(-30 32 80)"/>
+              <!-- Link 2 -->
+              <ellipse cx="52" cy="64" rx="16" ry="10" fill="none" stroke="#7A8FAF" stroke-width="6" transform="rotate(-15 52 64)"/>
+              <!-- Link 3 center -->
+              <ellipse cx="64" cy="52" rx="16" ry="10" fill="none" stroke="#A8BCCF" stroke-width="6"/>
+              <!-- Link 4 -->
+              <ellipse cx="76" cy="64" rx="16" ry="10" fill="none" stroke="#7A8FAF" stroke-width="6" transform="rotate(15 76 64)"/>
+              <!-- Link 5 bottom-right -->
+              <ellipse cx="96" cy="80" rx="16" ry="10" fill="none" stroke="#A8BCCF" stroke-width="6" transform="rotate(30 96 80)"/>
+              <!-- Heart center -->
+              <path d="M64 54 C64 54 56 49 56 55 C56 59 64 65 64 65 C64 65 72 59 72 55 C72 49 64 54 64 54Z" fill="#7A8FAF"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Chain Builder</div>
+            <span class="badge-tier tier-platinum">Platinum</span>
+            <div style="margin-top:6px;" class="badge-description">Five interlocked chain rings in an arc — unbroken goodwill passed forward.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#7A8FAF;"></div><span class="chip-label">#7A8FAF</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#A8BCCF;"></div><span class="chip-label">#A8BCCF (alt rings)</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#D4E0EC;"></div><span class="chip-label">#D4E0EC</span></div></div>
+          <div class="spec-item"><div class="spec-label">Heart accent</div><div class="color-chips"><div class="chip" style="background:#7A8FAF;"></div><span class="chip-label">#7A8FAF center</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → ellipse[chain-link×5 alternating stroke] → path[heart-center] → rect[interlock-covers]</div></div>
+        </div>
+      </div>
+
+      <!-- 9. GOODWILL AMBASSADOR -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg9" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDD0EE"/>
+                  <stop offset="100%" stop-color="#CAB8E0"/>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg9)" stroke="url(#border9)" stroke-width="3"/>
+              <defs>
+                <linearGradient id="border9" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#B89ACC"/>
+                  <stop offset="100%" stop-color="#8B6BAE"/>
+                </linearGradient>
+              </defs>
+              <!-- Globe wireframe -->
+              <circle cx="24" cy="22" r="11" fill="none" stroke="#8B6BAE" stroke-width="1.5"/>
+              <ellipse cx="24" cy="22" rx="6" ry="11" fill="none" stroke="#8B6BAE" stroke-width="1" opacity="0.7"/>
+              <line x1="13" y1="22" x2="35" y2="22" stroke="#8B6BAE" stroke-width="1" opacity="0.7"/>
+              <line x1="14.5" y1="17" x2="33.5" y2="17" stroke="#8B6BAE" stroke-width="0.8" opacity="0.5"/>
+              <line x1="14.5" y1="27" x2="33.5" y2="27" stroke="#8B6BAE" stroke-width="0.8" opacity="0.5"/>
+              <!-- Hands holding bottom of globe -->
+              <path d="M17 32 C16 30 17 28 19 28 L24 28 L29 28 C31 28 32 30 31 32 C30 34 27 35 24 35 C21 35 18 34 17 32Z" fill="#8B6BAE"/>
+              <path d="M18 32 C17.5 30.5 18.5 29 20 29 L24 29 L28 29 C29.5 29 30.5 30.5 30 32 Z" fill="#B89ACC"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg9b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDD0EE"/>
+                  <stop offset="100%" stop-color="#CAB8E0"/>
+                </linearGradient>
+                <linearGradient id="border9b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#B89ACC"/>
+                  <stop offset="100%" stop-color="#8B6BAE"/>
+                </linearGradient>
+                <filter id="sh9">
+                  <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#8B6BAE" flood-opacity="0.4"/>
+                </filter>
+                <radialGradient id="glow9" cx="50%" cy="40%" r="50%">
+                  <stop offset="0%" stop-color="#8B6BAE" stop-opacity="0.15"/>
+                  <stop offset="100%" stop-color="#8B6BAE" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg9b)" stroke="url(#border9b)" stroke-width="5.5" filter="url(#sh9)"/>
+              <circle cx="64" cy="64" r="60" fill="url(#glow9)"/>
+              <!-- Globe -->
+              <circle cx="64" cy="54" r="28" fill="none" stroke="#8B6BAE" stroke-width="3"/>
+              <ellipse cx="64" cy="54" rx="14" ry="28" fill="none" stroke="#8B6BAE" stroke-width="2" opacity="0.6"/>
+              <line x1="36" y1="54" x2="92" y2="54" stroke="#8B6BAE" stroke-width="2" opacity="0.6"/>
+              <line x1="39" y1="42" x2="89" y2="42" stroke="#8B6BAE" stroke-width="1.5" opacity="0.4"/>
+              <line x1="39" y1="66" x2="89" y2="66" stroke="#8B6BAE" stroke-width="1.5" opacity="0.4"/>
+              <line x1="44" y1="32" x2="84" y2="32" stroke="#8B6BAE" stroke-width="1" opacity="0.3"/>
+              <line x1="44" y1="76" x2="84" y2="76" stroke="#8B6BAE" stroke-width="1" opacity="0.3"/>
+              <!-- Hands holding globe from below -->
+              <path d="M36 90 C32 82 36 74 44 74 L64 74 L84 74 C92 74 96 82 92 90 C88 98 76 104 64 104 C52 104 40 98 36 90Z" fill="#8B6BAE"/>
+              <path d="M40 90 C37 83.5 40.5 77 47 77 L64 77 L81 77 C87.5 77 91 83.5 88 90 Z" fill="#B89ACC"/>
+              <path d="M46 90 C44 85 46 80 51 80 L64 80 L77 80 C82 80 84 85 82 90Z" fill="#DDD0EE" opacity="0.5"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Goodwill Ambassador</div>
+            <span class="badge-tier tier-diamond">Diamond</span>
+            <div style="margin-top:6px;" class="badge-description">Globe held in two cupped hands — world-scale compassion and global positive impact.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#8B6BAE;"></div><span class="chip-label">#8B6BAE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#B89ACC;"></div><span class="chip-label">#B89ACC</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#DDD0EE;"></div><span class="chip-label">#DDD0EE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:linear-gradient(135deg,#B89ACC,#8B6BAE);"></div><span class="chip-label">Gradient + glow</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → radialGradient[ambient-glow] → circle[globe-outline] → ellipse[meridian] → line[parallels×4] → path[hands-dark] → path[hands-mid] → path[hands-light]</div></div>
+        </div>
+      </div>
+
+      <!-- 10. COMMUNITY LEGEND -->
+      <div class="badge-card">
+        <div class="badge-header">
+          <div class="badge-preview">
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg10" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDD0EE"/>
+                  <stop offset="100%" stop-color="#CAB8E0"/>
+                </linearGradient>
+                <radialGradient id="glow10" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#8B6BAE" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#8B6BAE" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#bg10)" stroke="url(#border10)" stroke-width="3"/>
+              <defs>
+                <linearGradient id="border10" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#B89ACC"/>
+                  <stop offset="100%" stop-color="#8B6BAE"/>
+                </linearGradient>
+              </defs>
+              <circle cx="24" cy="24" r="18" fill="url(#glow10)"/>
+              <!-- Shield premium -->
+              <path d="M24 10 L14 14.5 L14 24 C14 29.5 18.5 34 24 36.5 C29.5 34 34 29.5 34 24 L34 14.5 Z" fill="#8B6BAE"/>
+              <path d="M24 12.5 L16 16.5 L16 24 C16 28.5 19.5 32.5 24 34.5 C28.5 32.5 32 28.5 32 24 L32 16.5 Z" fill="#B89ACC"/>
+              <!-- Starburst inside -->
+              <path d="M24 17 L25.4 21.5 L30 21.5 L26.3 24.2 L27.7 28.7 L24 26 L20.3 28.7 L21.7 24.2 L18 21.5 L22.6 21.5 Z" fill="#8B6BAE"/>
+              <path d="M24 18.5 L25 21.8 L28.5 21.8 L25.8 23.7 L26.8 27 L24 25 L21.2 27 L22.2 23.7 L19.5 21.8 L23 21.8 Z" fill="#DDD0EE"/>
+              <!-- Outer sparkles at corners -->
+              <circle cx="14" cy="14" r="1.5" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="34" cy="14" r="1.5" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="10" cy="24" r="1" fill="#B89ACC" opacity="0.6"/>
+              <circle cx="38" cy="24" r="1" fill="#B89ACC" opacity="0.6"/>
+              <circle cx="14" cy="34" r="1.5" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="34" cy="34" r="1.5" fill="#B89ACC" opacity="0.8"/>
+            </svg>
+            <svg width="72" height="72" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bg10b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#DDD0EE"/>
+                  <stop offset="100%" stop-color="#CAB8E0"/>
+                </linearGradient>
+                <linearGradient id="border10b" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#B89ACC"/>
+                  <stop offset="100%" stop-color="#8B6BAE"/>
+                </linearGradient>
+                <radialGradient id="glow10b" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#8B6BAE" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#8B6BAE" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="sh10">
+                  <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#8B6BAE" flood-opacity="0.45"/>
+                  <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#8B6BAE" flood-opacity="0.3"/>
+                </filter>
+              </defs>
+              <rect x="4" y="4" width="120" height="120" rx="34" fill="url(#bg10b)" stroke="url(#border10b)" stroke-width="5.5" filter="url(#sh10)"/>
+              <!-- Ambient glow rings -->
+              <circle cx="64" cy="64" r="52" fill="url(#glow10b)"/>
+              <circle cx="64" cy="64" r="56" fill="none" stroke="#8B6BAE" stroke-width="0.5" opacity="0.2"/>
+              <circle cx="64" cy="64" r="60" fill="none" stroke="#8B6BAE" stroke-width="0.5" opacity="0.1"/>
+              <!-- Premium shield -->
+              <path d="M64 14 L28 28 L28 60 C28 80 44 96 64 104 C84 96 100 80 100 60 L100 28 Z" fill="#8B6BAE"/>
+              <path d="M64 19 L33 31 L33 60 C33 77 47 92 64 99 C81 92 95 77 95 60 L95 31 Z" fill="#B89ACC"/>
+              <path d="M64 24 L38 34 L38 60 C38 74 50 88 64 94 C78 88 90 74 90 60 L90 34 Z" fill="#DDD0EE" opacity="0.5"/>
+              <!-- Large starburst -->
+              <path d="M64 36 L68 50 L82 50 L71 59 L75 73 L64 64 L53 73 L57 59 L46 50 L60 50 Z" fill="#8B6BAE"/>
+              <path d="M64 40 L67 51 L78 51 L69.5 57.5 L72.5 68.5 L64 62 L55.5 68.5 L58.5 57.5 L50 51 L61 51 Z" fill="#B89ACC"/>
+              <path d="M64 44 L66.5 52 L75 52 L68.5 56.5 L71 64.5 L64 60 L57 64.5 L59.5 56.5 L53 52 L61.5 52 Z" fill="#DDD0EE"/>
+              <!-- Corner sparkle dots -->
+              <circle cx="28" cy="28" r="4" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="100" cy="28" r="4" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="18" cy="64" r="3" fill="#B89ACC" opacity="0.6"/>
+              <circle cx="110" cy="64" r="3" fill="#B89ACC" opacity="0.6"/>
+              <circle cx="28" cy="100" r="4" fill="#B89ACC" opacity="0.8"/>
+              <circle cx="100" cy="100" r="4" fill="#B89ACC" opacity="0.8"/>
+              <!-- Top sparkle -->
+              <path d="M64 10 L65.5 14 L64 12 L62.5 14 Z" fill="#B89ACC" opacity="0.7"/>
+            </svg>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name">Community Legend</div>
+            <span class="badge-tier tier-diamond">Diamond</span>
+            <div style="margin-top:6px;" class="badge-description">Triple-layered shield with tri-layer starburst inside — surrounded by ambient glow and corner sparkles. Highest achievement.</div>
+          </div>
+        </div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-label">Primary</div><div class="color-chips"><div class="chip" style="background:#8B6BAE;"></div><span class="chip-label">#8B6BAE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Secondary</div><div class="color-chips"><div class="chip" style="background:#B89ACC;"></div><span class="chip-label">#B89ACC</span></div></div>
+          <div class="spec-item"><div class="spec-label">Background</div><div class="color-chips"><div class="chip" style="background:#DDD0EE;"></div><span class="chip-label">#DDD0EE</span></div></div>
+          <div class="spec-item"><div class="spec-label">Border</div><div class="color-chips"><div class="chip" style="background:linear-gradient(135deg,#B89ACC,#8B6BAE);"></div><span class="chip-label">Gradient + double shadow</span></div></div>
+          <div class="spec-item" style="grid-column:span 2;"><div class="spec-label">SVG Structure</div><div class="spec-value">rect[bg] → radialGradient[glow] → circle[ambient-rings×2] → path[shield×3-layers] → path[star×3-layers] → circle[sparkle-dots×6]</div></div>
+        </div>
+      </div>
+
+    </div><!-- /badge-grid -->
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- DARK MODE -->
+  <div class="section">
+    <h2>Dark Mode Adaptations</h2>
+    <p style="margin-bottom:20px;">In dark mode, badge backgrounds shift to darkened variants of their tier hue, borders increase in opacity, and icon fills remain consistent with subtle luminosity adjustments.</p>
+    <div class="dark-preview">
+      <!-- Bronze dark -->
+      <div class="dark-badge-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs><linearGradient id="dk1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3D2A1A"/><stop offset="100%" stop-color="#2E1F12"/></linearGradient></defs>
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dk1)" stroke="#CD7F4A" stroke-width="2.5"/>
+          <path d="M18 40 C18 33 21 27 27 24 L27 17 C27 16 28 15 29.5 15 C31 15 32 16 32 17 L32 28 C33.5 27 35 27 35.5 29 C36 27 38 27.5 38 29.5 C39 28.5 40.5 29.5 40.5 31 L40.5 36 C40.5 39 38 42 35 43 L30 43 C24 43 20 42 18 40.5 Z" fill="#CD7F4A" opacity="0.9"/>
+          <path d="M46 40 C46 33 43 27 37 24 L37 17 C37 16 36 15 34.5 15 C33 15 32 16 32 17 L32 28 C30.5 27 29 27 28.5 29 C28 27 26 27.5 26 29.5 C25 28.5 23.5 29.5 23.5 31 L23.5 36 C23.5 39 26 42 29 43 L34 43 C40 43 44 42 46 40.5 Z" fill="#E8A87C" opacity="0.75"/>
+        </svg>
+        <div class="dark-badge-label">First Helper<br>Bronze Dark</div>
+      </div>
+      <!-- Silver dark -->
+      <div class="dark-badge-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="dk2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1E2530"/><stop offset="100%" stop-color="#161D27"/></linearGradient>
+            <radialGradient id="gdk2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#8C9BAE" stop-opacity="0.2"/><stop offset="100%" stop-color="#8C9BAE" stop-opacity="0"/></radialGradient>
+          </defs>
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dk2)" stroke="#8C9BAE" stroke-width="2.5"/>
+          <circle cx="32" cy="32" r="20" fill="url(#gdk2)"/>
+          <path d="M32 44 C32 44 16 34 16 24 C16 19 20 15 25 15 C28 15 30.5 16.5 32 19 C33.5 16.5 36 15 39 15 C44 15 48 19 48 24 C48 34 32 44 32 44Z" fill="#8C9BAE"/>
+          <path d="M32 41 C32 41 19 32 19 24 C19 20 22 17 26 17 C29 17 31 19 32 21 C33 19 35 17 38 17 C42 17 45 20 45 24 C45 32 32 41 32 41Z" fill="#B8C5D4"/>
+        </svg>
+        <div class="dark-badge-label">Kind Heart<br>Silver Dark</div>
+      </div>
+      <!-- Gold dark -->
+      <div class="dark-badge-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs><linearGradient id="dk4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2E2210"/><stop offset="100%" stop-color="#231A0C"/></linearGradient></defs>
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dk4)" stroke="#C9923A" stroke-width="3"/>
+          <path d="M32 12 L18 18 L18 32 C18 40 24 47 32 50 C40 47 46 40 46 32 L46 18 Z" fill="#C9923A"/>
+          <path d="M32 15 L21 20 L21 32 C21 38 26 44 32 47 C38 44 43 38 43 32 L43 20 Z" fill="#E8B86D"/>
+          <path d="M32 38 C32 38 24 33 24 28 C24 25 26.5 22 29.5 22 C31 22 32 23 32 24.5 C32 23 33 22 34.5 22 C37.5 22 40 25 40 28 C40 33 32 38 32 38Z" fill="#C9923A"/>
+        </svg>
+        <div class="dark-badge-label">Trusted Helper<br>Gold Dark</div>
+      </div>
+      <!-- Platinum dark -->
+      <div class="dark-badge-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="dk7" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1A2230"/><stop offset="100%" stop-color="#131A25"/></linearGradient>
+            <linearGradient id="bdkp" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#A8BCCF"/><stop offset="100%" stop-color="#7A8FAF"/></linearGradient>
+          </defs>
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dk7)" stroke="url(#bdkp)" stroke-width="3"/>
+          <path d="M18 26 L18 38 L26 38 L40 46 L40 18 L26 26 Z" fill="#7A8FAF"/>
+          <rect x="18" y="26" width="8" height="12" rx="2" fill="#A8BCCF"/>
+          <line x1="42" y1="32" x2="50" y2="32" stroke="#A8BCCF" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="41" y1="24" x2="48" y2="20" stroke="#A8BCCF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+          <line x1="41" y1="40" x2="48" y2="44" stroke="#A8BCCF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+        </svg>
+        <div class="dark-badge-label">Campaign Champion<br>Platinum Dark</div>
+      </div>
+      <!-- Diamond dark -->
+      <div class="dark-badge-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="dk10" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#221535"/><stop offset="100%" stop-color="#180F28"/></linearGradient>
+            <linearGradient id="bdkd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#B89ACC"/><stop offset="100%" stop-color="#8B6BAE"/></linearGradient>
+          </defs>
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dk10)" stroke="url(#bdkd)" stroke-width="3"/>
+          <path d="M32 8 L16 14 L16 30 C16 42 23 52 32 56 C41 52 48 42 48 30 L48 14 Z" fill="#8B6BAE"/>
+          <path d="M32 12 L19 17 L19 30 C19 40 25 49 32 52 C39 49 45 40 45 30 L45 17 Z" fill="#B89ACC"/>
+          <path d="M32 20 L34 26 L40 26 L35.5 30 L37.5 36 L32 32 L26.5 36 L28.5 30 L24 26 L30 26 Z" fill="#8B6BAE"/>
+          <path d="M32 23 L33.5 28 L39 28 L34.5 31.5 L36 37 L32 34 L28 37 L29.5 31.5 L25 28 L30.5 28 Z" fill="#DDD0EE"/>
+          <circle cx="16" cy="16" r="2.5" fill="#B89ACC" opacity="0.9"/>
+          <circle cx="48" cy="16" r="2.5" fill="#B89ACC" opacity="0.9"/>
+          <circle cx="48" cy="52" r="2.5" fill="#B89ACC" opacity="0.9"/>
+          <circle cx="16" cy="52" r="2.5" fill="#B89ACC" opacity="0.9"/>
+        </svg>
+        <div class="dark-badge-label">Community Legend<br>Diamond Dark</div>
+      </div>
+    </div>
+
+    <!-- Dark mode tokens table -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;margin-top:20px;">
+      <h3 style="margin-bottom:14px;">Dark Mode Background Tokens</h3>
+      <table class="token-table">
+        <tr><th>Tier</th><th>Dark BG Primary</th><th>Dark BG Secondary</th><th>Border (same)</th><th>Icon opacity</th></tr>
+        <tr><td>Bronze</td><td class="mono">#3D2A1A</td><td class="mono">#2E1F12</td><td class="mono">#CD7F4A</td><td>100%</td></tr>
+        <tr><td>Silver</td><td class="mono">#1E2530</td><td class="mono">#161D27</td><td class="mono">#8C9BAE</td><td>100%</td></tr>
+        <tr><td>Gold</td><td class="mono">#2E2210</td><td class="mono">#231A0C</td><td class="mono">#C9923A</td><td>100%</td></tr>
+        <tr><td>Platinum</td><td class="mono">#1A2230</td><td class="mono">#131A25</td><td>gradient stroke</td><td>100%</td></tr>
+        <tr><td>Diamond</td><td class="mono">#221535</td><td class="mono">#180F28</td><td>gradient stroke</td><td>100%</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- FIGMA HIERARCHY -->
+  <div class="section">
+    <h2>Figma Component Hierarchy</h2>
+    <div class="figma-tree">
+      <div class="frame">📁 GoodwillCircle/Badges</div>
+      <div class="indent-1 frame">📁 _Foundations</div>
+      <div class="indent-2 component">🎨 Colors/TierTokens (Bronze·Silver·Gold·Platinum·Diamond)</div>
+      <div class="indent-2 component">📐 Shapes/SquircleBase (48·64·96·128)</div>
+      <div class="indent-2 component">🖊 Effects/TierShadow (5 variants)</div>
+      <div class="indent-2 component">🔲 Borders/TierBorder (solid·gradient)</div>
+      <div class="indent-1 frame">📁 _Templates</div>
+      <div class="indent-2 component">📦 BadgeShell [variant: size=48|128, tier=Bronze|Silver|Gold|Platinum|Diamond, mode=light|dark]</div>
+      <div class="indent-3 layer">└─ bg-fill (auto-swaps by tier)</div>
+      <div class="indent-3 layer">└─ border-ring (solid or gradient stroke)</div>
+      <div class="indent-3 layer">└─ shadow-effect (drop shadow by tier)</div>
+      <div class="indent-3 layer">└─ icon-slot (component swap)</div>
+      <div class="indent-1 frame">📁 Icons</div>
+      <div class="indent-2 component">🤝 Icon/FirstHelper</div>
+      <div class="indent-2 component">❤️ Icon/KindHeart</div>
+      <div class="indent-2 component">👥 Icon/CommunityBuilder</div>
+      <div class="indent-2 component">🛡 Icon/TrustedHelper</div>
+      <div class="indent-2 component">📖 Icon/Mentor</div>
+      <div class="indent-2 component">➕ Icon/Lifesaver</div>
+      <div class="indent-2 component">📣 Icon/CampaignChampion</div>
+      <div class="indent-2 component">🔗 Icon/ChainBuilder</div>
+      <div class="indent-2 component">🌍 Icon/GoodwillAmbassador</div>
+      <div class="indent-2 component">⭐ Icon/CommunityLegend</div>
+      <div class="indent-1 frame">📁 Badges (assembled)</div>
+      <div class="indent-2 variant">🏅 Badge/FirstHelper [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/KindHeart [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/CommunityBuilder [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/TrustedHelper [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/Mentor [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/Lifesaver [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/CampaignChampion [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/ChainBuilder [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/GoodwillAmbassador [size, mode]</div>
+      <div class="indent-2 variant">🏅 Badge/CommunityLegend [size, mode]</div>
+      <div class="indent-1 frame">📁 BadgeRow (list item with label)</div>
+      <div class="indent-2 component">📱 BadgeListItem [locked=true|false]</div>
+      <div class="indent-1 frame">📁 BadgeGrid (3-column layout)</div>
+      <div class="indent-2 component">📱 BadgeGridView [earned|all|tier-filtered]</div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- DESIGN TOKENS TABLE -->
+  <div class="section">
+    <h2>Reusable Design Tokens</h2>
+    <table class="token-table" style="background:var(--surface);border-radius:16px;overflow:hidden;border:1.5px solid var(--border);">
+      <tr><th>Token Name</th><th>Light Value</th><th>Dark Value</th><th>Usage</th></tr>
+      <tr><td class="mono">badge.corner.radius.sm</td><td>13px</td><td>13px</td><td>48×48 badge</td></tr>
+      <tr><td class="mono">badge.corner.radius.md</td><td>18px</td><td>18px</td><td>64×64 badge</td></tr>
+      <tr><td class="mono">badge.corner.radius.lg</td><td>34px</td><td>34px</td><td>128×128 badge</td></tr>
+      <tr><td class="mono">badge.icon.padding.sm</td><td>8px</td><td>8px</td><td>Icon inset at 48px</td></tr>
+      <tr><td class="mono">badge.icon.padding.lg</td><td>20px</td><td>20px</td><td>Icon inset at 128px</td></tr>
+      <tr><td class="mono">badge.border.bronze</td><td>#CD7F4A · 2px</td><td>#CD7F4A · 2px</td><td>Bronze ring</td></tr>
+      <tr><td class="mono">badge.border.silver</td><td>#8C9BAE · 2.5px</td><td>#8C9BAE · 2.5px</td><td>Silver ring</td></tr>
+      <tr><td class="mono">badge.border.gold</td><td>#C9923A · 3px</td><td>#C9923A · 3px</td><td>Gold ring</td></tr>
+      <tr><td class="mono">badge.border.platinum</td><td>grad #A8BCCF→#7A8FAF · 3px</td><td>same + shimmer</td><td>Platinum ring</td></tr>
+      <tr><td class="mono">badge.border.diamond</td><td>grad #B89ACC→#8B6BAE · 3.5px</td><td>same + outer glow</td><td>Diamond ring</td></tr>
+      <tr><td class="mono">badge.shadow.bronze</td><td>none</td><td>none</td><td>—</td></tr>
+      <tr><td class="mono">badge.shadow.silver</td><td>0 2px 8px #8C9BAE26</td><td>0 2px 8px #8C9BAE40</td><td>Silver lift</td></tr>
+      <tr><td class="mono">badge.shadow.gold</td><td>0 4px 12px #C9923A33</td><td>0 4px 12px #C9923A55</td><td>Gold presence</td></tr>
+      <tr><td class="mono">badge.shadow.platinum</td><td>0 4px 16px #7A8FAF33</td><td>0 6px 20px #7A8FAF55</td><td>Platinum glow</td></tr>
+      <tr><td class="mono">badge.shadow.diamond</td><td>0 0 16px #8B6BAE40, 0 4px 10px #8B6BAE33</td><td>0 0 24px #8B6BAE66, 0 4px 14px #8B6BAE55</td><td>Diamond aura</td></tr>
+    </table>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- FLUTTER NOTES -->
+  <div class="section">
+    <h2>Flutter / SVG Implementation Notes</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>flutter_svg Usage</h3>
+        <p style="margin-top:8px;">Use <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">SvgPicture.asset()</code> for static badges. For animated unlocks, use <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">Lottie</code> with the SVG as the base frame. Recommended sizes: 48×48 (list), 64×64 (grid), 96×96 (profile), 128×128 (detail modal).</p>
+      </div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>Locked State</h3>
+        <p style="margin-top:8px;">Apply <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">ColorFilter.matrix(grayscale)</code> + 40% opacity overlay in Flutter for locked badges. SVG structure stays identical — only the rendering filter changes.</p>
+      </div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>48px Rendering</h3>
+        <p style="margin-top:8px;">At 48px, reduce fine detail: drop subtle opacity lines (parallels on globe, page lines on book). Keep only 1–2 key shapes per icon. All icons are designed with a 28px safe inner zone for legibility.</p>
+      </div>
+      <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px;">
+        <h3>Asset Naming Convention</h3>
+        <p style="margin-top:8px;">
+          <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">badge_first_helper_48.svg</code><br>
+          <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">badge_first_helper_128.svg</code><br>
+          <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">badge_first_helper_locked.svg</code>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:32px 0;color:var(--text2);font-size:0.85rem;">
+    Goodwill Circle Badge System · Designed for Material Design 3 · Flutter-ready SVG Assets · v1.0
+  </div>
+
+</div>
+</body>
+</html>
