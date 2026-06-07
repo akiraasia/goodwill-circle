@@ -52,16 +52,22 @@ class AppBottomNavigation extends StatelessWidget {
             onTap: () => onTap(1),
           ),
           _NavItem(
-            icon: Icons.visibility_off_rounded,
-            label: 'Confess',
+            icon: AppIcons.agenda,
+            label: 'Agenda',
             isSelected: currentIndex == 2,
             onTap: () => onTap(2),
           ),
           _NavItem(
-            icon: AppIcons.profile,
-            label: 'Profile',
+            icon: Icons.visibility_off_rounded,
+            label: 'Confess',
             isSelected: currentIndex == 3,
             onTap: () => onTap(3),
+          ),
+          _NavItem(
+            icon: AppIcons.profile,
+            label: 'Profile',
+            isSelected: currentIndex == 4,
+            onTap: () => onTap(4),
           ),
         ],
       ),
@@ -102,7 +108,7 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: color,
                 letterSpacing: 0.04,

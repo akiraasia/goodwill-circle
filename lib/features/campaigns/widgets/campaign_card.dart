@@ -20,6 +20,9 @@ class CampaignCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final creatorVerified =
+        campaign.creatorVerificationStatus == 'verified';
+
     return AppCard(
       onTap: onTap,
       isFeatured: campaign.progressPercentage > 0.8,
@@ -49,6 +52,25 @@ class CampaignCard extends StatelessWidget {
                         color: AppColors.textLight,
                       ),
                     ),
+                    if (creatorVerified || campaign.isVerified)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified,
+                            size: 13,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            campaign.isVerified
+                                ? 'Verified campaign'
+                                : 'Verified creator',
+                            style: AppTypography.textTheme.labelSmall
+                                ?.copyWith(color: Colors.green),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:goodwill_circle/features/profile/profile_screen.dart';
 import 'package:goodwill_circle/features/requests/requests_screen.dart';
 import 'package:goodwill_circle/features/campaigns/campaigns_screen.dart';
+import 'package:goodwill_circle/features/agenda/agenda_screen.dart';
+import 'package:goodwill_circle/features/confessions/confessions_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -16,6 +18,8 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _pages = [
     const RequestsScreen(),
     const CampaignsScreen(),
+    const AgendaScreen(),
+    const ConfessionsScreen(),
     const ProfileScreen(),
   ];
 
@@ -38,6 +42,14 @@ class _MainLayoutState extends State<MainLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.campaign),
             label: 'Campaigns',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.event_note),
+            label: 'Agenda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.visibility_off),
+            label: 'Confess',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

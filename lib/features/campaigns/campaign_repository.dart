@@ -52,7 +52,7 @@ class CampaignRepository {
 
     final profilesData = await _client
         .from('profiles')
-        .select('id, name, photo_url')
+        .select('id, name, photo_url, verification_status')
         .inFilter('id', creatorIds);
     final profilesById = {
       for (final profile in profilesData) profile['id'] as String: profile,
@@ -64,6 +64,7 @@ class CampaignRepository {
       return campaign.copyWith(
         creatorName: profile['name'] as String?,
         creatorPhoto: profile['photo_url'] as String?,
+        creatorVerificationStatus: profile['verification_status'] as String?,
       );
     }).toList();
   }

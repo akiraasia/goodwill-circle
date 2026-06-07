@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class AppIcons {
   static const IconData help = Icons.volunteer_activism;
   static const IconData campaign = Icons.campaign;
+  static const IconData agenda = Icons.event_note_rounded;
   static const IconData premium = Icons.workspace_premium;
   static const IconData trophy = Icons.emoji_events;
   static const IconData analytics = Icons.auto_graph;

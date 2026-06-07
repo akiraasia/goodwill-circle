@@ -55,7 +55,13 @@ class ProfileController extends Notifier<ProfileState> {
     }
   }
 
-  Future<void> updateProfile({String? name, String? bio, String? phone}) async {
+  Future<void> updateProfile({
+    String? name,
+    String? bio,
+    String? phone,
+    String? accountType,
+    String? organizationName,
+  }) async {
     if (state.profile == null) return;
 
     state = state.copyWith(isLoading: true, error: null);
@@ -65,11 +71,34 @@ class ProfileController extends Notifier<ProfileState> {
         name: name,
         bio: bio,
         phone: phone,
+        accountType: accountType,
+        organizationName: organizationName,
       );
 
       await _repository.updateProfile(updatedProfile);
 
       state = state.copyWith(profile: updatedProfile, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> requestVerification({
+    required String accountType,
+    required String? organizationName,
+    required String note,
+  }) async {
+    if (state.profile == null) return;
+
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _repository.requestVerification(
+        accountType: accountType,
+        organizationName: organizationName,
+        note: note,
+      );
+      await loadProfile();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

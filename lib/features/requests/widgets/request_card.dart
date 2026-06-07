@@ -32,6 +32,7 @@ class RequestCard extends StatelessWidget {
     final helperName = request.contactName ?? 'Helper';
     final authorName = request.creatorName ?? 'Community member';
     final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
+    final isCreatorVerified = request.creatorVerificationStatus == 'verified';
 
     return AppCard(
       isUrgent: isUrgent,
@@ -72,6 +73,23 @@ class RequestCard extends StatelessWidget {
                         color: AppColors.textLight,
                       ),
                     ),
+                    if (isCreatorVerified)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified,
+                            size: 13,
+                            color: Colors.green,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Verified',
+                            style: AppTypography.textTheme.labelSmall
+                                ?.copyWith(color: Colors.green),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

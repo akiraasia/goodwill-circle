@@ -12,6 +12,12 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 
 DROP POLICY IF EXISTS "Goodwill media is public." ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload goodwill media." ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their goodwill media." ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their goodwill media." ON storage.objects;
+
+GRANT SELECT ON storage.buckets TO anon, authenticated;
+GRANT SELECT ON storage.objects TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
 
 CREATE POLICY "Goodwill media is public."
   ON storage.objects
@@ -24,6 +30,32 @@ CREATE POLICY "Authenticated users can upload goodwill media."
   WITH CHECK (
     bucket_id = 'goodwill-media'
     AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can update their goodwill media."
+  ON storage.objects
+  FOR UPDATE
+  USING (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  )
+  WITH CHECK (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can delete their goodwill media."
+  ON storage.objects
+  FOR DELETE
+  USING (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[2] = auth.uid()::text
   );
 
 CREATE TABLE IF NOT EXISTS public.confessions (

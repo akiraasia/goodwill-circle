@@ -10,13 +10,16 @@ class Campaign {
   final int votesCount;
   final bool isJoined;
   final bool isVoted;
+  final bool isVerified;
   final String? imageUrl;
   final String status;
+  final String verificationStatus;
   final DateTime? endDate;
   final DateTime createdAt;
 
   final String? creatorName;
   final String? creatorPhoto;
+  final String? creatorVerificationStatus;
 
   Campaign({
     required this.id,
@@ -30,12 +33,15 @@ class Campaign {
     this.votesCount = 0,
     this.isJoined = false,
     this.isVoted = false,
+    this.isVerified = false,
     this.imageUrl,
     required this.status,
+    this.verificationStatus = 'unverified',
     this.endDate,
     required this.createdAt,
     this.creatorName,
     this.creatorPhoto,
+    this.creatorVerificationStatus,
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -49,8 +55,11 @@ class Campaign {
       supportersCount: json['supporters_count'] as int? ?? 0,
       membersCount: json['members_count'] as int? ?? 0,
       votesCount: json['votes_count'] as int? ?? 0,
+      isVerified: json['verification_status'] == 'verified',
       imageUrl: json['image_url'] as String?,
       status: json['status'] as String? ?? 'active',
+      verificationStatus:
+          json['verification_status'] as String? ?? 'unverified',
       endDate: json['end_date'] != null
           ? DateTime.parse(json['end_date'] as String)
           : null,
@@ -60,6 +69,9 @@ class Campaign {
           : null,
       creatorPhoto: json['profiles'] != null
           ? json['profiles']['photo_url'] as String?
+          : null,
+      creatorVerificationStatus: json['profiles'] != null
+          ? json['profiles']['verification_status'] as String?
           : null,
     );
   }
@@ -72,6 +84,9 @@ class Campaign {
     int? votesCount,
     bool? isJoined,
     bool? isVoted,
+    bool? isVerified,
+    String? verificationStatus,
+    String? creatorVerificationStatus,
   }) {
     return Campaign(
       id: id,
@@ -85,12 +100,16 @@ class Campaign {
       votesCount: votesCount ?? this.votesCount,
       isJoined: isJoined ?? this.isJoined,
       isVoted: isVoted ?? this.isVoted,
+      isVerified: isVerified ?? this.isVerified,
       imageUrl: imageUrl ?? this.imageUrl,
       status: status,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
       endDate: endDate,
       createdAt: createdAt,
       creatorName: creatorName ?? this.creatorName,
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
+      creatorVerificationStatus:
+          creatorVerificationStatus ?? this.creatorVerificationStatus,
     );
   }
 

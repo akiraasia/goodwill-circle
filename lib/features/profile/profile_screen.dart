@@ -112,6 +112,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       profile.name ?? 'New User',
                       style: AppTypography.textTheme.headlineLarge,
                     ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _VerificationChip(
+                      status: profile.verificationStatus,
+                      accountType: profile.accountType,
+                    ),
+                    if (profile.organizationName != null &&
+                        profile.organizationName!.trim().isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        profile.organizationName!,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.textTheme.labelMedium?.copyWith(
+                          color: AppColors.textMid,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       currentLevel.title,
                       style: AppTypography.textTheme.labelLarge?.copyWith(
@@ -151,6 +168,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              const SectionHeader(title: 'Trust & Verification'),
+              AppCard(
+                color: AppColors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          profile.isVerified
+                              ? Icons.verified
+                              : Icons.verified_outlined,
+                          color: profile.isVerified
+                              ? Colors.green
+                              : AppColors.textLight,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            _verificationTitle(profile.verificationStatus),
+                            style: AppTypography.textTheme.titleMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      _verificationMessage(profile.verificationStatus),
+                      style: AppTypography.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMid,
+                      ),
+                    ),
+                    if (!profile.isVerified &&
+                        !profile.isVerificationPending) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      OutlinedButton.icon(
+                        onPressed: () => _showVerificationDialog(profile),
+                        icon: const Icon(Icons.fact_check_outlined, size: 18),
+                        label: const Text('Request verification'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -212,6 +276,187 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showVerificationDialog(dynamic profile) async {
+    final organizationController = TextEditingController(
+      text: profile.organizationName ?? '',
+    );
+    final noteController = TextEditingController();
+    var accountType = profile.accountType as String;
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isNgo = accountType == 'ngo';
+          return AlertDialog(
+            title: const Text('Request verification'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'individual',
+                        label: Text('Person'),
+                        icon: Icon(Icons.person_outline),
+                      ),
+                      ButtonSegment(
+                        value: 'ngo',
+                        label: Text('NGO'),
+                        icon: Icon(Icons.apartment),
+                      ),
+                    ],
+                    selected: {accountType},
+                    onSelectionChanged: (selection) {
+                      setDialogState(() => accountType = selection.first);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (isNgo)
+                    TextField(
+                      controller: organizationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Organization name',
+                      ),
+                    ),
+                  if (isNgo) const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: noteController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Verification note',
+                      hintText:
+                          'Share website, registration, college, or local reference details.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (submitted != true) {
+      organizationController.dispose();
+      noteController.dispose();
+      return;
+    }
+
+    final note = noteController.text.trim();
+    final organization = organizationController.text.trim();
+    organizationController.dispose();
+    noteController.dispose();
+
+    if (note.length < 12) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a little more verification detail.')),
+      );
+      return;
+    }
+
+    await ref.read(profileControllerProvider.notifier).requestVerification(
+          accountType: accountType,
+          organizationName: accountType == 'ngo' ? organization : null,
+          note: note,
+        );
+
+    if (!mounted) return;
+    final error = ref.read(profileControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error == null
+              ? 'Verification request submitted.'
+              : 'Verification request failed: $error',
+        ),
+      ),
+    );
+  }
+
+  String _verificationTitle(String status) {
+    switch (status) {
+      case 'verified':
+        return 'Verified profile';
+      case 'pending':
+        return 'Verification under review';
+      case 'rejected':
+        return 'Verification needs more detail';
+      default:
+        return 'Unverified profile';
+    }
+  }
+
+  String _verificationMessage(String status) {
+    switch (status) {
+      case 'verified':
+        return 'This profile has passed a manual trust review.';
+      case 'pending':
+        return 'Your details are waiting for a reviewer.';
+      case 'rejected':
+        return 'Submit stronger identity, organization, or community reference details.';
+      default:
+        return 'Verified profiles help volunteers, NGOs, and donors decide who to trust.';
+    }
+  }
+}
+
+class _VerificationChip extends StatelessWidget {
+  final String status;
+  final String accountType;
+
+  const _VerificationChip({required this.status, required this.accountType});
+
+  @override
+  Widget build(BuildContext context) {
+    final isVerified = status == 'verified';
+    final isPending = status == 'pending';
+    final label = isVerified
+        ? accountType == 'ngo'
+            ? 'Verified NGO'
+            : 'Verified'
+        : isPending
+        ? 'Pending review'
+        : 'Unverified';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isVerified
+            ? Colors.green.withValues(alpha: 0.12)
+            : AppColors.white,
+        border: Border.all(
+          color: isVerified ? Colors.green : AppColors.tan1,
+        ),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVerified ? Icons.verified : Icons.verified_outlined,
+            size: 15,
+            color: isVerified ? Colors.green : AppColors.textLight,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label, style: AppTypography.textTheme.labelSmall),
+        ],
       ),
     );
   }

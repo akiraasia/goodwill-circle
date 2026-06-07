@@ -14,6 +14,7 @@ class HelpRequest {
   final String? creatorName;
   final String? creatorPhoto;
   final String? creatorPhone;
+  final String? creatorVerificationStatus;
   final String? contactName;
   final String? contactPhoto;
   final String? contactPhone;
@@ -34,6 +35,7 @@ class HelpRequest {
     this.creatorName,
     this.creatorPhoto,
     this.creatorPhone,
+    this.creatorVerificationStatus,
     this.contactName,
     this.contactPhoto,
     this.contactPhone,
@@ -62,6 +64,9 @@ class HelpRequest {
       creatorPhone: json['profiles'] != null
           ? json['profiles']['phone'] as String?
           : null,
+      creatorVerificationStatus: json['profiles'] != null
+          ? json['profiles']['verification_status'] as String?
+          : null,
     );
   }
 
@@ -69,6 +74,7 @@ class HelpRequest {
     String? creatorName,
     String? creatorPhoto,
     String? creatorPhone,
+    String? creatorVerificationStatus,
     String? contactName,
     String? contactPhoto,
     String? contactPhone,
@@ -89,6 +95,8 @@ class HelpRequest {
       creatorName: creatorName ?? this.creatorName,
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
       creatorPhone: creatorPhone ?? this.creatorPhone,
+      creatorVerificationStatus:
+          creatorVerificationStatus ?? this.creatorVerificationStatus,
       contactName: contactName ?? this.contactName,
       contactPhoto: contactPhoto ?? this.contactPhoto,
       contactPhone: contactPhone ?? this.contactPhone,

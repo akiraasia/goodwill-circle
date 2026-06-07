@@ -38,7 +38,24 @@ class ProfileRepository {
           'bio': profile.bio,
           'photo_url': profile.photoUrl,
           'phone': profile.phone,
+          'account_type': profile.accountType,
+          'organization_name': profile.organizationName,
         })
         .eq('id', profile.id);
+  }
+
+  Future<void> requestVerification({
+    required String accountType,
+    required String? organizationName,
+    required String note,
+  }) async {
+    await _client.rpc(
+      'request_profile_verification',
+      params: {
+        'p_account_type': accountType,
+        'p_organization_name': organizationName,
+        'p_note': note,
+      },
+    );
   }
 }

@@ -70,6 +70,8 @@ class RequestRepository {
         creatorName: creatorProfile?['name'] as String?,
         creatorPhoto: creatorProfile?['photo_url'] as String?,
         creatorPhone: creatorProfile?['phone'] as String?,
+        creatorVerificationStatus:
+            creatorProfile?['verification_status'] as String?,
         contactName: contactProfile?['name'] as String?,
         contactPhoto: contactProfile?['photo_url'] as String?,
         contactPhone: contactProfile?['phone'] as String?,
@@ -100,10 +102,13 @@ class RequestRepository {
     try {
       return await _client
           .from('profiles')
-          .select('id, name, photo_url, phone')
+          .select('id, name, photo_url, phone, verification_status')
           .inFilter('id', ids);
     } on PostgrestException catch (e) {
-      if (!e.message.toLowerCase().contains('phone')) rethrow;
+      if (!e.message.toLowerCase().contains('phone') &&
+          !e.message.toLowerCase().contains('verification_status')) {
+        rethrow;
+      }
       return _client
           .from('profiles')
           .select('id, name, photo_url')

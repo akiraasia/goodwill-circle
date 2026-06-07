@@ -59,15 +59,25 @@ class AchievementBadge {
 Set<String> _dbBadgeIdsForCatalogId(String catalogId) {
   switch (catalogId) {
     case 'first_helper':
-      return {'first_help'};
+      return {'first_help', 'first_helper'};
     case 'kind_heart':
-      return {'first_donation'};
+      return {'first_donation', 'kind_heart'};
     case 'community_builder':
-      return {'10_helps'};
+      return {'10_helps', 'community_builder'};
+    case 'trusted_helper':
+      return {'trusted_helper'};
+    case 'mentor':
+      return {'mentor'};
+    case 'lifesaver':
+      return {'lifesaver'};
     case 'campaign_champion':
-      return {'campaign_creator'};
+      return {'campaign_creator', 'campaign_champion'};
+    case 'chain_builder':
+      return {'chain_builder'};
     case 'goodwill_ambassador':
-      return {'100_donated'};
+      return {'100_donated', 'goodwill_ambassador'};
+    case 'community_legend':
+      return {'community_legend'};
     default:
       return {};
   }

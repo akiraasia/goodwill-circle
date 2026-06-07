@@ -15,7 +15,12 @@ class MediaUploadService {
 
     final bytes = await image.readAsBytes();
     final extension = _extensionFor(image.name);
-    final userId = Supabase.instance.client.auth.currentUser?.id ?? 'anon';
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      throw const PhotoUploadException(
+        'Please sign in before uploading a photo.',
+      );
+    }
     final path =
         '$folder/$userId/${DateTime.now().millisecondsSinceEpoch}.$extension';
 
@@ -34,7 +39,7 @@ class MediaUploadService {
       throw PhotoUploadException(_friendlyStorageMessage(e.message));
     } catch (_) {
       throw const PhotoUploadException(
-        'Could not upload the photo. Check Supabase Storage setup and try again.',
+        'Could not upload the photo. Re-apply week7_schema.sql in Supabase and try again.',
       );
     }
 
@@ -71,6 +76,7 @@ class MediaUploadService {
     if (normalized.contains('policy') ||
         normalized.contains('row-level') ||
         normalized.contains('permission') ||
+        normalized.contains('forbidden') ||
         normalized.contains('unauthorized')) {
       return 'Photo upload is blocked by Supabase Storage policy. Re-apply week7_schema.sql.';
     }
