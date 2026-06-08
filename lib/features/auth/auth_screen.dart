@@ -29,7 +29,11 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailOtpController = TextEditingController();
   bool _isLoading = false;
+  bool _isResendingEmail = false;
+  bool _isVerifyingEmailOtp = false;
+  String? _pendingSignupEmail;
   _AuthMode _mode = _AuthMode.signIn;
 
   bool get _isSignUp => _mode == _AuthMode.signUp;
@@ -60,7 +64,9 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be at least 6 characters.')),
+        const SnackBar(
+          content: Text('Password must be at least 6 characters.'),
+        ),
       );
       return;
     }
@@ -103,6 +109,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           );
           setState(() {
+            _pendingSignupEmail = email;
             _mode = _AuthMode.signIn;
           });
         }
@@ -145,10 +152,7 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
     try {
       await Supabase.instance.client.auth.signInAnonymously(
-        data: {
-          'full_name': 'Guest helper',
-          'signup_source': 'guest',
-        },
+        data: {'full_name': 'Guest helper', 'signup_source': 'guest'},
       );
       await _repairCurrentProfile();
       if (mounted) {
@@ -193,6 +197,72 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _resendSignupConfirmation() async {
+    final email = (_pendingSignupEmail ?? _emailController.text).trim();
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the signup email first.')),
+      );
+      return;
+    }
+
+    setState(() => _isResendingEmail = true);
+    try {
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+      if (!mounted) return;
+      setState(() => _pendingSignupEmail = email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Confirmation email sent again.')),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isResendingEmail = false);
+    }
+  }
+
+  Future<void> _verifySignupEmailOtp() async {
+    final email = (_pendingSignupEmail ?? _emailController.text).trim();
+    final token = _emailOtpController.text.trim();
+    if (!_isValidEmail(email) || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter email and OTP code.')),
+      );
+      return;
+    }
+
+    setState(() => _isVerifyingEmailOtp = true);
+    try {
+      await Supabase.instance.client.auth.verifyOTP(
+        type: OtpType.signup,
+        email: email,
+        token: token,
+      );
+      await _repairCurrentProfile();
+      if (!mounted) return;
+      context.go('/profile?verify=1');
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isVerifyingEmailOtp = false);
+    }
+  }
+
   String _authErrorMessage(String message) {
     final normalized = message.toLowerCase();
     if (normalized.contains('anonymous') || normalized.contains('disabled')) {
@@ -217,6 +287,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -254,6 +326,57 @@ class _AuthScreenState extends State<AuthScreen> {
                     color: AppColors.textMid,
                   ),
                 ),
+                if (currentUser != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      border: Border.all(color: AppColors.tan1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Signed in as ${currentUser.email ?? 'guest'}',
+                          style: AppTypography.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => context.go('/app'),
+                                icon: const Icon(Icons.open_in_new, size: 18),
+                                label: const Text('Open app'),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () async {
+                                        setState(() => _isLoading = true);
+                                        await Supabase.instance.client.auth
+                                            .signOut();
+                                        if (mounted) {
+                                          setState(() => _isLoading = false);
+                                        }
+                                      },
+                                icon: const Icon(Icons.logout, size: 18),
+                                label: const Text('Sign out'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
@@ -281,6 +404,65 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xl),
+                if (_pendingSignupEmail != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      border: Border.all(color: AppColors.tan1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Confirm ${_pendingSignupEmail!}',
+                          style: AppTypography.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextField(
+                          controller: _emailOtpController,
+                          decoration: const InputDecoration(
+                            labelText: 'Email OTP code',
+                            prefixIcon: Icon(Icons.mark_email_read_outlined),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isResendingEmail
+                                    ? null
+                                    : _resendSignupConfirmation,
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: Text(
+                                  _isResendingEmail ? 'Sending...' : 'Resend',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _isVerifyingEmailOtp
+                                    ? null
+                                    : _verifySignupEmailOtp,
+                                icon: const Icon(Icons.verified, size: 18),
+                                label: Text(
+                                  _isVerifyingEmailOtp
+                                      ? 'Checking...'
+                                      : 'Verify',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 if (_isSignUp) ...[
                   TextFormField(
                     controller: _nameController,
@@ -352,6 +534,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _emailOtpController.dispose();
     super.dispose();
   }
 }

@@ -25,8 +25,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/auth',
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
-      final isAuthRoute = state.matchedLocation == '/auth';
-      final isLandingRoute = state.matchedLocation == '/';
       final isProtectedRoute =
           state.matchedLocation.startsWith('/app') ||
           state.matchedLocation.startsWith('/campaigns') ||
@@ -42,12 +40,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (session == null && isProtectedRoute) {
         return '/auth';
       }
-
-      if (session != null && isAuthRoute) {
-        return '/app';
-      }
-
-      if (session != null && isLandingRoute) return '/app';
 
       return null;
     },

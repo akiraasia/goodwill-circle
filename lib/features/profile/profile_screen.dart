@@ -583,7 +583,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     icon: Icons.phone_android_outlined,
                     label: phoneOtpVerified
                         ? 'Phone OTP verified'
-                        : 'Phone OTP optional if SMS is unavailable',
+                        : 'Phone OTP must be verified',
                     complete: phoneOtpVerified,
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -636,6 +636,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         const SnackBar(
           content: Text('Confirm your email before verification.'),
         ),
+      );
+      return;
+    }
+    if (user?.phoneConfirmedAt == null && !phoneOtpVerified) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verify your phone with OTP first.')),
       );
       return;
     }
@@ -745,7 +752,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (normalized.contains('sms provider') ||
         normalized.contains('unable to get sms') ||
         normalized.contains('unexpected_failure')) {
-      return 'SMS OTP is not available from Supabase right now. You can submit verification without phone OTP.';
+      return 'Supabase SMS is not configured yet. Enable a real SMS provider in Supabase Auth to send phone OTP.';
     }
     return action == 'verify'
         ? 'OTP verification failed: $message'
