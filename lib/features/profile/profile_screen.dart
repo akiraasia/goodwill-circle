@@ -26,6 +26,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _verificationPromptShown = false;
+  bool _isUploadingPublicPhoto = false;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +237,67 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: AppSpacing.md),
 
+              const SectionHeader(title: 'Profile Photo'),
+              AppCard(
+                color: AppColors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          profile.profilePhotoPublic
+                              ? Icons.public_outlined
+                              : Icons.lock_outline,
+                          color: profile.profilePhotoPublic
+                              ? Colors.green
+                              : AppColors.textLight,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            profile.profilePhotoPublic
+                                ? 'Public on your account'
+                                : 'Private to your profile',
+                            style: AppTypography.textTheme.titleMedium,
+                          ),
+                        ),
+                        Switch(
+                          value: profile.profilePhotoPublic,
+                          onChanged: (value) => ref
+                              .read(profileControllerProvider.notifier)
+                              .updateProfile(profilePhotoPublic: value),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Anonymous confessions never show your name or account photo.',
+                      style: AppTypography.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMid,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: _isUploadingPublicPhoto
+                          ? null
+                          : _pickPublicProfilePhoto,
+                      icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                      label: Text(
+                        _isUploadingPublicPhoto
+                            ? 'Uploading...'
+                            : profile.photoUrl == null ||
+                                  profile.photoUrl!.isEmpty
+                            ? 'Upload account photo'
+                            : 'Change account photo',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+
               // Passport Section
               const SectionHeader(title: 'Goodwill Passport'),
               Row(
@@ -284,10 +346,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: AppSpacing.md),
               const SectionHeader(title: 'Badges & Chains'),
-              BadgesSection(
-                stats: stats,
-                gamificationState: gamificationState,
-              ),
+              BadgesSection(stats: stats, gamificationState: gamificationState),
             ],
           ),
         ),
@@ -352,7 +411,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   TextField(
                     controller: linkedinController,
                     decoration: const InputDecoration(
-                      labelText: 'LinkedIn profile URL',
+                      labelText: 'LinkedIn profile URL (optional)',
                       prefixIcon: Icon(Icons.link),
                       hintText: 'https://www.linkedin.com/in/your-name',
                     ),
@@ -366,10 +425,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             try {
                               final url =
                                   await MediaUploadService.pickAndUploadImage(
-                                folder: 'profiles',
-                                bucket: 'goodwill-verification',
-                                returnPublicUrl: false,
-                              );
+                                    folder: 'profiles',
+                                    bucket: 'goodwill-verification',
+                                    returnPublicUrl: false,
+                                  );
                               if (url != null) {
                                 setDialogState(() => profilePhotoUrl = url);
                               }
@@ -377,8 +436,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content:
-                                        Text('Could not upload photo: $e'),
+                                    content: Text('Could not upload photo: $e'),
                                   ),
                                 );
                               }
@@ -391,8 +449,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       uploadingPhoto
                           ? 'Uploading...'
                           : hasPhoto
-                              ? 'Replace private verification photo'
-                              : 'Upload private verification photo',
+                          ? 'Replace private verification photo'
+                          : 'Upload private verification photo',
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -418,8 +476,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   try {
                                     await Supabase.instance.client.auth
                                         .updateUser(
-                                      UserAttributes(phone: phone),
-                                    );
+                                          UserAttributes(phone: phone),
+                                        );
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,
@@ -436,7 +494,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            'Could not send OTP: $e',
+                                            _friendlyOtpError(e, 'send'),
                                           ),
                                         ),
                                       );
@@ -485,7 +543,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'OTP verification failed: $e',
+                                          _friendlyOtpError(e, 'verify'),
                                         ),
                                       ),
                                     );
@@ -501,12 +559,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: AppSpacing.md),
                   _VerificationRequirementRow(
                     icon: Icons.mark_email_read_outlined,
-                    label: Supabase.instance.client.auth.currentUser
+                    label:
+                        Supabase
+                                .instance
+                                .client
+                                .auth
+                                .currentUser
                                 ?.emailConfirmedAt !=
                             null
                         ? 'Email confirmed'
                         : 'Confirm your email before submitting',
-                    complete: Supabase.instance.client.auth.currentUser
+                    complete:
+                        Supabase
+                            .instance
+                            .client
+                            .auth
+                            .currentUser
                             ?.emailConfirmedAt !=
                         null,
                   ),
@@ -515,7 +583,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     icon: Icons.phone_android_outlined,
                     label: phoneOtpVerified
                         ? 'Phone OTP verified'
-                        : 'Phone OTP must be verified',
+                        : 'Phone OTP optional if SMS is unavailable',
                     complete: phoneOtpVerified,
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -565,21 +633,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (user?.emailConfirmedAt == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Confirm your email before verification.')),
+        const SnackBar(
+          content: Text('Confirm your email before verification.'),
+        ),
       );
       return;
     }
-    if (user?.phoneConfirmedAt == null && !phoneOtpVerified) {
+    if (linkedin.isNotEmpty && !_isLinkedInUrl(linkedin)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verify your phone with OTP first.')),
-      );
-      return;
-    }
-    if (!_isLinkedInUrl(linkedin)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid LinkedIn profile URL.')),
+        const SnackBar(
+          content: Text('Enter a valid LinkedIn URL or leave it blank.'),
+        ),
       );
       return;
     }
@@ -593,11 +658,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return;
     }
 
-    await ref.read(profileControllerProvider.notifier).requestVerification(
+    await ref
+        .read(profileControllerProvider.notifier)
+        .requestVerification(
           accountType: accountType,
           organizationName: accountType == 'ngo' ? organization : null,
-          linkedinUrl: linkedin,
-          phoneNumber: phone,
+          linkedinUrl: linkedin.isEmpty ? null : linkedin,
+          phoneNumber: phone.isEmpty ? null : phone,
           profilePhotoUrl: photoUrl,
         );
 
@@ -612,6 +679,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickPublicProfilePhoto() async {
+    setState(() => _isUploadingPublicPhoto = true);
+    try {
+      final url = await MediaUploadService.pickAndUploadImage(
+        folder: 'profiles',
+      );
+      if (url == null) return;
+      await ref
+          .read(profileControllerProvider.notifier)
+          .updateProfile(photoUrl: url, profilePhotoPublic: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo updated.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update profile photo: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingPublicPhoto = false);
+    }
   }
 
   String _verificationTitle(String status) {
@@ -646,6 +737,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final host = uri.host.toLowerCase();
     return (host == 'linkedin.com' || host.endsWith('.linkedin.com')) &&
         uri.pathSegments.isNotEmpty;
+  }
+
+  String _friendlyOtpError(Object error, String action) {
+    final message = error.toString();
+    final normalized = message.toLowerCase();
+    if (normalized.contains('sms provider') ||
+        normalized.contains('unable to get sms') ||
+        normalized.contains('unexpected_failure')) {
+      return 'SMS OTP is not available from Supabase right now. You can submit verification without phone OTP.';
+    }
+    return action == 'verify'
+        ? 'OTP verification failed: $message'
+        : 'Could not send OTP: $message';
   }
 
   String _displayName(dynamic profile) {
@@ -712,8 +816,8 @@ class _VerificationChip extends StatelessWidget {
     final isPending = status == 'pending';
     final label = isVerified
         ? accountType == 'ngo'
-            ? 'Verified NGO'
-            : 'Verified'
+              ? 'Verified NGO'
+              : 'Verified'
         : isPending
         ? 'Pending review'
         : 'Unverified';
@@ -724,9 +828,7 @@ class _VerificationChip extends StatelessWidget {
         color: isVerified
             ? Colors.green.withValues(alpha: 0.12)
             : AppColors.white,
-        border: Border.all(
-          color: isVerified ? Colors.green : AppColors.tan1,
-        ),
+        border: Border.all(color: isVerified ? Colors.green : AppColors.tan1),
         borderRadius: BorderRadius.circular(100),
       ),
       child: Row(

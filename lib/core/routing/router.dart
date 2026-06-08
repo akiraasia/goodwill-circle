@@ -22,7 +22,7 @@ final shellNavigatorKey = GlobalKey<NavigatorState>();
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/auth',
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isAuthRoute = state.matchedLocation == '/auth';
@@ -47,7 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/app';
       }
 
-      if (session != null && isLandingRoute) return null;
+      if (session != null && isLandingRoute) return '/app';
 
       return null;
     },

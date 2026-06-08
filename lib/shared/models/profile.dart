@@ -2,6 +2,7 @@ class Profile {
   final String id;
   final String? name;
   final String? photoUrl;
+  final bool profilePhotoPublic;
   final String? phone;
   final String? bio;
   final String accountType;
@@ -19,6 +20,7 @@ class Profile {
     required this.id,
     this.name,
     this.photoUrl,
+    this.profilePhotoPublic = false,
     this.phone,
     this.bio,
     this.accountType = 'individual',
@@ -38,6 +40,7 @@ class Profile {
       id: json['id'] as String,
       name: json['name'] as String?,
       photoUrl: json['photo_url'] as String?,
+      profilePhotoPublic: json['profile_photo_public'] as bool? ?? false,
       phone: json['phone'] as String?,
       bio: json['bio'] as String?,
       accountType: json['account_type'] as String? ?? 'individual',
@@ -74,6 +77,7 @@ class Profile {
       'id': id,
       if (name != null) 'name': name,
       if (photoUrl != null) 'photo_url': photoUrl,
+      'profile_photo_public': profilePhotoPublic,
       if (phone != null) 'phone': phone,
       if (bio != null) 'bio': bio,
       'account_type': accountType,
@@ -90,6 +94,7 @@ class Profile {
   Profile copyWith({
     String? name,
     String? photoUrl,
+    bool? profilePhotoPublic,
     String? phone,
     String? bio,
     String? accountType,
@@ -99,6 +104,7 @@ class Profile {
       id: id,
       name: name ?? this.name,
       photoUrl: photoUrl ?? this.photoUrl,
+      profilePhotoPublic: profilePhotoPublic ?? this.profilePhotoPublic,
       phone: phone ?? this.phone,
       bio: bio ?? this.bio,
       accountType: accountType ?? this.accountType,

@@ -50,10 +50,10 @@ class CampaignRepository {
 
     if (creatorIds.isEmpty) return campaigns;
 
-    final profilesData = await _client
-        .from('profiles')
-        .select('id, name, photo_url, verification_status')
-        .inFilter('id', creatorIds);
+    final profilesData = await _fetchProfiles(
+      creatorIds,
+      includeVerificationStatus: true,
+    );
     final profilesById = {
       for (final profile in profilesData) profile['id'] as String: profile,
     };
@@ -63,7 +63,7 @@ class CampaignRepository {
       if (profile == null) return campaign;
       return campaign.copyWith(
         creatorName: profile['name'] as String?,
-        creatorPhoto: profile['photo_url'] as String?,
+        creatorPhoto: _publicPhotoUrl(profile),
         creatorVerificationStatus: profile['verification_status'] as String?,
       );
     }).toList();
@@ -240,10 +240,7 @@ class CampaignRepository {
     final userIds = comments.map((comment) => comment.userId).toSet().toList();
     if (userIds.isEmpty) return comments;
 
-    final profilesData = await _client
-        .from('profiles')
-        .select('id, name, photo_url')
-        .inFilter('id', userIds);
+    final profilesData = await _fetchProfiles(userIds);
     final profilesById = {
       for (final profile in profilesData) profile['id'] as String: profile,
     };
@@ -253,7 +250,7 @@ class CampaignRepository {
       if (profile == null) return comment;
       return comment.copyWith(
         userName: profile['name'] as String?,
-        userPhoto: profile['photo_url'] as String?,
+        userPhoto: _publicPhotoUrl(profile),
       );
     }).toList();
   }
@@ -268,10 +265,7 @@ class CampaignRepository {
 
     if (donorIds.isEmpty) return donations;
 
-    final profilesData = await _client
-        .from('profiles')
-        .select('id, name, photo_url')
-        .inFilter('id', donorIds);
+    final profilesData = await _fetchProfiles(donorIds);
     final profilesById = {
       for (final profile in profilesData) profile['id'] as String: profile,
     };
@@ -281,8 +275,36 @@ class CampaignRepository {
       if (profile == null) return donation;
       return donation.copyWith(
         donorName: profile['name'] as String?,
-        donorPhoto: profile['photo_url'] as String?,
+        donorPhoto: _publicPhotoUrl(profile),
       );
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchProfiles(
+    List<String> ids, {
+    bool includeVerificationStatus = false,
+  }) async {
+    final fields = includeVerificationStatus
+        ? 'id, name, photo_url, profile_photo_public, verification_status'
+        : 'id, name, photo_url, profile_photo_public';
+    try {
+      return await _client.from('profiles').select(fields).inFilter('id', ids);
+    } on PostgrestException catch (e) {
+      if (!e.message.toLowerCase().contains('profile_photo_public')) rethrow;
+      final fallbackFields = includeVerificationStatus
+          ? 'id, name, photo_url, verification_status'
+          : 'id, name, photo_url';
+      return _client
+          .from('profiles')
+          .select(fallbackFields)
+          .inFilter('id', ids);
+    }
+  }
+
+  String? _publicPhotoUrl(Map<String, dynamic>? profile) {
+    if (profile == null || profile['profile_photo_public'] != true) {
+      return null;
+    }
+    return profile['photo_url'] as String?;
   }
 }

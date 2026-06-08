@@ -200,14 +200,15 @@ REVOKE ALL ON FUNCTION public.export_phase_zero_signup_backup_csv() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.export_phase_zero_signup_backup_csv() TO authenticated;
 
 -- Strong verification replaces vague free-text verification with concrete,
--- reviewer-auditable signals: LinkedIn, confirmed email, phone OTP, and a
--- profile photo queued for server-side Reality Defender analysis.
+-- reviewer-auditable signals. LinkedIn and phone OTP are optional supporting
+-- signals so signup review is not blocked when an SMS provider is unavailable.
 ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS profile_photo_public BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS linkedin_url TEXT,
   ADD COLUMN IF NOT EXISTS email_otp_verified_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS phone_otp_verified_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS profile_photo_check_status TEXT NOT NULL DEFAULT 'not_submitted'
-    CHECK (profile_photo_check_status IN ('not_submitted', 'queued', 'authentic', 'suspicious', 'fake', 'failed')),
+    CHECK (profile_photo_check_status IN ('not_submitted', 'queued', 'authentic', 'suspicious', 'fake', 'unable_to_evaluate', 'failed')),
   ADD COLUMN IF NOT EXISTS profile_photo_check_id UUID REFERENCES public.media_authenticity_checks(id) ON DELETE SET NULL;
 
 ALTER TABLE public.profile_verification_requests
@@ -237,6 +238,7 @@ DECLARE
   v_linkedin_url TEXT;
   v_phone_number TEXT;
   v_profile_photo_url TEXT;
+  v_verification_note TEXT;
   v_media_check_id UUID;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
@@ -255,21 +257,21 @@ BEGIN
   IF v_user.email_confirmed_at IS NULL THEN
     RAISE EXCEPTION 'Email OTP verification is required';
   END IF;
-  IF v_user.phone_confirmed_at IS NULL THEN
-    RAISE EXCEPTION 'Phone OTP verification is required';
-  END IF;
 
-  v_linkedin_url := lower(trim(COALESCE(p_linkedin_url, '')));
-  v_phone_number := trim(COALESCE(p_phone_number, ''));
+  v_linkedin_url := NULLIF(lower(trim(COALESCE(p_linkedin_url, ''))), '');
+  v_phone_number := NULLIF(trim(COALESCE(p_phone_number, '')), '');
   v_profile_photo_url := trim(COALESCE(p_profile_photo_url, ''));
 
-  IF v_linkedin_url !~ '^https://([a-z0-9-]+\.)?linkedin\.com/.+' THEN
-    RAISE EXCEPTION 'A valid LinkedIn profile URL is required';
+  IF v_linkedin_url IS NOT NULL
+    AND v_linkedin_url !~ '^https://([a-z0-9-]+\.)?linkedin\.com/.+' THEN
+    RAISE EXCEPTION 'LinkedIn URL must be valid when provided';
   END IF;
-  IF length(v_phone_number) < 8 THEN
-    RAISE EXCEPTION 'A verified phone number is required';
+  IF v_phone_number IS NOT NULL AND length(v_phone_number) < 8 THEN
+    RAISE EXCEPTION 'Phone number is too short';
   END IF;
-  IF COALESCE(v_user.phone, '') != v_phone_number THEN
+  IF v_phone_number IS NOT NULL
+    AND v_user.phone_confirmed_at IS NOT NULL
+    AND COALESCE(v_user.phone, '') != v_phone_number THEN
     RAISE EXCEPTION 'Submitted phone number must match the OTP-verified phone number';
   END IF;
   IF v_profile_photo_url = '' THEN
@@ -278,6 +280,17 @@ BEGIN
   IF p_account_type IN ('ngo', 'college') AND NULLIF(trim(COALESCE(p_organization_name, '')), '') IS NULL THEN
     RAISE EXCEPTION 'Organization name is required';
   END IF;
+
+  v_verification_note := 'Strong verification submitted: email OTP and Reality Defender profile photo queue';
+  IF v_linkedin_url IS NOT NULL THEN
+    v_verification_note := v_verification_note || ', LinkedIn';
+  END IF;
+  IF v_user.phone_confirmed_at IS NOT NULL THEN
+    v_verification_note := v_verification_note || ', phone OTP';
+  ELSIF v_phone_number IS NOT NULL THEN
+    v_verification_note := v_verification_note || ', unverified phone provided';
+  END IF;
+  v_verification_note := v_verification_note || '.';
 
   INSERT INTO public.media_authenticity_checks (
     user_id,
@@ -322,7 +335,7 @@ BEGIN
     v_user.email_confirmed_at,
     v_user.phone_confirmed_at,
     'pending',
-    'Strong verification submitted: LinkedIn, email OTP, phone OTP, and Reality Defender profile photo queue.',
+    v_verification_note,
     now(),
     'queued',
     v_media_check_id
@@ -357,7 +370,7 @@ BEGIN
     auth.uid(),
     p_account_type,
     NULLIF(trim(COALESCE(p_organization_name, '')), ''),
-    'Strong verification submitted.',
+    v_verification_note,
     v_linkedin_url,
     v_phone_number,
     v_user.email_confirmed_at,
@@ -389,6 +402,7 @@ BEGIN
     WHEN 'authentic' THEN 'authentic'
     WHEN 'fake' THEN 'fake'
     WHEN 'suspicious' THEN 'suspicious'
+    WHEN 'unable_to_evaluate' THEN 'unable_to_evaluate'
     ELSE 'failed'
   END;
 
@@ -426,6 +440,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE ALL ON FUNCTION public.record_profile_photo_reality_defender_result(UUID, TEXT, TEXT, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.record_profile_photo_reality_defender_result(UUID, TEXT, TEXT, INTEGER) TO authenticated;
 
+GRANT UPDATE (profile_photo_public) ON public.profiles TO authenticated;
+
 -- Keep the public media bucket for public app media only.
 DROP POLICY IF EXISTS "Authenticated users can upload goodwill media." ON storage.objects;
 DROP POLICY IF EXISTS "Users can update their goodwill media." ON storage.objects;
@@ -436,7 +452,7 @@ CREATE POLICY "Authenticated users can upload goodwill media."
   WITH CHECK (
     bucket_id = 'goodwill-media'
     AND auth.role() = 'authenticated'
-    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions', 'profiles')
     AND (storage.foldername(name))[2] = auth.uid()::text
   );
 
@@ -451,7 +467,7 @@ CREATE POLICY "Users can update their goodwill media."
   WITH CHECK (
     bucket_id = 'goodwill-media'
     AND auth.role() = 'authenticated'
-    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions', 'profiles')
     AND (storage.foldername(name))[2] = auth.uid()::text
   );
 

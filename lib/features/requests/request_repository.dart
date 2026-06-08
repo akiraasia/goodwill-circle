@@ -68,12 +68,12 @@ class RequestRepository {
 
       return request.copyWith(
         creatorName: creatorProfile?['name'] as String?,
-        creatorPhoto: creatorProfile?['photo_url'] as String?,
+        creatorPhoto: _publicPhotoUrl(creatorProfile),
         creatorPhone: creatorProfile?['phone'] as String?,
         creatorVerificationStatus:
             creatorProfile?['verification_status'] as String?,
         contactName: contactProfile?['name'] as String?,
-        contactPhoto: contactProfile?['photo_url'] as String?,
+        contactPhoto: _publicPhotoUrl(contactProfile),
         contactPhone: contactProfile?['phone'] as String?,
         myVolunteerStatus: myVolunteer?['status'] as String?,
         completionMessage: myVolunteer?['completion_message'] as String?,
@@ -102,11 +102,14 @@ class RequestRepository {
     try {
       return await _client
           .from('profiles')
-          .select('id, name, photo_url, phone, verification_status')
+          .select(
+            'id, name, photo_url, profile_photo_public, phone, verification_status',
+          )
           .inFilter('id', ids);
     } on PostgrestException catch (e) {
       if (!e.message.toLowerCase().contains('phone') &&
-          !e.message.toLowerCase().contains('verification_status')) {
+          !e.message.toLowerCase().contains('verification_status') &&
+          !e.message.toLowerCase().contains('profile_photo_public')) {
         rethrow;
       }
       return _client
@@ -114,6 +117,13 @@ class RequestRepository {
           .select('id, name, photo_url')
           .inFilter('id', ids);
     }
+  }
+
+  String? _publicPhotoUrl(Map<String, dynamic>? profile) {
+    if (profile == null || profile['profile_photo_public'] != true) {
+      return null;
+    }
+    return profile['photo_url'] as String?;
   }
 
   Future<String> createRequest({
