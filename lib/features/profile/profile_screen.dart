@@ -471,7 +471,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ? null
                               : () async {
                                   final phone = phoneController.text.trim();
-                                  if (phone.isEmpty) return;
+                                  final phoneError = _phoneValidationError(
+                                    phone,
+                                  );
+                                  if (phoneError != null) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text(phoneError)),
+                                      );
+                                    }
+                                    return;
+                                  }
                                   setDialogState(() => sendingOtp = true);
                                   try {
                                     await Supabase.instance.client.auth
@@ -529,7 +541,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             : () async {
                                 final phone = phoneController.text.trim();
                                 final token = otpController.text.trim();
-                                if (phone.isEmpty || token.isEmpty) return;
+                                final phoneError = _phoneValidationError(phone);
+                                if (phoneError != null || token.isEmpty) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          phoneError ?? 'Enter the OTP code.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
                                 setDialogState(() => verifyingOtp = true);
                                 try {
                                   await Supabase.instance.client.auth.verifyOTP(
@@ -646,6 +670,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
       return;
     }
+    final phoneError = _phoneValidationError(phone);
+    if (phoneError != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(phoneError)));
+      return;
+    }
     if (linkedin.isNotEmpty && !_isLinkedInUrl(linkedin)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -754,9 +786,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         normalized.contains('unexpected_failure')) {
       return 'Supabase SMS is not configured yet. Enable a real SMS provider in Supabase Auth to send phone OTP.';
     }
+    if (normalized.contains('expired')) {
+      return 'That OTP has expired. Request a new code.';
+    }
+    if (normalized.contains('invalid') || normalized.contains('token')) {
+      return 'That OTP code is invalid. Check the code or request a new one.';
+    }
     return action == 'verify'
         ? 'OTP verification failed: $message'
         : 'Could not send OTP: $message';
+  }
+
+  String? _phoneValidationError(String phone) {
+    if (phone.isEmpty) return 'Enter your phone number.';
+    if (!RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(phone)) {
+      return 'Use international format, for example +919876543210.';
+    }
+    return null;
   }
 
   String _displayName(dynamic profile) {

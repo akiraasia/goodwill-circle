@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/landing/landing_screen.dart';
 import 'package:goodwill_circle/features/auth/auth_screen.dart';
+import 'package:goodwill_circle/features/auth/reset_password_screen.dart';
 import 'package:goodwill_circle/core/layout/app_scaffold.dart';
 import 'package:goodwill_circle/features/requests/requests_screen.dart';
 import 'package:goodwill_circle/features/requests/create_request_screen.dart';
@@ -55,6 +56,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialEmail: query['email'],
           );
         },
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
       ShellRoute(
         navigatorKey: shellNavigatorKey,

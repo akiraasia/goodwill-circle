@@ -33,6 +33,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
   bool _isResendingEmail = false;
   bool _isVerifyingEmailOtp = false;
+  bool _isSendingPasswordReset = false;
   String? _pendingSignupEmail;
   _AuthMode _mode = _AuthMode.signIn;
 
@@ -62,10 +63,10 @@ class _AuthScreenState extends State<AuthScreen> {
       );
       return;
     }
-    if (password.length < 6) {
+    if (password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Password must be at least 6 characters.'),
+          content: Text('Password must be at least 8 characters.'),
         ),
       );
       return;
@@ -77,6 +78,7 @@ class _AuthScreenState extends State<AuthScreen> {
         final response = await Supabase.instance.client.auth.signUp(
           email: email,
           password: password,
+          emailRedirectTo: _authRedirectUrl('/auth'),
           data: {
             'full_name': _nameController.text.trim(),
             'avatar_url': '',
@@ -211,6 +213,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await Supabase.instance.client.auth.resend(
         type: OtpType.signup,
         email: email,
+        emailRedirectTo: _authRedirectUrl('/auth'),
       );
       if (!mounted) return;
       setState(() => _pendingSignupEmail = email);
@@ -246,6 +249,7 @@ class _AuthScreenState extends State<AuthScreen> {
         type: OtpType.signup,
         email: email,
         token: token,
+        redirectTo: _authRedirectUrl('/auth'),
       );
       await _repairCurrentProfile();
       if (!mounted) return;
@@ -263,6 +267,38 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _sendPasswordResetEmail() async {
+    final email = _emailController.text.trim();
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your account email first.')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingPasswordReset = true);
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: _authRedirectUrl('/reset-password'),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent.')),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSendingPasswordReset = false);
+    }
+  }
+
   String _authErrorMessage(String message) {
     final normalized = message.toLowerCase();
     if (normalized.contains('anonymous') || normalized.contains('disabled')) {
@@ -274,6 +310,15 @@ class _AuthScreenState extends State<AuthScreen> {
     if (normalized.contains('email not confirmed')) {
       return 'Please confirm your email before signing in.';
     }
+    if (normalized.contains('expired') ||
+        normalized.contains('otp expired') ||
+        normalized.contains('token expired')) {
+      return 'That code or link has expired. Please request a new one.';
+    }
+    if ((normalized.contains('otp') || normalized.contains('token')) &&
+        (normalized.contains('invalid') || normalized.contains('not found'))) {
+      return 'That code or link is invalid. Please check it or request a new one.';
+    }
     if (normalized.contains('invalid login credentials')) {
       return 'Incorrect email or password.';
     }
@@ -283,6 +328,11 @@ class _AuthScreenState extends State<AuthScreen> {
       return 'An account already exists for this email. Please sign in instead.';
     }
     return message;
+  }
+
+  String _authRedirectUrl(String path) {
+    final base = Uri.base;
+    return base.replace(path: path, query: '', fragment: '').toString();
   }
 
   @override
@@ -503,6 +553,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   obscureText: true,
                   onFieldSubmitted: (_) => _isLoading ? null : _authenticate(),
                 ),
+                if (!_isSignUp) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isSendingPasswordReset
+                          ? null
+                          : _sendPasswordResetEmail,
+                      child: Text(
+                        _isSendingPasswordReset
+                            ? 'Sending reset...'
+                            : 'Forgot password?',
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _authenticate,
