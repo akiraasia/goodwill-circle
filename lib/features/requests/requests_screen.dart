@@ -48,15 +48,8 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
           children: [
             SectionHeader(
               title: 'Goodwill Feed',
-              actionLabel: 'Refresh',
-              onActionTap: () {
-                controller.loadRequests();
-                ref.invalidate(platformImpactProvider);
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: PlatformImpactOverview(),
+              actionLabel: 'Impact',
+              onActionTap: _showImpactSheet,
             ),
             SizedBox(
               height: 44,
@@ -200,6 +193,27 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
           label: const Text('New Request'),
         ),
       ),
+    );
+  }
+
+  void _showImpactSheet() {
+    ref.invalidate(platformImpactProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.lg,
+            ),
+            child: PlatformImpactOverview(),
+          ),
+        );
+      },
     );
   }
 }

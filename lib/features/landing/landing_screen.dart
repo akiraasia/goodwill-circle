@@ -58,12 +58,13 @@ class _LandingScreenState extends State<LandingScreen> {
                     const BrandLogo(),
                     const Spacer(),
                     TextButton(
-                      onPressed: () => context.go('/auth'),
+                      onPressed: () => context.go('/auth?mode=signin'),
                       child: const Text('Sign in'),
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     ElevatedButton(
-                      onPressed: () => context.go(signedIn ? '/app' : '/auth'),
+                      onPressed: () =>
+                          context.go(signedIn ? '/app' : '/auth?mode=signup'),
                       child: Text(signedIn ? 'Open app' : 'Open app'),
                     ),
                   ],

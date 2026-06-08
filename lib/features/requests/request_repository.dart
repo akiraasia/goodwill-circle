@@ -116,7 +116,7 @@ class RequestRepository {
     }
   }
 
-  Future<void> createRequest({
+  Future<String> createRequest({
     required String title,
     required String description,
     required String category,
@@ -133,11 +133,21 @@ class RequestRepository {
     };
 
     try {
-      await _client.from('help_requests').insert(payload);
+      final row = await _client
+          .from('help_requests')
+          .insert(payload)
+          .select('id')
+          .single();
+      return row['id'] as String;
     } on PostgrestException catch (e) {
       if (!e.message.toLowerCase().contains('image_url')) rethrow;
       payload.remove('image_url');
-      await _client.from('help_requests').insert(payload);
+      final row = await _client
+          .from('help_requests')
+          .insert(payload)
+          .select('id')
+          .single();
+      return row['id'] as String;
     }
   }
 

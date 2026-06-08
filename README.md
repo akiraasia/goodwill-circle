@@ -1,17 +1,43 @@
-# goodwill_circle
+# Goodwill Circle
 
-A new Flutter project.
+Flutter app for Goodwill Circle, deployed as a static Flutter web build to Firebase Hosting.
 
-## Getting Started
+## Local Checks
 
-This project is a starting point for a Flutter application.
+Use the same checks that run before Firebase deploy:
 
-A few resources to get you started if this is your first Flutter project:
+```powershell
+flutter pub get
+dart analyze lib test
+flutter test
+flutter build web --release --no-wasm-dry-run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Firebase Hosting serves the generated `build/web` directory. If deploy fails with `Directory 'build/web' for Hosting does not exist`, the web build step did not run or failed before `FirebaseExtended/action-hosting-deploy`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Firebase Hosting
+
+Hosting is configured in `firebase.json`:
+
+```json
+{
+  "hosting": {
+    "public": "build/web"
+  }
+}
+```
+
+GitHub Actions builds with Flutter `3.44.1`, verifies `build/web/index.html` and `build/web/main.dart.js`, then deploys previews for pull requests and live Hosting on pushes to `main`.
+
+Required GitHub secret:
+
+```text
+FIREBASE_SERVICE_ACCOUNT_GOODWILL_CIRCLE
+```
+
+## Stack Notes
+
+- Flutter SDK: `3.44.1`
+- Dart SDK: `3.12.1`
+- Supabase stores app data and Week 9 trust records.
+- Firebase Hosting serves the compiled Flutter web app only.

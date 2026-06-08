@@ -6,6 +6,8 @@ import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/shared/widgets/brand_logo.dart';
 
+enum _AuthMode { signUp, signIn }
+
 class AuthScreen extends StatefulWidget {
   final String? initialName;
   final String? initialEmail;
@@ -28,21 +30,38 @@ class _AuthScreenState extends State<AuthScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _isSignUp = false;
+  _AuthMode _mode = _AuthMode.signIn;
+
+  bool get _isSignUp => _mode == _AuthMode.signUp;
 
   @override
   void initState() {
     super.initState();
-    _isSignUp = widget.initialSignUp;
+    _mode = widget.initialSignUp ? _AuthMode.signUp : _AuthMode.signIn;
     _nameController.text = widget.initialName ?? '';
     _emailController.text = widget.initialEmail ?? '';
   }
 
   Future<void> _authenticate() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
     if (_isSignUp && _nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please enter your name.')));
+      return;
+    }
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.')),
+      );
+      return;
+    }
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 6 characters.')),
+      );
       return;
     }
 
@@ -50,12 +69,13 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       if (_isSignUp) {
         final response = await Supabase.instance.client.auth.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+          email: email,
+          password: password,
           data: {
             'full_name': _nameController.text.trim(),
             'avatar_url': '',
             'phone': _phoneController.text.trim(),
+            'signup_source': 'phase_zero',
           },
         );
         if (mounted) {
@@ -69,7 +89,7 @@ class _AuthScreenState extends State<AuthScreen> {
               // Older Supabase schemas may not have the phone column yet.
             }
             if (!mounted) return;
-            context.go('/app');
+            context.go('/trust');
             return;
           }
 
@@ -81,13 +101,13 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           );
           setState(() {
-            _isSignUp = false;
+            _mode = _AuthMode.signIn;
           });
         }
       } else {
         await Supabase.instance.client.auth.signInWithPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+          email: email,
+          password: password,
         );
         if (mounted) {
           context.go('/app');
@@ -118,8 +138,54 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _continueAsGuest() async {
+    setState(() => _isLoading = true);
+    try {
+      await Supabase.instance.client.auth.signInAnonymously(
+        data: {
+          'full_name': 'Guest helper',
+          'signup_source': 'guest',
+        },
+      );
+      if (mounted) {
+        context.go('/app');
+      }
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_authErrorMessage(error.message)),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Guest login is not enabled yet. Please sign up or sign in.',
+            ),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
   String _authErrorMessage(String message) {
     final normalized = message.toLowerCase();
+    if (normalized.contains('anonymous') || normalized.contains('disabled')) {
+      return 'Guest login is not enabled yet. Please sign up or sign in.';
+    }
     if (normalized.contains('rate') && normalized.contains('email')) {
       return 'Supabase has temporarily limited confirmation emails for this project. Please wait a few minutes, or sign in if your account is already confirmed.';
     }
@@ -159,17 +225,38 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 Text(
-                  _isSignUp ? 'Join the circle.' : 'Welcome back.',
+                  'Open Goodwill Circle.',
                   style: AppTypography.textTheme.displayLarge,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   _isSignUp
                       ? 'Create an account to ask, help, and pass goodwill forward.'
-                      : 'Sign in to see who needs help and keep the loop moving.',
+                      : 'Sign in, create an account, or continue as a guest.',
                   style: AppTypography.textTheme.bodyLarge?.copyWith(
                     color: AppColors.textMid,
                   ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SegmentedButton<_AuthMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _AuthMode.signUp,
+                      icon: Icon(Icons.person_add_alt_1_outlined),
+                      label: Text('Sign up'),
+                    ),
+                    ButtonSegment(
+                      value: _AuthMode.signIn,
+                      icon: Icon(Icons.login_outlined),
+                      label: Text('Sign in'),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: _isLoading
+                      ? null
+                      : (selection) {
+                          setState(() => _mode = selection.first);
+                        },
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 if (_isSignUp) ...[
@@ -225,15 +312,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSignUp = !_isSignUp;
-                    });
-                  },
-                  child: Text(
-                    _isSignUp
-                        ? 'Already have an account? Sign in'
-                        : 'New here? Create an account',
+                  onPressed: _isLoading ? null : _continueAsGuest,
+                  child: const Text(
+                    'Continue as guest',
                   ),
                 ),
               ],

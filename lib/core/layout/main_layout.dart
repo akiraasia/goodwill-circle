@@ -3,7 +3,6 @@ import 'package:goodwill_circle/features/profile/profile_screen.dart';
 import 'package:goodwill_circle/features/requests/requests_screen.dart';
 import 'package:goodwill_circle/features/campaigns/campaigns_screen.dart';
 import 'package:goodwill_circle/features/agenda/agenda_screen.dart';
-import 'package:goodwill_circle/features/trust/trust_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -19,7 +18,6 @@ class _MainLayoutState extends State<MainLayout> {
     const RequestsScreen(),
     const CampaignsScreen(),
     const AgendaScreen(),
-    const TrustScreen(),
     const ProfileScreen(),
   ];
 
@@ -46,10 +44,6 @@ class _MainLayoutState extends State<MainLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.event_note),
             label: 'Agenda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shield_outlined),
-            label: 'Trust',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

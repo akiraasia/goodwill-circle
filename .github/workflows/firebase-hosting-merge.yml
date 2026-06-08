@@ -6,11 +6,35 @@ on:
   push:
     branches:
       - main
+concurrency:
+  group: firebase-hosting-live
+  cancel-in-progress: true
+permissions:
+  contents: read
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: dart analyze lib test
+      - name: Test
+        run: flutter test
+      - name: Build web
+        timeout-minutes: 15
+        run: flutter build web --release --no-wasm-dry-run
+      - name: Verify Firebase Hosting public directory
+        shell: bash
+        run: |
+          test -f build/web/index.html
+          test -f build/web/main.dart.js
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

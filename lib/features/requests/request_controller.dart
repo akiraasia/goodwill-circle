@@ -44,7 +44,7 @@ class RequestController extends Notifier<RequestState> {
     }
   }
 
-  Future<void> createRequest({
+  Future<String?> createRequest({
     required String title,
     required String description,
     required String category,
@@ -53,7 +53,7 @@ class RequestController extends Notifier<RequestState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _repository.createRequest(
+      final requestId = await _repository.createRequest(
         title: title,
         description: description,
         category: category,
@@ -61,8 +61,10 @@ class RequestController extends Notifier<RequestState> {
         imageUrl: imageUrl,
       );
       await loadRequests();
+      return requestId;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+      return null;
     }
   }
 

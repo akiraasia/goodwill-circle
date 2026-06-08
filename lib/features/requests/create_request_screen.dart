@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:goodwill_circle/features/requests/request_controller.dart';
+import 'package:goodwill_circle/features/trust/trust_repository.dart';
 import 'package:goodwill_circle/shared/services/media_upload_service.dart';
 
 class CreateRequestScreen extends ConsumerStatefulWidget {
@@ -15,6 +17,7 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _financialVerificationController = TextEditingController();
   String _selectedCategory = 'Other';
   String _selectedUrgency = 'normal';
   String? _imageUrl;
@@ -41,6 +44,7 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _financialVerificationController.dispose();
     super.dispose();
   }
 
@@ -49,9 +53,20 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
       final title = _titleController.text.trim();
       final description = _descriptionController.text.trim();
       final reward = _urgencyRewards[_selectedUrgency] ?? 10;
+      final isFinancialHelp = _selectedCategory == 'Finance';
+      final financialNote = _financialVerificationController.text.trim();
+
+      if (isFinancialHelp && financialNote.length < 20) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Add verification details for financial help.'),
+          ),
+        );
+        return;
+      }
 
       final controller = ref.read(requestControllerProvider.notifier);
-      await controller.createRequest(
+      final requestId = await controller.createRequest(
         title: title,
         description: description,
         category: _selectedCategory,
@@ -60,12 +75,47 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
       );
 
       final state = ref.read(requestControllerProvider);
-      if (state.error == null) {
+      if (state.error == null && requestId != null) {
+        var financialVerificationQueued = false;
+        if (isFinancialHelp) {
+          try {
+            await ref
+                .read(trustRepositoryProvider)
+                .submitFinancialHelpVerification(
+                  requestId: requestId,
+                  note: financialNote,
+                  evidenceUrl: _imageUrl,
+                );
+            financialVerificationQueued = true;
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Financial review could not be queued: $e'),
+                ),
+              );
+            }
+          }
+        }
+
         if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Request created successfully!')),
-          );
+          if (isFinancialHelp) {
+            context.go('/trust');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  financialVerificationQueued
+                      ? 'Request posted and sent for financial review.'
+                      : 'Request posted. Review your trust settings here.',
+                ),
+              ),
+            );
+          } else {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Request created successfully!')),
+            );
+          }
         }
       } else {
         if (mounted) {
@@ -187,6 +237,65 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
                         }
                       },
                     ),
+                    if (_selectedCategory == 'Finance') ...[
+                      const SizedBox(height: 16),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.verified_user_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Financial help review',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Add enough context for moderators to verify the need. If you attach a photo, it will also enter the media authenticity queue.',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _financialVerificationController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Verification details',
+                                  hintText:
+                                      'What is the expense, amount, and what proof can reviewers check?',
+                                ),
+                                minLines: 3,
+                                maxLines: 5,
+                                validator: (_) {
+                                  if (_selectedCategory != 'Finance') {
+                                    return null;
+                                  }
+                                  return _financialVerificationController.text
+                                              .trim()
+                                              .length <
+                                          20
+                                      ? 'Add clear verification details'
+                                      : null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedUrgency,
