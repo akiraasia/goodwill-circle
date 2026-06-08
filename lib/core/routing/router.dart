@@ -92,7 +92,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) {
+              return ProfileScreen(
+                promptVerification: state.uri.queryParameters['verify'] == '1',
+              );
+            },
           ),
         ],
       ),

@@ -81,15 +81,17 @@ class _AuthScreenState extends State<AuthScreen> {
         if (mounted) {
           if (response.session != null) {
             try {
-              await Supabase.instance.client
-                  .from('profiles')
-                  .update({'phone': _phoneController.text.trim()})
-                  .eq('id', response.user!.id);
+              await Supabase.instance.client.from('profiles').upsert({
+                'id': response.user!.id,
+                'name': _nameController.text.trim(),
+                'phone': _phoneController.text.trim(),
+              });
             } on PostgrestException {
               // Older Supabase schemas may not have the phone column yet.
             }
+            await _repairCurrentProfile();
             if (!mounted) return;
-            context.go('/trust');
+            context.go('/profile?verify=1');
             return;
           }
 
@@ -109,8 +111,9 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           password: password,
         );
+        await _repairCurrentProfile();
         if (mounted) {
-          context.go('/app');
+          context.go('/profile?verify=1');
         }
       }
     } on AuthException catch (error) {
@@ -147,6 +150,7 @@ class _AuthScreenState extends State<AuthScreen> {
           'signup_source': 'guest',
         },
       );
+      await _repairCurrentProfile();
       if (mounted) {
         context.go('/app');
       }
@@ -181,6 +185,14 @@ class _AuthScreenState extends State<AuthScreen> {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 
+  Future<void> _repairCurrentProfile() async {
+    try {
+      await Supabase.instance.client.rpc('repair_current_user_profile');
+    } on PostgrestException {
+      // Week 10 schema may not be applied yet; auth should still continue.
+    }
+  }
+
   String _authErrorMessage(String message) {
     final normalized = message.toLowerCase();
     if (normalized.contains('anonymous') || normalized.contains('disabled')) {
@@ -194,6 +206,11 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (normalized.contains('invalid login credentials')) {
       return 'Incorrect email or password.';
+    }
+    if (normalized.contains('already registered') ||
+        normalized.contains('already exists') ||
+        normalized.contains('user already')) {
+      return 'An account already exists for this email. Please sign in instead.';
     }
     return message;
   }

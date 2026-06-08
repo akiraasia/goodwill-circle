@@ -13,12 +13,21 @@ class ProfileRepository {
   ProfileRepository(this._client);
 
   Future<Profile> getProfile(String userId) async {
+    await repairCurrentUserProfile();
     final data = await _client
         .from('profiles')
         .select()
         .eq('id', userId)
         .single();
     return Profile.fromJson(data);
+  }
+
+  Future<void> repairCurrentUserProfile() async {
+    try {
+      await _client.rpc('repair_current_user_profile');
+    } on PostgrestException {
+      // Older schemas can still load the existing profile normally.
+    }
   }
 
   Future<UserStats> getUserStats(String userId) async {

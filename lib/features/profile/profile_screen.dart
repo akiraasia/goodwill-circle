@@ -16,13 +16,17 @@ import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  final bool promptVerification;
+
+  const ProfileScreen({super.key, this.promptVerification = false});
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _verificationPromptShown = false;
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileControllerProvider);
@@ -54,6 +58,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final currentLevel = CharacterSystem.getLevelForScore(stats.impactScore);
     final progress = currentLevel.getProgress(stats.impactScore);
+    final displayName = _displayName(profile);
+
+    if (widget.promptVerification &&
+        !_verificationPromptShown &&
+        !profile.isVerified &&
+        !profile.isVerificationPending) {
+      _verificationPromptShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showVerificationDialog(profile);
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -102,15 +117,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child:
                           profile.photoUrl == null || profile.photoUrl!.isEmpty
                           ? Text(
-                              profile.name?.substring(0, 1).toUpperCase() ??
-                                  'U',
+                              displayName.substring(0, 1).toUpperCase(),
                               style: AppTypography.textTheme.displayMedium,
                             )
                           : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      profile.name ?? 'New User',
+                      displayName,
                       style: AppTypography.textTheme.headlineLarge,
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -632,6 +646,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final host = uri.host.toLowerCase();
     return (host == 'linkedin.com' || host.endsWith('.linkedin.com')) &&
         uri.pathSegments.isNotEmpty;
+  }
+
+  String _displayName(dynamic profile) {
+    final profileName = (profile.name as String?)?.trim();
+    if (profileName != null && profileName.isNotEmpty) return profileName;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    final metadataName =
+        (user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'])
+            ?.toString()
+            .trim();
+    if (metadataName != null && metadataName.isNotEmpty) return metadataName;
+
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) return email.split('@').first;
+
+    return 'Goodwill member';
   }
 }
 
