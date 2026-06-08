@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/requests/request_controller.dart';
 import 'package:goodwill_circle/features/requests/widgets/request_card.dart';
+import 'package:goodwill_circle/features/trust/trust_repository.dart';
+import 'package:goodwill_circle/features/trust/widgets/platform_impact_overview.dart';
 import 'package:go_router/go_router.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
@@ -47,7 +49,14 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
             SectionHeader(
               title: 'Goodwill Feed',
               actionLabel: 'Refresh',
-              onActionTap: () => controller.loadRequests(),
+              onActionTap: () {
+                controller.loadRequests();
+                ref.invalidate(platformImpactProvider);
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: PlatformImpactOverview(),
             ),
             SizedBox(
               height: 44,
@@ -88,7 +97,10 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                       ),
                     )
                   : RefreshIndicator(
-                      onRefresh: () => controller.loadRequests(),
+                      onRefresh: () async {
+                        await controller.loadRequests();
+                        ref.invalidate(platformImpactProvider);
+                      },
                       child: visibleRequests.isEmpty
                           ? ListView(
                               padding: const EdgeInsets.symmetric(

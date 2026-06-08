@@ -10,6 +10,9 @@ class Profile {
   final String? verificationNote;
   final DateTime? verificationRequestedAt;
   final DateTime? verifiedAt;
+  final String trustedAccountStatus;
+  final DateTime? trustReviewedAt;
+  final String? trustNote;
   final DateTime createdAt;
 
   Profile({
@@ -24,6 +27,9 @@ class Profile {
     this.verificationNote,
     this.verificationRequestedAt,
     this.verifiedAt,
+    this.trustedAccountStatus = 'standard',
+    this.trustReviewedAt,
+    this.trustNote,
     required this.createdAt,
   });
 
@@ -45,11 +51,19 @@ class Profile {
       verifiedAt: json['verified_at'] == null
           ? null
           : DateTime.parse(json['verified_at'] as String),
+      trustedAccountStatus:
+          json['trusted_account_status'] as String? ?? 'standard',
+      trustReviewedAt: json['trust_reviewed_at'] == null
+          ? null
+          : DateTime.parse(json['trust_reviewed_at'] as String),
+      trustNote: json['trust_note'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
   bool get isVerified => verificationStatus == 'verified';
+
+  bool get isTrusted => trustedAccountStatus == 'trusted';
 
   bool get isVerificationPending => verificationStatus == 'pending';
 
@@ -93,6 +107,9 @@ class Profile {
       verificationNote: verificationNote,
       verificationRequestedAt: verificationRequestedAt,
       verifiedAt: verifiedAt,
+      trustedAccountStatus: trustedAccountStatus,
+      trustReviewedAt: trustReviewedAt,
+      trustNote: trustNote,
       createdAt: createdAt,
     );
   }

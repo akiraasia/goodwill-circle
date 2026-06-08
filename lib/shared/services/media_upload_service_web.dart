@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
@@ -17,9 +18,9 @@ class MediaUploadService {
     final file = input.files?.first;
     if (file == null) return null;
 
-    final reader = html.FileReader()..readAsArrayBuffer(file);
+    final reader = html.FileReader()..readAsDataUrl(file);
     await reader.onLoad.first;
-    final bytes = Uint8List.view(reader.result as ByteBuffer);
+    final bytes = _bytesFromDataUrl(reader.result);
     final extension = _extensionFor(file.name);
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
@@ -73,6 +74,24 @@ class MediaUploadService {
         return 'image/gif';
       default:
         return 'image/jpeg';
+    }
+  }
+
+  static Uint8List _bytesFromDataUrl(Object? result) {
+    if (result is! String) {
+      throw const PhotoUploadException('Could not read the selected photo.');
+    }
+
+    final commaIndex = result.indexOf(',');
+    if (commaIndex == -1 ||
+        !result.substring(0, commaIndex).toLowerCase().contains(';base64')) {
+      throw const PhotoUploadException('Could not read the selected photo.');
+    }
+
+    try {
+      return base64Decode(result.substring(commaIndex + 1));
+    } on FormatException {
+      throw const PhotoUploadException('Could not read the selected photo.');
     }
   }
 

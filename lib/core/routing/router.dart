@@ -14,6 +14,7 @@ import 'package:goodwill_circle/features/campaigns/create_campaign_screen.dart';
 import 'package:goodwill_circle/features/campaigns/campaign_details_screen.dart';
 import 'package:goodwill_circle/features/confessions/confessions_screen.dart';
 import 'package:goodwill_circle/features/profile/profile_screen.dart';
+import 'package:goodwill_circle/features/trust/trust_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -30,6 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation.startsWith('/app') ||
           state.matchedLocation.startsWith('/campaigns') ||
           state.matchedLocation.startsWith('/agenda') ||
+          state.matchedLocation.startsWith('/trust') ||
           state.matchedLocation.startsWith('/confessions') ||
           state.matchedLocation.startsWith('/profile') ||
           state.matchedLocation.startsWith('/create-request') ||
@@ -79,6 +81,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/agenda',
             builder: (context, state) => const AgendaScreen(),
+          ),
+          GoRoute(
+            path: '/trust',
+            builder: (context, state) => const TrustScreen(),
           ),
           GoRoute(
             path: '/confessions',
