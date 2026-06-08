@@ -99,3 +99,274 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 REVOKE ALL ON FUNCTION public.export_phase_zero_signup_backup_csv() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.export_phase_zero_signup_backup_csv() TO authenticated;
+
+-- Strong verification replaces vague free-text verification with concrete,
+-- reviewer-auditable signals: LinkedIn, confirmed email, phone OTP, and a
+-- profile photo queued for server-side Reality Defender analysis.
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS linkedin_url TEXT,
+  ADD COLUMN IF NOT EXISTS email_otp_verified_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS phone_otp_verified_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS profile_photo_check_status TEXT NOT NULL DEFAULT 'not_submitted'
+    CHECK (profile_photo_check_status IN ('not_submitted', 'queued', 'authentic', 'suspicious', 'fake', 'failed')),
+  ADD COLUMN IF NOT EXISTS profile_photo_check_id UUID REFERENCES public.media_authenticity_checks(id) ON DELETE SET NULL;
+
+ALTER TABLE public.profile_verification_requests
+  ADD COLUMN IF NOT EXISTS linkedin_url TEXT,
+  ADD COLUMN IF NOT EXISTS phone_number TEXT,
+  ADD COLUMN IF NOT EXISTS email_otp_verified_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS phone_otp_verified_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS profile_photo_url TEXT,
+  ADD COLUMN IF NOT EXISTS profile_photo_check_id UUID REFERENCES public.media_authenticity_checks(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS verification_method TEXT NOT NULL DEFAULT 'manual'
+    CHECK (verification_method IN ('manual', 'strong_identity'));
+
+CREATE INDEX IF NOT EXISTS profile_verification_requests_strong_idx
+  ON public.profile_verification_requests (user_id, status, created_at DESC)
+  WHERE verification_method = 'strong_identity';
+
+CREATE OR REPLACE FUNCTION public.request_profile_strong_verification(
+  p_account_type TEXT,
+  p_organization_name TEXT DEFAULT NULL,
+  p_linkedin_url TEXT DEFAULT NULL,
+  p_phone_number TEXT DEFAULT NULL,
+  p_profile_photo_url TEXT DEFAULT NULL
+)
+RETURNS void AS $$
+DECLARE
+  v_user RECORD;
+  v_linkedin_url TEXT;
+  v_phone_number TEXT;
+  v_profile_photo_url TEXT;
+  v_media_check_id UUID;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+  IF p_account_type NOT IN ('individual', 'ngo', 'college') THEN
+    RAISE EXCEPTION 'Invalid account type';
+  END IF;
+
+  SELECT
+    phone,
+    email_confirmed_at,
+    phone_confirmed_at
+  INTO v_user
+  FROM auth.users
+  WHERE id = auth.uid();
+
+  IF v_user.email_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Email OTP verification is required';
+  END IF;
+  IF v_user.phone_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Phone OTP verification is required';
+  END IF;
+
+  v_linkedin_url := lower(trim(COALESCE(p_linkedin_url, '')));
+  v_phone_number := trim(COALESCE(p_phone_number, ''));
+  v_profile_photo_url := trim(COALESCE(p_profile_photo_url, ''));
+
+  IF v_linkedin_url !~ '^https://([a-z0-9-]+\.)?linkedin\.com/.+' THEN
+    RAISE EXCEPTION 'A valid LinkedIn profile URL is required';
+  END IF;
+  IF length(v_phone_number) < 8 THEN
+    RAISE EXCEPTION 'A verified phone number is required';
+  END IF;
+  IF COALESCE(v_user.phone, '') != v_phone_number THEN
+    RAISE EXCEPTION 'Submitted phone number must match the OTP-verified phone number';
+  END IF;
+  IF v_profile_photo_url = '' THEN
+    RAISE EXCEPTION 'A profile photo is required for verification';
+  END IF;
+  IF p_account_type IN ('ngo', 'college') AND NULLIF(trim(COALESCE(p_organization_name, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'Organization name is required';
+  END IF;
+
+  INSERT INTO public.media_authenticity_checks (
+    user_id,
+    provider,
+    target_type,
+    target_id,
+    media_url,
+    status
+  )
+  VALUES (
+    auth.uid(),
+    'reality_defender',
+    'profile_photo',
+    auth.uid(),
+    v_profile_photo_url,
+    'queued'
+  )
+  RETURNING id INTO v_media_check_id;
+
+  UPDATE public.profiles
+  SET account_type = p_account_type,
+      organization_name = NULLIF(trim(COALESCE(p_organization_name, '')), ''),
+      linkedin_url = v_linkedin_url,
+      phone = v_phone_number,
+      email_otp_verified_at = v_user.email_confirmed_at,
+      phone_otp_verified_at = v_user.phone_confirmed_at,
+      verification_status = 'pending',
+      verification_note = 'Strong verification submitted: LinkedIn, email OTP, phone OTP, and Reality Defender profile photo queue.',
+      verification_requested_at = now(),
+      profile_photo_check_status = 'queued',
+      profile_photo_check_id = v_media_check_id
+  WHERE id = auth.uid();
+
+  INSERT INTO public.profile_verification_requests (
+    user_id,
+    requested_account_type,
+    organization_name,
+    note,
+    linkedin_url,
+    phone_number,
+    email_otp_verified_at,
+    phone_otp_verified_at,
+    profile_photo_url,
+    profile_photo_check_id,
+    verification_method
+  )
+  VALUES (
+    auth.uid(),
+    p_account_type,
+    NULLIF(trim(COALESCE(p_organization_name, '')), ''),
+    'Strong verification submitted.',
+    v_linkedin_url,
+    v_phone_number,
+    v_user.email_confirmed_at,
+    v_user.phone_confirmed_at,
+    v_profile_photo_url,
+    v_media_check_id,
+    'strong_identity'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.request_profile_strong_verification(TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.request_profile_strong_verification(TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.record_profile_photo_reality_defender_result(
+  p_check_id UUID,
+  p_provider_request_id TEXT,
+  p_result_status TEXT,
+  p_confidence_score INTEGER DEFAULT NULL
+)
+RETURNS void AS $$
+DECLARE
+  v_status TEXT;
+  v_user_id UUID;
+BEGIN
+  IF NOT public.is_app_admin() THEN RAISE EXCEPTION 'Admin required'; END IF;
+
+  v_status := CASE lower(COALESCE(p_result_status, ''))
+    WHEN 'authentic' THEN 'authentic'
+    WHEN 'fake' THEN 'fake'
+    WHEN 'suspicious' THEN 'suspicious'
+    ELSE 'failed'
+  END;
+
+  UPDATE public.media_authenticity_checks
+  SET provider_request_id = p_provider_request_id,
+      result_status = p_result_status,
+      confidence_score = p_confidence_score,
+      status = v_status,
+      reviewed_at = now(),
+      updated_at = now()
+  WHERE id = p_check_id
+    AND provider = 'reality_defender'
+    AND target_type = 'profile_photo'
+  RETURNING user_id INTO v_user_id;
+
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Profile photo check not found'; END IF;
+
+  UPDATE public.profiles
+  SET profile_photo_check_status = v_status,
+      trusted_account_status = CASE
+        WHEN v_status = 'authentic' AND verification_status = 'verified' THEN 'trusted'
+        WHEN v_status IN ('suspicious', 'fake') THEN 'flagged'
+        ELSE trusted_account_status
+      END,
+      trust_reviewed_at = now(),
+      trust_note = CASE
+        WHEN v_status = 'authentic' THEN 'Profile photo passed Reality Defender media authenticity review.'
+        WHEN v_status IN ('suspicious', 'fake') THEN 'Profile photo was flagged by Reality Defender and needs manual review.'
+        ELSE trust_note
+      END
+  WHERE id = v_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.record_profile_photo_reality_defender_result(UUID, TEXT, TEXT, INTEGER) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_profile_photo_reality_defender_result(UUID, TEXT, TEXT, INTEGER) TO authenticated;
+
+-- Keep the public media bucket for public app media only.
+DROP POLICY IF EXISTS "Authenticated users can upload goodwill media." ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their goodwill media." ON storage.objects;
+
+CREATE POLICY "Authenticated users can upload goodwill media."
+  ON storage.objects
+  FOR INSERT
+  WITH CHECK (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can update their goodwill media."
+  ON storage.objects
+  FOR UPDATE
+  USING (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  )
+  WITH CHECK (
+    bucket_id = 'goodwill-media'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+-- Private verification photos are not public profile photos. Users upload them
+-- for review only; admins and backend workers can read them to create signed
+-- URLs for Reality Defender without exposing the image in the app.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('goodwill-verification', 'goodwill-verification', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+DROP POLICY IF EXISTS "Users can upload own verification media." ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own verification media." ON storage.objects;
+DROP POLICY IF EXISTS "Admins can view verification media." ON storage.objects;
+
+CREATE POLICY "Users can upload own verification media."
+  ON storage.objects
+  FOR INSERT
+  WITH CHECK (
+    bucket_id = 'goodwill-verification'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = 'profiles'
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+CREATE POLICY "Users can update own verification media."
+  ON storage.objects
+  FOR UPDATE
+  USING (
+    bucket_id = 'goodwill-verification'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  )
+  WITH CHECK (
+    bucket_id = 'goodwill-verification'
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = 'profiles'
+    AND (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+CREATE POLICY "Admins can view verification media."
+  ON storage.objects
+  FOR SELECT
+  USING (
+    bucket_id = 'goodwill-verification'
+    AND public.is_app_admin()
+  );

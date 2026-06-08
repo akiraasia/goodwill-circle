@@ -238,25 +238,30 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                SegmentedButton<_AuthMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _AuthMode.signUp,
-                      icon: Icon(Icons.person_add_alt_1_outlined),
-                      label: Text('Sign up'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _AuthChoiceButton(
+                        icon: Icons.person_add_alt_1_outlined,
+                        label: 'Sign up',
+                        selected: _mode == _AuthMode.signUp,
+                        onPressed: _isLoading
+                            ? null
+                            : () => setState(() => _mode = _AuthMode.signUp),
+                      ),
                     ),
-                    ButtonSegment(
-                      value: _AuthMode.signIn,
-                      icon: Icon(Icons.login_outlined),
-                      label: Text('Sign in'),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _AuthChoiceButton(
+                        icon: Icons.login_outlined,
+                        label: 'Sign in',
+                        selected: _mode == _AuthMode.signIn,
+                        onPressed: _isLoading
+                            ? null
+                            : () => setState(() => _mode = _AuthMode.signIn),
+                      ),
                     ),
                   ],
-                  selected: {_mode},
-                  onSelectionChanged: _isLoading
-                      ? null
-                      : (selection) {
-                          setState(() => _mode = selection.first);
-                        },
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 if (_isSignUp) ...[
@@ -311,11 +316,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       : Text(_isSignUp ? 'Create account' : 'Sign in'),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextButton(
+                OutlinedButton.icon(
                   onPressed: _isLoading ? null : _continueAsGuest,
-                  child: const Text(
-                    'Continue as guest',
-                  ),
+                  icon: const Icon(Icons.explore_outlined),
+                  label: const Text('Continue as guest'),
                 ),
               ],
             ),
@@ -332,5 +336,36 @@ class _AuthScreenState extends State<AuthScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+}
+
+class _AuthChoiceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  const _AuthChoiceButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? AppColors.white : AppColors.textDark;
+    final background = selected ? AppColors.red : AppColors.white;
+
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18, color: foreground),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        side: BorderSide(color: selected ? AppColors.red : AppColors.tan1),
+      ),
+    );
   }
 }

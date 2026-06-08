@@ -5,7 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class MediaUploadService {
   static final ImagePicker _picker = ImagePicker();
 
-  static Future<String?> pickAndUploadImage({required String folder}) async {
+  static Future<String?> pickAndUploadImage({
+    required String folder,
+    String bucket = 'goodwill-media',
+    bool returnPublicUrl = true,
+  }) async {
     final image = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
@@ -26,7 +30,7 @@ class MediaUploadService {
 
     try {
       await Supabase.instance.client.storage
-          .from('goodwill-media')
+          .from(bucket)
           .uploadBinary(
             path,
             bytes,
@@ -39,12 +43,14 @@ class MediaUploadService {
       throw PhotoUploadException(_friendlyStorageMessage(e.message));
     } catch (_) {
       throw const PhotoUploadException(
-        'Could not upload the photo. Re-apply week7_schema.sql in Supabase and try again.',
+        'Could not upload the photo. Check the Supabase storage schema and try again.',
       );
     }
 
+    if (!returnPublicUrl) return path;
+
     return Supabase.instance.client.storage
-        .from('goodwill-media')
+        .from(bucket)
         .getPublicUrl(path);
   }
 

@@ -10,6 +10,7 @@ import 'package:goodwill_circle/features/profile/widgets/badges_section.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:goodwill_circle/shared/widgets/stat_card.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
+import 'package:goodwill_circle/shared/services/media_upload_service.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
@@ -284,16 +285,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final organizationController = TextEditingController(
       text: profile.organizationName ?? '',
     );
-    final noteController = TextEditingController();
+    final linkedinController = TextEditingController();
+    final phoneController = TextEditingController(text: profile.phone ?? '');
+    final otpController = TextEditingController();
     var accountType = profile.accountType as String;
+    var sendingOtp = false;
+    var verifyingOtp = false;
+    var uploadingPhoto = false;
+    String? profilePhotoUrl;
+    var phoneOtpVerified =
+        Supabase.instance.client.auth.currentUser?.phoneConfirmedAt != null;
 
     final submitted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           final isNgo = accountType == 'ngo';
+          final hasPhoto = profilePhotoUrl?.isNotEmpty == true;
           return AlertDialog(
-            title: const Text('Request verification'),
+            title: const Text('Strong verification'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -326,13 +336,181 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   if (isNgo) const SizedBox(height: AppSpacing.md),
                   TextField(
-                    controller: noteController,
-                    maxLines: 4,
+                    controller: linkedinController,
                     decoration: const InputDecoration(
-                      labelText: 'Verification note',
-                      hintText:
-                          'Share website, registration, college, or local reference details.',
+                      labelText: 'LinkedIn profile URL',
+                      prefixIcon: Icon(Icons.link),
+                      hintText: 'https://www.linkedin.com/in/your-name',
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: uploadingPhoto
+                        ? null
+                        : () async {
+                            setDialogState(() => uploadingPhoto = true);
+                            try {
+                              final url =
+                                  await MediaUploadService.pickAndUploadImage(
+                                folder: 'profiles',
+                                bucket: 'goodwill-verification',
+                                returnPublicUrl: false,
+                              );
+                              if (url != null) {
+                                setDialogState(() => profilePhotoUrl = url);
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Could not upload photo: $e'),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              setDialogState(() => uploadingPhoto = false);
+                            }
+                          },
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(
+                      uploadingPhoto
+                          ? 'Uploading...'
+                          : hasPhoto
+                              ? 'Replace private verification photo'
+                              : 'Upload private verification photo',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone number for OTP',
+                      prefixIcon: Icon(Icons.phone_iphone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: sendingOtp
+                              ? null
+                              : () async {
+                                  final phone = phoneController.text.trim();
+                                  if (phone.isEmpty) return;
+                                  setDialogState(() => sendingOtp = true);
+                                  try {
+                                    await Supabase.instance.client.auth
+                                        .updateUser(
+                                      UserAttributes(phone: phone),
+                                    );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Phone OTP sent.'),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Could not send OTP: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    setDialogState(() => sendingOtp = false);
+                                  }
+                                },
+                          icon: const Icon(Icons.sms_outlined, size: 18),
+                          label: Text(sendingOtp ? 'Sending...' : 'Send OTP'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: otpController,
+                          decoration: const InputDecoration(
+                            labelText: 'OTP code',
+                            prefixIcon: Icon(Icons.password_outlined),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      ElevatedButton(
+                        onPressed: verifyingOtp
+                            ? null
+                            : () async {
+                                final phone = phoneController.text.trim();
+                                final token = otpController.text.trim();
+                                if (phone.isEmpty || token.isEmpty) return;
+                                setDialogState(() => verifyingOtp = true);
+                                try {
+                                  await Supabase.instance.client.auth.verifyOTP(
+                                    phone: phone,
+                                    token: token,
+                                    type: OtpType.phoneChange,
+                                  );
+                                  setDialogState(() => phoneOtpVerified = true);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'OTP verification failed: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  setDialogState(() => verifyingOtp = false);
+                                }
+                              },
+                        child: Text(verifyingOtp ? '...' : 'Verify'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _VerificationRequirementRow(
+                    icon: Icons.mark_email_read_outlined,
+                    label: Supabase.instance.client.auth.currentUser
+                                ?.emailConfirmedAt !=
+                            null
+                        ? 'Email confirmed'
+                        : 'Confirm your email before submitting',
+                    complete: Supabase.instance.client.auth.currentUser
+                            ?.emailConfirmedAt !=
+                        null,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _VerificationRequirementRow(
+                    icon: Icons.phone_android_outlined,
+                    label: phoneOtpVerified
+                        ? 'Phone OTP verified'
+                        : 'Phone OTP must be verified',
+                    complete: phoneOtpVerified,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _VerificationRequirementRow(
+                    icon: Icons.image_search_outlined,
+                    label: hasPhoto
+                        ? 'Private photo will be checked by Reality Defender'
+                        : 'Upload a private verification photo',
+                    complete: hasPhoto,
                   ),
                 ],
               ),
@@ -354,19 +532,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (submitted != true) {
       organizationController.dispose();
-      noteController.dispose();
+      linkedinController.dispose();
+      phoneController.dispose();
+      otpController.dispose();
       return;
     }
 
-    final note = noteController.text.trim();
     final organization = organizationController.text.trim();
+    final linkedin = linkedinController.text.trim();
+    final phone = phoneController.text.trim();
+    final photoUrl = profilePhotoUrl?.trim();
+    final user = Supabase.instance.client.auth.currentUser;
     organizationController.dispose();
-    noteController.dispose();
+    linkedinController.dispose();
+    phoneController.dispose();
+    otpController.dispose();
 
-    if (note.length < 12) {
+    if (user?.emailConfirmedAt == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a little more verification detail.')),
+        const SnackBar(content: Text('Confirm your email before verification.')),
+      );
+      return;
+    }
+    if (user?.phoneConfirmedAt == null && !phoneOtpVerified) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verify your phone with OTP first.')),
+      );
+      return;
+    }
+    if (!_isLinkedInUrl(linkedin)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid LinkedIn profile URL.')),
+      );
+      return;
+    }
+    if (photoUrl == null || photoUrl.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Upload a private verification photo first.'),
+        ),
       );
       return;
     }
@@ -374,7 +582,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     await ref.read(profileControllerProvider.notifier).requestVerification(
           accountType: accountType,
           organizationName: accountType == 'ngo' ? organization : null,
-          note: note,
+          linkedinUrl: linkedin,
+          phoneNumber: phone,
+          profilePhotoUrl: photoUrl,
         );
 
     if (!mounted) return;
@@ -414,6 +624,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       default:
         return 'Verified profiles help volunteers, NGOs, and donors decide who to trust.';
     }
+  }
+
+  bool _isLinkedInUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return false;
+    final host = uri.host.toLowerCase();
+    return (host == 'linkedin.com' || host.endsWith('.linkedin.com')) &&
+        uri.pathSegments.isNotEmpty;
+  }
+}
+
+class _VerificationRequirementRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool complete;
+
+  const _VerificationRequirementRow({
+    required this.icon,
+    required this.label,
+    required this.complete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          complete ? Icons.check_circle : icon,
+          color: complete ? Colors.green : AppColors.textLight,
+          size: 18,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.textTheme.bodySmall?.copyWith(
+              color: complete ? AppColors.textDark : AppColors.textMid,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

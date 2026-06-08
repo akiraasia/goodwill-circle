@@ -47,14 +47,18 @@ class ProfileRepository {
   Future<void> requestVerification({
     required String accountType,
     required String? organizationName,
-    required String note,
+    required String linkedinUrl,
+    required String phoneNumber,
+    required String? profilePhotoUrl,
   }) async {
     await _client.rpc(
-      'request_profile_verification',
+      'request_profile_strong_verification',
       params: {
         'p_account_type': accountType,
         'p_organization_name': organizationName,
-        'p_note': note,
+        'p_linkedin_url': linkedinUrl,
+        'p_phone_number': phoneNumber,
+        'p_profile_photo_url': profilePhotoUrl,
       },
     );
   }

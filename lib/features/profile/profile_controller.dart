@@ -57,6 +57,7 @@ class ProfileController extends Notifier<ProfileState> {
 
   Future<void> updateProfile({
     String? name,
+    String? photoUrl,
     String? bio,
     String? phone,
     String? accountType,
@@ -69,6 +70,7 @@ class ProfileController extends Notifier<ProfileState> {
     try {
       final updatedProfile = state.profile!.copyWith(
         name: name,
+        photoUrl: photoUrl,
         bio: bio,
         phone: phone,
         accountType: accountType,
@@ -86,7 +88,9 @@ class ProfileController extends Notifier<ProfileState> {
   Future<void> requestVerification({
     required String accountType,
     required String? organizationName,
-    required String note,
+    required String linkedinUrl,
+    required String phoneNumber,
+    required String? profilePhotoUrl,
   }) async {
     if (state.profile == null) return;
 
@@ -96,7 +100,9 @@ class ProfileController extends Notifier<ProfileState> {
       await _repository.requestVerification(
         accountType: accountType,
         organizationName: organizationName,
-        note: note,
+        linkedinUrl: linkedinUrl,
+        phoneNumber: phoneNumber,
+        profilePhotoUrl: profilePhotoUrl,
       );
       await loadProfile();
     } catch (e) {
