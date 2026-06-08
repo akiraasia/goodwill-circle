@@ -18,8 +18,10 @@ class ProfileRepository {
         .from('profiles')
         .select()
         .eq('id', userId)
-        .single();
-    return Profile.fromJson(data);
+        .maybeSingle();
+    if (data != null) return Profile.fromJson(data);
+
+    return _fallbackProfile(userId);
   }
 
   Future<void> repairCurrentUserProfile() async {
@@ -35,8 +37,44 @@ class ProfileRepository {
         .from('user_stats')
         .select()
         .eq('user_id', userId)
-        .single();
-    return UserStats.fromJson(data);
+        .maybeSingle();
+    if (data != null) return UserStats.fromJson(data);
+
+    return UserStats(
+      userId: userId,
+      credits: 50,
+      trustScore: 0,
+      impactScore: 0,
+      helpCount: 0,
+      campaignCount: 0,
+      freeRequests: 1,
+      creditsEarned: 0,
+      creditsDonated: 0,
+      campaignsSupported: 0,
+      reputationScore: 0,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  Profile _fallbackProfile(String userId) {
+    final user = _client.auth.currentUser;
+    final metadataName =
+        (user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'])
+            ?.toString()
+            .trim();
+    final email = user?.email?.trim();
+    final name = metadataName != null && metadataName.isNotEmpty
+        ? metadataName
+        : email != null && email.isNotEmpty
+        ? email.split('@').first
+        : 'Goodwill member';
+
+    return Profile(
+      id: userId,
+      name: name,
+      phone: user?.phone,
+      createdAt: DateTime.now(),
+    );
   }
 
   Future<void> updateProfile(Profile profile) async {

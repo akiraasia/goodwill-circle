@@ -297,19 +297,48 @@ BEGIN
   )
   RETURNING id INTO v_media_check_id;
 
-  UPDATE public.profiles
-  SET account_type = p_account_type,
-      organization_name = NULLIF(trim(COALESCE(p_organization_name, '')), ''),
-      linkedin_url = v_linkedin_url,
-      phone = v_phone_number,
-      email_otp_verified_at = v_user.email_confirmed_at,
-      phone_otp_verified_at = v_user.phone_confirmed_at,
-      verification_status = 'pending',
-      verification_note = 'Strong verification submitted: LinkedIn, email OTP, phone OTP, and Reality Defender profile photo queue.',
-      verification_requested_at = now(),
-      profile_photo_check_status = 'queued',
-      profile_photo_check_id = v_media_check_id
-  WHERE id = auth.uid();
+  INSERT INTO public.profiles (
+    id,
+    name,
+    phone,
+    account_type,
+    organization_name,
+    linkedin_url,
+    email_otp_verified_at,
+    phone_otp_verified_at,
+    verification_status,
+    verification_note,
+    verification_requested_at,
+    profile_photo_check_status,
+    profile_photo_check_id
+  )
+  VALUES (
+    auth.uid(),
+    split_part(COALESCE((SELECT email FROM auth.users WHERE id = auth.uid()), 'Goodwill member'), '@', 1),
+    v_phone_number,
+    p_account_type,
+    NULLIF(trim(COALESCE(p_organization_name, '')), ''),
+    v_linkedin_url,
+    v_user.email_confirmed_at,
+    v_user.phone_confirmed_at,
+    'pending',
+    'Strong verification submitted: LinkedIn, email OTP, phone OTP, and Reality Defender profile photo queue.',
+    now(),
+    'queued',
+    v_media_check_id
+  )
+  ON CONFLICT (id) DO UPDATE
+    SET account_type = EXCLUDED.account_type,
+        organization_name = EXCLUDED.organization_name,
+        linkedin_url = EXCLUDED.linkedin_url,
+        phone = EXCLUDED.phone,
+        email_otp_verified_at = EXCLUDED.email_otp_verified_at,
+        phone_otp_verified_at = EXCLUDED.phone_otp_verified_at,
+        verification_status = EXCLUDED.verification_status,
+        verification_note = EXCLUDED.verification_note,
+        verification_requested_at = EXCLUDED.verification_requested_at,
+        profile_photo_check_status = EXCLUDED.profile_photo_check_status,
+        profile_photo_check_id = EXCLUDED.profile_photo_check_id;
 
   INSERT INTO public.profile_verification_requests (
     user_id,
