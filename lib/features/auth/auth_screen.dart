@@ -102,9 +102,8 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Account created, but Supabase still requires email confirmation before sign in. Disable Confirm email in Supabase Auth to make signup optional.',
+                'Phase 0 registration saved. Supabase still requires email confirmation before app sign in.',
               ),
-              backgroundColor: AppColors.red,
             ),
           );
           setState(() => _mode = _AuthMode.signIn);
@@ -266,8 +265,14 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String _authErrorMessage(String message) {
     final normalized = message.toLowerCase();
-    if (normalized.contains('anonymous') || normalized.contains('disabled')) {
-      return 'Guest login is not enabled yet. Please sign up or sign in.';
+    if (normalized.contains('anonymous')) {
+      return 'Guest login is not enabled in Supabase. Use Phase 0 registration, or enable anonymous sign-ins in Supabase Auth.';
+    }
+    if (normalized.contains('signup') && normalized.contains('disabled')) {
+      return 'Email signup is disabled in Supabase Auth. Enable email signups to create accounts.';
+    }
+    if (normalized.contains('disabled')) {
+      return 'This Supabase Auth provider is disabled. Check the Auth provider settings.';
     }
     if (normalized.contains('rate') && normalized.contains('email')) {
       return 'Supabase has temporarily limited confirmation emails for this project. Please wait a few minutes, or sign in if your account is already confirmed.';
@@ -502,12 +507,14 @@ class _AuthScreenState extends State<AuthScreen> {
                     label: const Text('Sign in without verification'),
                   ),
                 ],
-                const SizedBox(height: AppSpacing.md),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _continueAsGuest,
-                  icon: const Icon(Icons.explore_outlined),
-                  label: const Text('Continue as guest'),
-                ),
+                if (!_isSignUp) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _continueAsGuest,
+                    icon: const Icon(Icons.explore_outlined),
+                    label: const Text('Continue as guest'),
+                  ),
+                ],
               ],
             ),
           ),

@@ -16,6 +16,7 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  bool _isReservingSpot = false;
 
   @override
   void dispose() {
@@ -24,18 +25,55 @@ class _LandingScreenState extends State<LandingScreen> {
     super.dispose();
   }
 
-  void _reserveSpot() {
-    final uri = Uri(
-      path: '/auth',
-      queryParameters: {
-        'mode': 'signup',
-        if (_nameController.text.trim().isNotEmpty)
-          'name': _nameController.text.trim(),
-        if (_emailController.text.trim().isNotEmpty)
-          'email': _emailController.text.trim(),
-      },
-    );
-    context.go(uri.toString());
+  Future<void> _reserveSpot() async {
+    final email = _emailController.text.trim();
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid email to reserve a spot.')),
+      );
+      return;
+    }
+
+    setState(() => _isReservingSpot = true);
+    try {
+      await Supabase.instance.client.rpc(
+        'register_phase_zero_registration',
+        params: {
+          'p_name': _nameController.text.trim(),
+          'p_email': email,
+          'p_phone': '',
+          'p_signup_source': 'phase_zero_landing',
+        },
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You are on the Phase 0 list.')),
+      );
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_databaseErrorMessage(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isReservingSpot = false);
+    }
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
+  String _databaseErrorMessage(String message) {
+    final normalized = message.toLowerCase();
+    if (normalized.contains('register_phase_zero_registration') ||
+        normalized.contains('function') ||
+        normalized.contains('schema cache')) {
+      return 'Apply week12_schema.sql in Supabase first, then Phase 0 reservations can be saved.';
+    }
+    return message;
   }
 
   @override
@@ -87,6 +125,7 @@ class _LandingScreenState extends State<LandingScreen> {
                       nameController: _nameController,
                       emailController: _emailController,
                       onReserveSpot: _reserveSpot,
+                      isReservingSpot: _isReservingSpot,
                     );
                     final image = const _HeroImage();
 
@@ -138,12 +177,14 @@ class _HeroCopy extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController emailController;
   final VoidCallback onReserveSpot;
+  final bool isReservingSpot;
 
   const _HeroCopy({
     required this.wide,
     required this.nameController,
     required this.emailController,
     required this.onReserveSpot,
+    required this.isReservingSpot,
   });
 
   @override
@@ -258,8 +299,8 @@ class _HeroCopy extends StatelessWidget {
               ],
               const SizedBox(height: AppSpacing.sm),
               ElevatedButton(
-                onPressed: onReserveSpot,
-                child: const Text('Reserve my spot'),
+                onPressed: isReservingSpot ? null : onReserveSpot,
+                child: Text(isReservingSpot ? 'Saving...' : 'Reserve my spot'),
               ),
             ],
           ),
