@@ -106,7 +106,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Check your email to confirm your account, then sign in.',
+                'Supabase sent a confirmation email with your OTP code.',
               ),
             ),
           );
@@ -218,7 +218,9 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) return;
       setState(() => _pendingSignupEmail = email);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Confirmation email sent again.')),
+        const SnackBar(
+          content: Text('Supabase sent a fresh confirmation OTP email.'),
+        ),
       );
     } on AuthException catch (error) {
       if (!mounted) return;
@@ -470,6 +472,13 @@ class _AuthScreenState extends State<AuthScreen> {
                           style: AppTypography.textTheme.titleSmall,
                         ),
                         const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Enter the one-time code from the Supabase confirmation email.',
+                          style: AppTypography.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textMid,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
                         TextField(
                           controller: _emailOtpController,
                           decoration: const InputDecoration(
@@ -477,6 +486,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             prefixIcon: Icon(Icons.mark_email_read_outlined),
                           ),
                           keyboardType: TextInputType.number,
+                          maxLength: 6,
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Row(

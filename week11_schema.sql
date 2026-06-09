@@ -1,7 +1,9 @@
 -- Week 11 Production Auth Finalization: Real Supabase Email and OTP
 
 -- Real email confirmation and SMS OTP are delivered by Supabase Auth, not by
--- public schema. Before production, configure these in Supabase Dashboard:
+-- public schema or client-generated random numbers. Supabase Auth generates,
+-- stores, expires, rate-limits, emails, and verifies the one-time tokens.
+-- Before production, configure these in Supabase Dashboard:
 -- Authentication > Email: enable Confirm email, set Site URL/Redirect URLs,
 -- and configure a production SMTP provider.
 -- Authentication > Providers > Phone: enable Phone provider and configure
@@ -75,6 +77,101 @@ DROP TRIGGER IF EXISTS on_auth_user_phase_zero_signup_backup ON auth.users;
 CREATE TRIGGER on_auth_user_phase_zero_signup_backup
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.capture_phase_zero_signup_backup();
+
+-- Keep the signup/profile repair path in Week 11 too, so applying the final
+-- auth migration cannot regress new accounts to empty or "New User" profiles.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+DECLARE
+  v_name TEXT;
+BEGIN
+  v_name := NULLIF(trim(COALESCE(
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    ''
+  )), '');
+
+  IF v_name IS NULL AND NULLIF(trim(COALESCE(NEW.email, '')), '') IS NOT NULL THEN
+    v_name := split_part(NEW.email, '@', 1);
+  END IF;
+  IF v_name IS NULL THEN
+    v_name := 'Guest helper';
+  END IF;
+
+  INSERT INTO public.profiles (id, name, photo_url, phone)
+  VALUES (
+    NEW.id,
+    v_name,
+    NULLIF(NEW.raw_user_meta_data->>'avatar_url', ''),
+    NULLIF(NEW.raw_user_meta_data->>'phone', '')
+  )
+  ON CONFLICT (id) DO UPDATE
+    SET name = COALESCE(NULLIF(public.profiles.name, ''), EXCLUDED.name),
+        photo_url = COALESCE(NULLIF(public.profiles.photo_url, ''), EXCLUDED.photo_url),
+        phone = COALESCE(NULLIF(public.profiles.phone, ''), EXCLUDED.phone);
+
+  INSERT INTO public.user_stats (user_id, credits, free_requests)
+  VALUES (NEW.id, 50, 1)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+CREATE OR REPLACE FUNCTION public.repair_current_user_profile()
+RETURNS void AS $$
+DECLARE
+  v_user RECORD;
+  v_name TEXT;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+
+  SELECT
+    id,
+    email,
+    raw_user_meta_data
+  INTO v_user
+  FROM auth.users
+  WHERE id = auth.uid();
+
+  v_name := NULLIF(trim(COALESCE(
+    v_user.raw_user_meta_data->>'full_name',
+    v_user.raw_user_meta_data->>'name',
+    ''
+  )), '');
+
+  IF v_name IS NULL AND NULLIF(trim(COALESCE(v_user.email, '')), '') IS NOT NULL THEN
+    v_name := split_part(v_user.email, '@', 1);
+  END IF;
+  IF v_name IS NULL THEN
+    v_name := 'Guest helper';
+  END IF;
+
+  INSERT INTO public.profiles (id, name, photo_url, phone)
+  VALUES (
+    auth.uid(),
+    v_name,
+    NULLIF(v_user.raw_user_meta_data->>'avatar_url', ''),
+    NULLIF(v_user.raw_user_meta_data->>'phone', '')
+  )
+  ON CONFLICT (id) DO UPDATE
+    SET name = COALESCE(NULLIF(public.profiles.name, ''), EXCLUDED.name),
+        photo_url = COALESCE(NULLIF(public.profiles.photo_url, ''), EXCLUDED.photo_url),
+        phone = COALESCE(NULLIF(public.profiles.phone, ''), EXCLUDED.phone);
+
+  INSERT INTO public.user_stats (user_id, credits, free_requests)
+  VALUES (auth.uid(), 50, 1)
+  ON CONFLICT (user_id) DO NOTHING;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.repair_current_user_profile() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.repair_current_user_profile() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.export_phase_zero_signup_backup_csv()
 RETURNS TEXT AS $$

@@ -23,7 +23,7 @@ final shellNavigatorKey = GlobalKey<NavigatorState>();
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/auth',
+    initialLocation: '/',
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isProtectedRoute =
