@@ -25,8 +25,11 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final _emailOtpController = TextEditingController();
   bool _verificationPromptShown = false;
   bool _isUploadingPublicPhoto = false;
+  bool _isSendingEmailVerification = false;
+  bool _isVerifyingEmailOtp = false;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +63,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final currentLevel = CharacterSystem.getLevelForScore(stats.impactScore);
     final progress = currentLevel.getProgress(stats.impactScore);
     final displayName = _displayName(profile);
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final emailConfirmed = currentUser?.emailConfirmedAt != null;
 
     if (widget.promptVerification &&
         !_verificationPromptShown &&
@@ -222,6 +227,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: AppColors.textMid,
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.md),
+                    _EmailVerificationPanel(
+                      email: currentUser?.email,
+                      confirmed: emailConfirmed,
+                      otpController: _emailOtpController,
+                      sending: _isSendingEmailVerification,
+                      verifying: _isVerifyingEmailOtp,
+                      onSend: _sendEmailVerification,
+                      onVerify: _verifyEmailOtp,
+                    ),
                     if (!profile.isVerified &&
                         !profile.isVerificationPending) ...[
                       const SizedBox(height: AppSpacing.md),
@@ -352,6 +367,76 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _sendEmailVerification() async {
+    final email = Supabase.instance.client.auth.currentUser?.email?.trim();
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No email is attached to this account.')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingEmailVerification = true);
+    try {
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+        emailRedirectTo: _authRedirectUrl('/profile'),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Verification email sent.')));
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_friendlyEmailOtpError(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSendingEmailVerification = false);
+    }
+  }
+
+  Future<void> _verifyEmailOtp() async {
+    final email = Supabase.instance.client.auth.currentUser?.email?.trim();
+    final token = _emailOtpController.text.trim();
+    if (email == null || email.isEmpty || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the email OTP code.')),
+      );
+      return;
+    }
+
+    setState(() => _isVerifyingEmailOtp = true);
+    try {
+      await Supabase.instance.client.auth.verifyOTP(
+        type: OtpType.signup,
+        email: email,
+        token: token,
+        redirectTo: _authRedirectUrl('/profile'),
+      );
+      _emailOtpController.clear();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Email verified.')));
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_friendlyEmailOtpError(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isVerifyingEmailOtp = false);
+    }
   }
 
   Future<void> _showVerificationDialog(dynamic profile) async {
@@ -797,6 +882,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         : 'Could not send OTP: $message';
   }
 
+  String _friendlyEmailOtpError(Object error) {
+    final message = error.toString();
+    final normalized = message.toLowerCase();
+    if (normalized.contains('rate') ||
+        normalized.contains('429') ||
+        normalized.contains('security purposes')) {
+      return 'Supabase is rate-limiting verification emails right now. Try again later.';
+    }
+    if (normalized.contains('expired')) {
+      return 'That email OTP has expired. Request a new code.';
+    }
+    if (normalized.contains('invalid') || normalized.contains('token')) {
+      return 'That email OTP is invalid. Check the code or request a new one.';
+    }
+    return 'Email verification failed: $message';
+  }
+
+  String _authRedirectUrl(String path) {
+    final base = Uri.base;
+    return base.replace(path: path, query: '', fragment: '').toString();
+  }
+
   String? _phoneValidationError(String phone) {
     if (phone.isEmpty) return 'Enter your phone number.';
     if (!RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(phone)) {
@@ -820,6 +927,105 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (email != null && email.isNotEmpty) return email.split('@').first;
 
     return 'Goodwill member';
+  }
+
+  @override
+  void dispose() {
+    _emailOtpController.dispose();
+    super.dispose();
+  }
+}
+
+class _EmailVerificationPanel extends StatelessWidget {
+  final String? email;
+  final bool confirmed;
+  final TextEditingController otpController;
+  final bool sending;
+  final bool verifying;
+  final VoidCallback onSend;
+  final VoidCallback onVerify;
+
+  const _EmailVerificationPanel({
+    required this.email,
+    required this.confirmed,
+    required this.otpController,
+    required this.sending,
+    required this.verifying,
+    required this.onSend,
+    required this.onVerify,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (confirmed) {
+      return _VerificationRequirementRow(
+        icon: Icons.mark_email_read_outlined,
+        label: 'Email verified',
+        complete: true,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        border: Border.all(color: AppColors.tan1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.mark_email_unread_outlined, size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  email == null ? 'Email not verified' : 'Verify $email',
+                  style: AppTypography.textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'You can keep using the app now and verify your email later.',
+            style: AppTypography.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMid,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: otpController,
+            decoration: const InputDecoration(
+              labelText: 'Email OTP code',
+              prefixIcon: Icon(Icons.password_outlined),
+            ),
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: sending ? null : onSend,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: Text(sending ? 'Sending...' : 'Send code'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: verifying ? null : onVerify,
+                  icon: const Icon(Icons.verified_outlined, size: 18),
+                  label: Text(verifying ? 'Checking...' : 'Verify'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

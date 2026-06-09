@@ -29,12 +29,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _emailOtpController = TextEditingController();
   bool _isLoading = false;
-  bool _isResendingEmail = false;
-  bool _isVerifyingEmailOtp = false;
   bool _isSendingPasswordReset = false;
-  String? _pendingSignupEmail;
   _AuthMode _mode = _AuthMode.signIn;
 
   bool get _isSignUp => _mode == _AuthMode.signUp;
@@ -99,21 +95,19 @@ class _AuthScreenState extends State<AuthScreen> {
             }
             await _repairCurrentProfile();
             if (!mounted) return;
-            context.go('/profile?verify=1');
+            context.go('/app');
             return;
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Supabase sent a confirmation email with your OTP code.',
+                'Account created, but Supabase still requires email confirmation before sign in. Disable Confirm email in Supabase Auth to make signup optional.',
               ),
+              backgroundColor: AppColors.red,
             ),
           );
-          setState(() {
-            _pendingSignupEmail = email;
-            _mode = _AuthMode.signIn;
-          });
+          setState(() => _mode = _AuthMode.signIn);
         }
       } else {
         await Supabase.instance.client.auth.signInWithPassword(
@@ -122,7 +116,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         await _repairCurrentProfile();
         if (mounted) {
-          context.go('/profile?verify=1');
+          context.go('/app');
         }
       }
     } on AuthException catch (error) {
@@ -187,6 +181,45 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _signInWithoutVerification() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.')),
+      );
+      return;
+    }
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your password first.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      await _repairCurrentProfile();
+      if (!mounted) return;
+      context.go('/app');
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_authErrorMessage(error.message)),
+          backgroundColor: AppColors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   bool _isValidEmail(String email) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
@@ -196,76 +229,6 @@ class _AuthScreenState extends State<AuthScreen> {
       await Supabase.instance.client.rpc('repair_current_user_profile');
     } on PostgrestException {
       // Week 10 schema may not be applied yet; auth should still continue.
-    }
-  }
-
-  Future<void> _resendSignupConfirmation() async {
-    final email = (_pendingSignupEmail ?? _emailController.text).trim();
-    if (!_isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the signup email first.')),
-      );
-      return;
-    }
-
-    setState(() => _isResendingEmail = true);
-    try {
-      await Supabase.instance.client.auth.resend(
-        type: OtpType.signup,
-        email: email,
-        emailRedirectTo: _authRedirectUrl('/auth'),
-      );
-      if (!mounted) return;
-      setState(() => _pendingSignupEmail = email);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Supabase sent a fresh confirmation OTP email.'),
-        ),
-      );
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_authErrorMessage(error.message)),
-          backgroundColor: AppColors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isResendingEmail = false);
-    }
-  }
-
-  Future<void> _verifySignupEmailOtp() async {
-    final email = (_pendingSignupEmail ?? _emailController.text).trim();
-    final token = _emailOtpController.text.trim();
-    if (!_isValidEmail(email) || token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter email and OTP code.')),
-      );
-      return;
-    }
-
-    setState(() => _isVerifyingEmailOtp = true);
-    try {
-      await Supabase.instance.client.auth.verifyOTP(
-        type: OtpType.signup,
-        email: email,
-        token: token,
-        redirectTo: _authRedirectUrl('/auth'),
-      );
-      await _repairCurrentProfile();
-      if (!mounted) return;
-      context.go('/profile?verify=1');
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_authErrorMessage(error.message)),
-          backgroundColor: AppColors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isVerifyingEmailOtp = false);
     }
   }
 
@@ -309,8 +272,16 @@ class _AuthScreenState extends State<AuthScreen> {
     if (normalized.contains('rate') && normalized.contains('email')) {
       return 'Supabase has temporarily limited confirmation emails for this project. Please wait a few minutes, or sign in if your account is already confirmed.';
     }
+    if (normalized.contains('429') ||
+        normalized.contains('over email send rate limit') ||
+        normalized.contains('security purposes')) {
+      return 'Supabase is rate-limiting confirmation emails for this project. Wait a few minutes, or configure production SMTP in Supabase Auth.';
+    }
+    if (normalized.contains('email_address_invalid')) {
+      return 'Supabase rejected that email address. Use a real inbox address.';
+    }
     if (normalized.contains('email not confirmed')) {
-      return 'Please confirm your email before signing in.';
+      return 'Supabase is still requiring email confirmation. Disable Confirm email in Supabase Auth to allow sign in without verification.';
     }
     if (normalized.contains('expired') ||
         normalized.contains('otp expired') ||
@@ -456,73 +427,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                if (_pendingSignupEmail != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      border: Border.all(color: AppColors.tan1),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Confirm ${_pendingSignupEmail!}',
-                          style: AppTypography.textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Enter the one-time code from the Supabase confirmation email.',
-                          style: AppTypography.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMid,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        TextField(
-                          controller: _emailOtpController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email OTP code',
-                            prefixIcon: Icon(Icons.mark_email_read_outlined),
-                          ),
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _isResendingEmail
-                                    ? null
-                                    : _resendSignupConfirmation,
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: Text(
-                                  _isResendingEmail ? 'Sending...' : 'Resend',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _isVerifyingEmailOtp
-                                    ? null
-                                    : _verifySignupEmailOtp,
-                                icon: const Icon(Icons.verified, size: 18),
-                                label: Text(
-                                  _isVerifyingEmailOtp
-                                      ? 'Checking...'
-                                      : 'Verify',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
                 if (_isSignUp) ...[
                   TextFormField(
                     controller: _nameController,
@@ -590,6 +494,14 @@ class _AuthScreenState extends State<AuthScreen> {
                         )
                       : Text(_isSignUp ? 'Create account' : 'Sign in'),
                 ),
+                if (_isSignUp) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _signInWithoutVerification,
+                    icon: const Icon(Icons.no_accounts_outlined),
+                    label: const Text('Sign in without verification'),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(
                   onPressed: _isLoading ? null : _continueAsGuest,
@@ -610,7 +522,6 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _emailOtpController.dispose();
     super.dispose();
   }
 }
