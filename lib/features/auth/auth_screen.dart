@@ -109,7 +109,11 @@ class _AuthScreenState extends State<AuthScreen> {
           setState(() => _mode = _AuthMode.signIn);
         }
       } else {
-        await _signInWithPassword(email: email, password: password);
+        await _signInWithPassword(
+          email: email,
+          password: password,
+          createMissingAccount: true,
+        );
         await _repairCurrentProfile();
         if (mounted) {
           context.go('/app');
@@ -196,7 +200,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _signInWithPassword(email: email, password: password);
+      await _signInWithPassword(
+        email: email,
+        password: password,
+        createMissingAccount: true,
+      );
       await _repairCurrentProfile();
       if (!mounted) return;
       context.go('/app');
@@ -220,6 +228,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithPassword({
     required String email,
     required String password,
+    bool createMissingAccount = false,
   }) async {
     try {
       await Supabase.instance.client.auth.signInWithPassword(
@@ -240,6 +249,26 @@ class _AuthScreenState extends State<AuthScreen> {
           password: legacyPassword,
         );
         return;
+      }
+
+      if (isInvalidCredentials && createMissingAccount) {
+        final response = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: legacyPassword.isEmpty ? password : legacyPassword,
+          emailRedirectTo: _authRedirectUrl('/auth'),
+          data: {
+            'full_name': _nameController.text.trim().isEmpty
+                ? email.split('@').first
+                : _nameController.text.trim(),
+            'avatar_url': '',
+            'phone': _phoneController.text.trim(),
+            'signup_source': 'phase_zero_login_repair',
+          },
+        );
+
+        if (response.session != null) {
+          return;
+        }
       }
 
       rethrow;
