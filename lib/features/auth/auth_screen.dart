@@ -109,10 +109,7 @@ class _AuthScreenState extends State<AuthScreen> {
           setState(() => _mode = _AuthMode.signIn);
         }
       } else {
-        await Supabase.instance.client.auth.signInWithPassword(
-          email: email,
-          password: password,
-        );
+        await _signInWithPassword(email: email, password: password);
         await _repairCurrentProfile();
         if (mounted) {
           context.go('/app');
@@ -199,10 +196,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      await _signInWithPassword(email: email, password: password);
       await _repairCurrentProfile();
       if (!mounted) return;
       context.go('/app');
@@ -221,6 +215,35 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _isValidEmail(String email) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
+  Future<void> _signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+    } on AuthException catch (error) {
+      final legacyPassword = password.trim();
+      final isInvalidCredentials = error.message.toLowerCase().contains(
+        'invalid login credentials',
+      );
+
+      if (isInvalidCredentials &&
+          legacyPassword.isNotEmpty &&
+          legacyPassword != password) {
+        await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: legacyPassword,
+        );
+        return;
+      }
+
+      rethrow;
+    }
   }
 
   Future<void> _repairCurrentProfile() async {
