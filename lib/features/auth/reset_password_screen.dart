@@ -38,8 +38,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   Future<void> _updatePassword() async {
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
 
     if (!_hasRecoverySession) {
       _showError('Open the latest password reset link from your email.');

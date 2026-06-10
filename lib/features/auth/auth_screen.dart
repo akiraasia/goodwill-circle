@@ -44,8 +44,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _authenticate() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text;
 
     if (_isSignUp && _nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
@@ -181,8 +181,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _signInWithoutVerification() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text;
 
     if (!_isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
