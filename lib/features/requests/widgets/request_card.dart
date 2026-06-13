@@ -286,16 +286,28 @@ class _RequestVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (request.artAssetPath != null && request.artAssetPath!.isNotEmpty) {
-      return AspectRatio(
-        aspectRatio: 2.45,
-        child: Image.asset(request.artAssetPath!, fit: BoxFit.cover),
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(8),
+        ),
+        child: AspectRatio(
+          aspectRatio: 3.8,
+          child: Image.asset(request.artAssetPath!, fit: BoxFit.cover),
+        ),
       );
     }
 
     if (request.imageUrl != null && request.imageUrl!.isNotEmpty) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Image.network(request.imageUrl!, fit: BoxFit.cover),
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(8),
+        ),
+        child: AspectRatio(
+          aspectRatio: 2.5,
+          child: Image.network(request.imageUrl!, fit: BoxFit.cover),
+        ),
       );
     }
 
