@@ -312,7 +312,9 @@ class _RequestDetails extends StatelessWidget {
               _ImpactPill(
                 label: isUrgent && !isCommunityRequest
                     ? 'URGENT'
-                    : '+${request.goodwillReward}',
+                    : isCommunityRequest 
+                        ? '${request.volunteersCount} joined'
+                        : '+${request.goodwillReward}',
                 urgent: isUrgent && !isCommunityRequest,
               ),
             ],
