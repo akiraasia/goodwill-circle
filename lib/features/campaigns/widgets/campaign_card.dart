@@ -5,7 +5,7 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/core/theme/app_icons.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+
 
 class CampaignCard extends StatelessWidget {
   final Campaign campaign;
@@ -155,7 +155,7 @@ class CampaignCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.sm),
               ],
               Icon(
-                LucideIcons.users,
+                Icons.group,
                 size: 16,
                 color: AppColors.textLight,
               ),
@@ -197,7 +197,7 @@ class CampaignCard extends StatelessWidget {
                   height: 34,
                   child: ElevatedButton.icon(
                     onPressed: onViewContacts,
-                    icon: Icon(LucideIcons.users, size: 16),
+                    icon: const Icon(Icons.group, size: 16),
                     label: const Text('View Contacts'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,

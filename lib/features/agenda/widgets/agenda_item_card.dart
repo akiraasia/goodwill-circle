@@ -5,7 +5,7 @@ import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/features/agenda/models/nonprofit_agenda_item.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+
 
 class AgendaItemCard extends StatelessWidget {
   final NonprofitAgendaItem item;
@@ -166,7 +166,7 @@ class AgendaItemCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                LucideIcons.users,
+                Icons.group,
                 size: 16,
                 color: AppColors.textLight,
               ),
@@ -203,7 +203,7 @@ class AgendaItemCard extends StatelessWidget {
                   height: 34,
                   child: ElevatedButton.icon(
                     onPressed: onViewContacts,
-                    icon: Icon(LucideIcons.users, size: 16),
+                    icon: const Icon(Icons.group, size: 16),
                     label: const Text('View Contacts'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,

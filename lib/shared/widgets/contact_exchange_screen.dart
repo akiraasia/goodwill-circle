@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+
 
 import '../../features/requests/request_repository.dart';
 import '../../features/campaigns/campaign_repository.dart';
@@ -139,7 +139,7 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                             contentPadding: const EdgeInsets.all(16),
                             leading: CircleAvatar(
                               backgroundColor: Colors.blue.shade50,
-                              child: Icon(LucideIcons.user, color: Colors.blue),
+                              child: const Icon(Icons.person, color: Colors.blue),
                             ),
                             title: Text(
                               contact['name'] ?? 'Unknown',
@@ -151,7 +151,7 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Icon(LucideIcons.mail, size: 14, color: Colors.black54),
+                                    const Icon(Icons.mail, size: 14, color: Colors.black54),
                                     const SizedBox(width: 4),
                                     Text(contact['email'] ?? 'No email'),
                                   ],
