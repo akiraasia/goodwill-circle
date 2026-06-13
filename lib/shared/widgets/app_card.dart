@@ -33,17 +33,31 @@ class AppCard extends StatelessWidget {
           border: Border.all(color: AppColors.tan1, width: 1.5),
         ),
         clipBehavior: Clip.hardEdge,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (isUrgent) Container(width: 4, color: AppColors.red),
-              if (isFeatured) Container(width: 4, color: AppColors.yellow),
-              Expanded(
-                child: Padding(padding: padding, child: child),
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                left: (isUrgent ? 4.0 : 0.0) + (isFeatured ? 4.0 : 0.0),
               ),
-            ],
-          ),
+              child: Padding(padding: padding, child: child),
+            ),
+            if (isUrgent)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 4,
+                child: Container(color: AppColors.red),
+              ),
+            if (isFeatured)
+              Positioned(
+                left: isUrgent ? 4 : 0,
+                top: 0,
+                bottom: 0,
+                width: 4,
+                child: Container(color: AppColors.yellow),
+              ),
+          ],
         ),
       ),
     );
