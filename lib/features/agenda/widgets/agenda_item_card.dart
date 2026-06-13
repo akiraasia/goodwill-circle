@@ -106,6 +106,30 @@ class AgendaItemCard extends StatelessWidget {
                 icon: Icons.workspace_premium_outlined,
                 label: item.certificateTitle,
               ),
+              if (item.completedConnectionsCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.handshake, size: 14, color: Colors.green.shade700),
+                      const SizedBox(width: AppSpacing.xs),
+                      Flexible(
+                        child: Text(
+                          'Connected ${item.completedConnectionsCount} times',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.textTheme.labelSmall?.copyWith(color: Colors.green.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),

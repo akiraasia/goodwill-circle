@@ -5,6 +5,7 @@ import 'package:goodwill_circle/features/requests/widgets/request_card.dart';
 import 'package:goodwill_circle/features/trust/trust_repository.dart';
 import 'package:goodwill_circle/features/trust/widgets/platform_impact_overview.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
@@ -178,18 +179,38 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                       ),
                                     );
                                   },
-                                  onComplete: () async {
-                                    await controller.completeRequest(
+                                  onComplete: (message, sendEmail) async {
+                                    if (request.contactId == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Helper ID not found.')),
+                                      );
+                                      return;
+                                    }
+                                    final email = await controller.completeRequest(
                                       request.id,
+                                      request.contactId!,
+                                      message,
                                     );
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          'Request marked as complete!',
+                                          'Connection marked as complete!',
                                         ),
                                       ),
                                     );
+                                    
+                                    if (sendEmail && email != null && email.isNotEmpty) {
+                                      final uri = Uri.parse('mailto:$email?subject=Goodwill Circle: Connection Completed&body=${Uri.encodeComponent(message)}');
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri);
+                                      } else {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Could not open email app.')),
+                                        );
+                                      }
+                                    }
                                   },
                                   onRequestCompletion: (message) async {
                                     await controller.requestCompletionReview(

@@ -86,12 +86,18 @@ class RequestController extends Notifier<RequestState> {
     }
   }
 
-  Future<void> completeRequest(String requestId) async {
+  Future<String?> completeRequest(
+    String requestId,
+    String participantId,
+    String message,
+  ) async {
     try {
-      await _repository.completeRequest(requestId);
-      await loadRequests(); // It will disappear from 'open' requests
+      final email = await _repository.completeRequest(requestId, participantId, message);
+      await loadRequests();
+      return email;
     } catch (e) {
       state = state.copyWith(error: e.toString());
+      return null;
     }
   }
 

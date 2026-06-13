@@ -17,6 +17,7 @@ class NonprofitAgendaItem {
   final String status;
   final DateTime createdAt;
   final String? myParticipantStatus;
+  final int completedConnectionsCount;
 
   NonprofitAgendaItem({
     required this.id,
@@ -37,6 +38,7 @@ class NonprofitAgendaItem {
     required this.status,
     required this.createdAt,
     this.myParticipantStatus,
+    this.completedConnectionsCount = 0,
   });
 
   factory NonprofitAgendaItem.fromJson(Map<String, dynamic> json) {
@@ -65,12 +67,14 @@ class NonprofitAgendaItem {
           json['certificate_issuer'] as String? ?? 'Goodwill Circle NGO',
       status: json['status'] as String? ?? 'open',
       createdAt: DateTime.parse(json['created_at'] as String),
+      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
     );
   }
 
   NonprofitAgendaItem copyWith({
     String? ngoVerificationStatus,
     String? myParticipantStatus,
+    int? completedConnectionsCount,
   }) {
     return NonprofitAgendaItem(
       id: id,
@@ -92,6 +96,8 @@ class NonprofitAgendaItem {
       status: status,
       createdAt: createdAt,
       myParticipantStatus: myParticipantStatus ?? this.myParticipantStatus,
+      completedConnectionsCount:
+          completedConnectionsCount ?? this.completedConnectionsCount,
     );
   }
 }

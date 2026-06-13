@@ -20,6 +20,7 @@ class Campaign {
   final String? creatorName;
   final String? creatorPhoto;
   final String? creatorVerificationStatus;
+  final int completedConnectionsCount;
 
   Campaign({
     required this.id,
@@ -42,6 +43,7 @@ class Campaign {
     this.creatorName,
     this.creatorPhoto,
     this.creatorVerificationStatus,
+    this.completedConnectionsCount = 0,
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,7 @@ class Campaign {
       creatorVerificationStatus: json['profiles'] != null
           ? json['profiles']['verification_status'] as String?
           : null,
+      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
     );
   }
 
@@ -87,6 +90,7 @@ class Campaign {
     bool? isVerified,
     String? verificationStatus,
     String? creatorVerificationStatus,
+    int? completedConnectionsCount,
   }) {
     return Campaign(
       id: id,
@@ -110,6 +114,8 @@ class Campaign {
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
       creatorVerificationStatus:
           creatorVerificationStatus ?? this.creatorVerificationStatus,
+      completedConnectionsCount:
+          completedConnectionsCount ?? this.completedConnectionsCount,
     );
   }
 

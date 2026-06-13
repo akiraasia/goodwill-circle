@@ -15,7 +15,7 @@ class RequestCard extends StatelessWidget {
     RequestContactOption? contactOption,
   })
   onVolunteer;
-  final VoidCallback onComplete;
+  final Future<void> Function(String message, bool sendEmail) onComplete;
   final Future<void> Function(String? message) onRequestCompletion;
 
   const RequestCard({
@@ -72,7 +72,7 @@ class RequestCard extends StatelessWidget {
                       onVolunteer: () => _handleVolunteer(context),
                       onCommunityRoleSelected: (role) =>
                           _handleVolunteer(context, role),
-                      onComplete: onComplete,
+                      onComplete: () => _showConfirmCompletionDialog(context),
                       onShowCompletion: () => _showCompletionDialog(context),
                       launchContact: (action) => _launchContact(context, action),
                     ),
@@ -97,7 +97,7 @@ class RequestCard extends StatelessWidget {
                 onVolunteer: () => _handleVolunteer(context),
                 onCommunityRoleSelected: (role) =>
                     _handleVolunteer(context, role),
-                onComplete: onComplete,
+                onComplete: () => _showConfirmCompletionDialog(context),
                 onShowCompletion: () => _showCompletionDialog(context),
                 launchContact: (action) => _launchContact(context, action),
               ),
@@ -169,6 +169,60 @@ class RequestCard extends StatelessWidget {
     controller.dispose();
     if (message == null) return;
     await onRequestCompletion(message.isEmpty ? null : message);
+  }
+
+  Future<void> _showConfirmCompletionDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    bool sendEmail = false;
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Confirm Connection'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Message to helper',
+                  hintText: 'Thank them for their help!',
+                ),
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('Email this helper after completing', style: TextStyle(fontSize: 14)),
+                value: sendEmail,
+                onChanged: (val) {
+                  setState(() {
+                    sendEmail = val ?? false;
+                  });
+                },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, {
+                'message': controller.text.trim(),
+                'sendEmail': sendEmail,
+              }),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (result == null) return;
+    await onComplete(result['message'] as String, result['sendEmail'] as bool);
   }
 }
 
@@ -292,6 +346,23 @@ class _RequestDetails extends StatelessWidget {
                 Text(
                   '${request.volunteersCount} helping',
                   style: AppTypography.textTheme.labelSmall,
+                ),
+              ],
+              if (request.completedConnectionsCount > 0) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '🤝 Connected ${request.completedConnectionsCount} times',
+                    style: AppTypography.textTheme.labelSmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontSize: 10,
+                    ),
+                  ),
                 ),
               ],
               const Spacer(),

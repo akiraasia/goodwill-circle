@@ -1,183 +1,100 @@
--- week15_schema.sql
--- Synchronize old help postings to support multiple join roles and scale credits based on participants.
+-- week16_schema.sql
+-- 1. Add connection tracking columns to parent entities
+ALTER TABLE public.help_requests ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
+ALTER TABLE public.campaigns ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
+ALTER TABLE public.nonprofit_agenda_items ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
 
--- 1. Add join_role and contact_choice to request_volunteers
-ALTER TABLE public.request_volunteers
-  ADD COLUMN IF NOT EXISTS join_role TEXT NOT NULL DEFAULT 'helper',
-  ADD COLUMN IF NOT EXISTS contact_choice JSONB;
+-- 2. Add completion_message to join tables
+ALTER TABLE public.request_volunteers ADD COLUMN IF NOT EXISTS completion_message TEXT;
+ALTER TABLE public.campaign_members ADD COLUMN IF NOT EXISTS completion_message TEXT;
+ALTER TABLE public.agenda_participants ADD COLUMN IF NOT EXISTS completion_message TEXT;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'request_volunteers_role_check'
-  ) THEN
-    ALTER TABLE public.request_volunteers
-      ADD CONSTRAINT request_volunteers_role_check
-      CHECK (join_role IN ('helpee', 'helper'));
-  END IF;
-END;
-$$;
-
--- 2. Create RPC for joining regular help requests
-CREATE OR REPLACE FUNCTION public.join_help_request(
-  p_request_id UUID,
-  p_join_role TEXT DEFAULT 'helper',
-  p_contact_choice JSONB DEFAULT NULL
+-- 3. Create a comprehensive RPC for completing connections and retrieving emails
+CREATE OR REPLACE FUNCTION public.complete_connection(
+  p_entity_id UUID,
+  p_entity_type TEXT, -- 'request', 'campaign', 'agenda'
+  p_participant_id UUID,
+  p_completion_message TEXT
 )
-RETURNS void AS $$
+RETURNS TEXT AS $$
 DECLARE
-  v_inserted BOOLEAN;
-  v_role TEXT := COALESCE(NULLIF(p_join_role, ''), 'helper');
-  v_request RECORD;
+  v_creator_id UUID;
+  v_participant_email TEXT;
+  v_actual_reward INTEGER := 10; -- Base reward
+  v_title TEXT;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
+  -- 1. Verify entity ownership and get details
+  IF p_entity_type = 'request' THEN
+    SELECT creator_id, title, COALESCE(goodwill_reward, 10) INTO v_creator_id, v_title, v_actual_reward 
+    FROM public.help_requests WHERE id = p_entity_id;
+  ELSIF p_entity_type = 'campaign' THEN
+    SELECT organizer_id, title INTO v_creator_id, v_title 
+    FROM public.campaigns WHERE id = p_entity_id;
+  ELSIF p_entity_type = 'agenda' THEN
+    SELECT creator_id, title INTO v_creator_id, v_title 
+    FROM public.nonprofit_agenda_items WHERE id = p_entity_id;
+  ELSE
+    RAISE EXCEPTION 'Invalid entity type';
   END IF;
 
-  IF v_role NOT IN ('helpee', 'helper') THEN
-    RAISE EXCEPTION 'Invalid join role';
+  IF auth.uid() != v_creator_id THEN 
+    RAISE EXCEPTION 'Only the creator can complete a connection'; 
   END IF;
 
-  SELECT * INTO v_request FROM public.help_requests WHERE id = p_request_id AND status = 'open';
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Help request not found or not open';
-  END IF;
-
-  -- Insert or update volunteer/joiner
-  INSERT INTO public.request_volunteers (
-    request_id,
-    volunteer_id,
-    status,
-    join_role,
-    contact_choice
-  )
-  VALUES (p_request_id, auth.uid(), 'accepted', v_role, p_contact_choice)
-  ON CONFLICT (request_id, volunteer_id) DO UPDATE SET
-    join_role = EXCLUDED.join_role,
-    contact_choice = EXCLUDED.contact_choice
-  WHERE public.request_volunteers.join_role = EXCLUDED.join_role
-    AND public.request_volunteers.contact_choice IS DISTINCT FROM EXCLUDED.contact_choice
-  RETURNING (xmax = 0) INTO v_inserted;
-
-  IF COALESCE(v_inserted, false) THEN
-    -- Update counts on the request
-    -- Using DO block or direct update to ensure column existence if needed.
-    UPDATE public.help_requests
-    SET join_count = join_count + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
-        helper_count = helper_count + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
-        volunteers_count = volunteers_count + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
-        goodwill_impact_score = LEAST(100, goodwill_impact_score + 1)
-    WHERE id = p_request_id;
-  END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
-
-REVOKE ALL ON FUNCTION public.join_help_request(UUID, TEXT, JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.join_help_request(UUID, TEXT, JSONB) TO authenticated;
-
--- 3. Update mark_request_completed to handle scaled rewards and creator bonuses
-CREATE OR REPLACE FUNCTION public.mark_request_completed(p_request_id UUID)
-RETURNS void AS $$
-DECLARE
-  v_request RECORD;
-  v_volunteer RECORD;
-  v_helper_rank INTEGER := 0;
-  v_actual_reward INTEGER;
-  v_creator_bonus INTEGER := 0;
-  v_total_helpers INTEGER := 0;
-BEGIN
-  SELECT * INTO v_request FROM public.help_requests WHERE id = p_request_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Request not found'; END IF;
-  IF auth.uid() != v_request.creator_id THEN RAISE EXCEPTION 'Only the creator can complete this request'; END IF;
-  IF v_request.status = 'completed' THEN RAISE EXCEPTION 'Request already completed'; END IF;
-
-  UPDATE public.help_requests SET status = 'completed' WHERE id = p_request_id;
-
-  -- Calculate total helpers for bonus
-  SELECT count(*) INTO v_total_helpers FROM public.request_volunteers
-  WHERE request_id = p_request_id 
-    AND status IN ('accepted', 'completion_requested')
-    AND join_role = 'helper';
-
-  FOR v_volunteer IN
-    SELECT volunteer_id, id, created_at, join_role FROM public.request_volunteers
-    WHERE request_id = p_request_id
-      AND status IN ('accepted', 'completion_requested')
-    ORDER BY created_at ASC
-  LOOP
-    UPDATE public.request_volunteers SET status = 'completed' WHERE id = v_volunteer.id;
-
-    IF v_volunteer.join_role = 'helper' THEN
-      v_helper_rank := v_helper_rank + 1;
-      
-      -- "people joining an already existing help should give less credits to join"
-      -- Reward scales down by 20% for each subsequent joiner, down to a minimum of 5.
-      -- e.g. 1st=100%, 2nd=80%, 3rd=60%, etc.
-      v_actual_reward := GREATEST(5, v_request.goodwill_reward - ((v_helper_rank - 1) * (v_request.goodwill_reward / 5)));
-      
-      UPDATE public.user_stats
-      SET credits = credits + v_actual_reward,
-          credits_earned = COALESCE(credits_earned, 0) + v_actual_reward,
-          impact_score = impact_score + v_actual_reward,
-          help_count = help_count + 1,
-          reputation_score = COALESCE(reputation_score, 0) + 10
-      WHERE user_id = v_volunteer.volunteer_id;
-
-      INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reference_id)
-      VALUES (v_volunteer.volunteer_id, v_actual_reward, 'EARN', p_request_id);
-
-      INSERT INTO public.goodwill_chain_links (source_user_id, affected_user_id, source_type, reference_id, impact_value)
-      VALUES (v_volunteer.volunteer_id, v_request.creator_id, 'help', p_request_id, v_actual_reward);
-
-      INSERT INTO public.notifications (user_id, title, message)
-      VALUES (
-        v_volunteer.volunteer_id,
-        'Help Completed!',
-        'You earned ' || v_actual_reward || ' credits for helping with "' || v_request.title || '"'
-      );
-
-      PERFORM public.check_and_award_badges(v_volunteer.volunteer_id);
-    END IF;
-  END LOOP;
-
-  -- "if i finish a help with five people attached some more credits should go"
-  -- Reward the creator for successfully completing a request with multiple helpers
-  IF v_total_helpers > 0 THEN
-    -- Base bonus is 10 per helper
-    v_creator_bonus := v_total_helpers * 10;
+  -- 2. Mark participant as completed and increment connection count
+  IF p_entity_type = 'request' THEN
+    UPDATE public.request_volunteers 
+    SET status = 'completed', completion_message = p_completion_message 
+    WHERE request_id = p_entity_id AND volunteer_id = p_participant_id;
     
-    UPDATE public.user_stats
-    SET credits = credits + v_creator_bonus,
-        credits_earned = COALESCE(credits_earned, 0) + v_creator_bonus,
-        impact_score = impact_score + (v_creator_bonus / 2)
-    WHERE user_id = v_request.creator_id;
+    UPDATE public.help_requests SET completed_connections_count = completed_connections_count + 1 WHERE id = p_entity_id;
+  
+  ELSIF p_entity_type = 'campaign' THEN
+    UPDATE public.campaign_members 
+    SET status = 'completed', completion_message = p_completion_message 
+    WHERE campaign_id = p_entity_id AND user_id = p_participant_id;
     
-    INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reference_id)
-    VALUES (v_request.creator_id, v_creator_bonus, 'BONUS', p_request_id);
+    UPDATE public.campaigns SET completed_connections_count = completed_connections_count + 1 WHERE id = p_entity_id;
+    v_actual_reward := 15; -- Campaign completion reward
+
+  ELSIF p_entity_type = 'agenda' THEN
+    UPDATE public.agenda_participants 
+    SET status = 'completed', completion_message = p_completion_message 
+    WHERE agenda_id = p_entity_id AND user_id = p_participant_id;
     
-    INSERT INTO public.notifications (user_id, title, message)
-    VALUES (
-      v_request.creator_id,
-      'Collaboration Bonus!',
-      'You earned ' || v_creator_bonus || ' bonus credits for finishing a request with ' || v_total_helpers || ' helpers!'
-    );
+    UPDATE public.nonprofit_agenda_items SET completed_connections_count = completed_connections_count + 1 WHERE id = p_entity_id;
+    v_actual_reward := 20; -- Agenda completion reward
   END IF;
 
+  -- 3. Award credits to the participant
+  UPDATE public.user_stats
+  SET credits = credits + v_actual_reward,
+      credits_earned = COALESCE(credits_earned, 0) + v_actual_reward,
+      impact_score = impact_score + v_actual_reward,
+      help_count = help_count + 1,
+      reputation_score = COALESCE(reputation_score, 0) + 10
+  WHERE user_id = p_participant_id;
+
+  INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reference_id)
+  VALUES (p_participant_id, v_actual_reward, 'EARN', p_entity_id);
+
+  INSERT INTO public.goodwill_chain_links (source_user_id, affected_user_id, source_type, reference_id, impact_value)
+  VALUES (p_participant_id, v_creator_id, p_entity_type, p_entity_id, v_actual_reward);
+
+  -- 4. Send Notification
+  INSERT INTO public.notifications (user_id, title, message)
+  VALUES (
+    p_participant_id,
+    'Connection Completed: ' || v_title,
+    'You earned ' || v_actual_reward || ' credits. Message from creator: ' || COALESCE(p_completion_message, 'Thank you!')
+  );
+
+  -- 5. Award badges
+  PERFORM public.check_and_award_badges(p_participant_id);
+
+  -- 6. Retrieve and return the participant's email (Needs to join auth.users)
+  SELECT email INTO v_participant_email FROM auth.users WHERE id = p_participant_id;
+  
+  RETURN v_participant_email;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 4. Replace dummy emails in community requests with an instruction to use personal contact info.
-UPDATE community_starter_requests
-SET contact_options = (
-  SELECT jsonb_agg(
-    CASE 
-      WHEN (elem->>'value') LIKE '%@goodwillcircle.local' 
-        OR (elem->>'value') LIKE '%@gmail.com' 
-        OR (elem->>'value') LIKE 'mailto:%' THEN 
-        jsonb_set(elem, '{value}', '"Your registered email and phone number will be used to connect."')
-      ELSE elem
-    END
-  )
-  FROM jsonb_array_elements(contact_options) AS elem
-)
-WHERE community_request = true;

@@ -122,7 +122,6 @@ class CampaignCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${campaign.currentAmount} / ${campaign.goalAmount} credits',
@@ -130,6 +129,24 @@ class CampaignCard extends StatelessWidget {
                   color: AppColors.textDark,
                 ),
               ),
+              const Spacer(),
+              if (campaign.completedConnectionsCount > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '🤝 Connected ${campaign.completedConnectionsCount} times',
+                    style: AppTypography.textTheme.labelSmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
               Text(
                 '${campaign.supportersCount} Supporters',
                 style: AppTypography.textTheme.labelMedium?.copyWith(

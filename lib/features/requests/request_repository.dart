@@ -83,6 +83,7 @@ class RequestRepository {
         contactPhone: contactProfile?['phone'] as String?,
         myVolunteerStatus: myVolunteer?['status'] as String?,
         completionMessage: myVolunteer?['completion_message'] as String?,
+        contactId: myVolunteer?['volunteer_id'] as String?,
       );
     }).toList();
 
@@ -377,12 +378,21 @@ class RequestRepository {
     }
   }
 
-  Future<void> completeRequest(String requestId) async {
-    // Calls the secure RPC we defined in Week 3 schema
-    await _client.rpc(
-      'mark_request_completed',
-      params: {'p_request_id': requestId},
+  Future<String?> completeRequest(
+    String requestId,
+    String participantId,
+    String message,
+  ) async {
+    final result = await _client.rpc(
+      'complete_connection',
+      params: {
+        'p_entity_id': requestId,
+        'p_entity_type': 'request',
+        'p_participant_id': participantId,
+        'p_completion_message': message,
+      },
     );
+    return result as String?;
   }
 
   Future<void> requestCompletionReview({

@@ -21,6 +21,7 @@ class HelpRequest {
   final List<RequestContactOption> contactOptions;
   final RequestContactOption? joinedContactOption;
   final String? communityJoinRole;
+  final int completedConnectionsCount;
 
   // We might want to join the creator's name/photo
   final String? creatorName;
@@ -32,6 +33,7 @@ class HelpRequest {
   final String? contactPhone;
   final String? myVolunteerStatus;
   final String? completionMessage;
+  final String? contactId;
 
   HelpRequest({
     required this.id,
@@ -65,6 +67,8 @@ class HelpRequest {
     this.contactPhone,
     this.myVolunteerStatus,
     this.completionMessage,
+    this.completedConnectionsCount = 0,
+    this.contactId,
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) {
@@ -104,6 +108,7 @@ class HelpRequest {
       creatorVerificationStatus: json['profiles'] != null
           ? json['profiles']['verification_status'] as String?
           : null,
+      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
     );
   }
 
@@ -140,6 +145,7 @@ class HelpRequest {
       joinedContactOption: _singleContactOption(json['joined_contact_option']),
       communityJoinRole: json['community_join_role'] as String?,
       creatorName: 'Goodwill Circle',
+      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
     );
   }
 
@@ -155,6 +161,8 @@ class HelpRequest {
     String? completionMessage,
     RequestContactOption? joinedContactOption,
     String? communityJoinRole,
+    int? completedConnectionsCount,
+    String? contactId,
   }) {
     return HelpRequest(
       id: id,
@@ -189,6 +197,8 @@ class HelpRequest {
       contactPhone: contactPhone ?? this.contactPhone,
       myVolunteerStatus: myVolunteerStatus ?? this.myVolunteerStatus,
       completionMessage: completionMessage ?? this.completionMessage,
+      completedConnectionsCount: completedConnectionsCount ?? this.completedConnectionsCount,
+      contactId: contactId ?? this.contactId,
     );
   }
 
@@ -216,6 +226,7 @@ class HelpRequest {
       'contact_options': contactOptions.map((option) => option.toJson()).toList(),
       'joined_contact_option': joinedContactOption?.toJson(),
       'community_join_role': communityJoinRole,
+      'completed_connections_count': completedConnectionsCount,
     };
   }
 
