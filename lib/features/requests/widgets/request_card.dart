@@ -540,6 +540,14 @@ class _UnlockedContactSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+    final isPersonalConnect = option.value.contains('Your registered email and phone number') || 
+                              option.value.contains('@goodwillcircle.local') || 
+                              option.value.contains('@gmail.com');
+    final displayValue = isPersonalConnect 
+        ? 'We will use your account details to connect you:\nEmail: ${user?.email ?? 'Not provided'}\nPhone: ${user?.phone ?? 'Not provided'}'
+        : option.value;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -556,7 +564,7 @@ class _UnlockedContactSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(option.label, style: AppTypography.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.xs),
-            SelectableText(option.value, style: AppTypography.textTheme.bodyMedium),
+            SelectableText(displayValue, style: AppTypography.textTheme.bodyMedium),
             if (option.note != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -572,21 +580,23 @@ class _UnlockedContactSheet extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      await Clipboard.setData(ClipboardData(text: option.value));
+                      await Clipboard.setData(ClipboardData(text: displayValue));
                       if (context.mounted) Navigator.pop(context);
                     },
                     icon: const Icon(Icons.copy, size: 16),
                     label: const Text('Copy'),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openContactValue(context, option),
-                    icon: const Icon(Icons.open_in_new, size: 16),
-                    label: const Text('Open'),
+                if (!isPersonalConnect) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openContactValue(context, option),
+                      icon: const Icon(Icons.open_in_new, size: 16),
+                      label: const Text('Open'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],
