@@ -203,10 +203,10 @@ class AgendaItemCard extends StatelessWidget {
                   height: 34,
                   child: ElevatedButton.icon(
                     onPressed: onViewContacts,
-                    icon: const Icon(LucideIcons.users, size: 16),
+                    icon: Icon(LucideIcons.users, size: 16),
                     label: const Text('View Contacts'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.blue,
+                      backgroundColor: Colors.blue,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                     ),
                   ),

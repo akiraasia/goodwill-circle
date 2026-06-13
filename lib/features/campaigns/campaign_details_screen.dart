@@ -91,7 +91,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
     try {
       await ref
           .read(campaignRepositoryProvider)
-          .joinCampaign(widget.campaignId);
+          .joinCampaign(widget.campaignId, 'helper');
       ref.invalidate(campaignDetailsProvider(widget.campaignId));
       ref.read(campaignControllerProvider.notifier).loadCampaigns();
 

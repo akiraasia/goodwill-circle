@@ -8,7 +8,7 @@ import 'package:goodwill_circle/shared/services/external_contact_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../shared/widgets/contact_exchange_screen.dart';
+import 'package:goodwill_circle/shared/widgets/contact_exchange_screen.dart';
 
 class RequestCard extends StatelessWidget {
   final HelpRequest request;
@@ -650,10 +650,10 @@ class _ActionButton extends StatelessWidget {
         height: 34,
         child: ElevatedButton.icon(
           onPressed: onViewContacts,
-          icon: const Icon(LucideIcons.users, size: 16),
+          icon: Icon(LucideIcons.users, size: 16),
           label: const Text('View Contacts'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.blue,
+            backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(horizontal: 10),
           ),
         ),

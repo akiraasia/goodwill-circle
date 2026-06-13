@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../features/requests/request_repository.dart';
 import '../../features/campaigns/campaign_repository.dart';
 import '../../features/agenda/agenda_repository.dart';
 
-class ContactExchangeScreen extends StatefulWidget {
+class ContactExchangeScreen extends ConsumerStatefulWidget {
   final String entityId;
   final String entityType; // 'request', 'campaign', 'agenda'
   final String myRole; // 'helper' or 'helpee'
@@ -21,10 +21,10 @@ class ContactExchangeScreen extends StatefulWidget {
   });
 
   @override
-  State<ContactExchangeScreen> createState() => _ContactExchangeScreenState();
+  ConsumerState<ContactExchangeScreen> createState() => _ContactExchangeScreenState();
 }
 
-class _ContactExchangeScreenState extends State<ContactExchangeScreen> {
+class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
   List<Map<String, dynamic>> _contacts = [];
   bool _isLoading = true;
   String? _error;
@@ -44,13 +44,13 @@ class _ContactExchangeScreenState extends State<ContactExchangeScreen> {
     try {
       List<Map<String, dynamic>> contacts = [];
       if (widget.entityType == 'request') {
-        final repo = Provider.of<RequestRepository>(context, listen: false);
+        final repo = ref.read(requestRepositoryProvider);
         contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
       } else if (widget.entityType == 'campaign') {
-        final repo = Provider.of<CampaignRepository>(context, listen: false);
+        final repo = ref.read(campaignRepositoryProvider);
         contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
       } else if (widget.entityType == 'agenda') {
-        final repo = Provider.of<AgendaRepository>(context, listen: false);
+        final repo = ref.read(agendaRepositoryProvider);
         contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
       }
       
@@ -69,7 +69,7 @@ class _ContactExchangeScreenState extends State<ContactExchangeScreen> {
   Future<void> _confirmHelpCompletion(String participantId) async {
     try {
       if (widget.entityType == 'request') {
-        final repo = Provider.of<RequestRepository>(context, listen: false);
+        final repo = ref.read(requestRepositoryProvider);
         await repo.completeRequest(widget.entityId, participantId, 'Helped successfully.');
       } else if (widget.entityType == 'campaign') {
         // Assume completeConnection exists, or just show a snackbar
@@ -135,7 +135,7 @@ class _ContactExchangeScreenState extends State<ContactExchangeScreen> {
                             contentPadding: const EdgeInsets.all(16),
                             leading: CircleAvatar(
                               backgroundColor: Colors.blue.shade50,
-                              child: const Icon(LucideIcons.user, color: Colors.blue),
+                              child: Icon(LucideIcons.user, color: Colors.blue),
                             ),
                             title: Text(
                               contact['name'] ?? 'Unknown',
@@ -147,7 +147,7 @@ class _ContactExchangeScreenState extends State<ContactExchangeScreen> {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(LucideIcons.mail, size: 14, color: Colors.black54),
+                                    Icon(LucideIcons.mail, size: 14, color: Colors.black54),
                                     const SizedBox(width: 4),
                                     Text(contact['email'] ?? 'No email'),
                                   ],
