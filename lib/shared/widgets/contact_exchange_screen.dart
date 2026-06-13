@@ -73,20 +73,24 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
         await repo.completeRequest(widget.entityId, participantId, 'Helped successfully.');
       } else if (widget.entityType == 'campaign') {
         // Assume completeConnection exists, or just show a snackbar
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Help completion confirmed!')),
         );
       } else if (widget.entityType == 'agenda') {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Help completion confirmed!')),
         );
       }
       
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Help confirmed successfully!')),
       );
       _fetchContacts();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
