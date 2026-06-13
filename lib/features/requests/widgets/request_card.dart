@@ -406,39 +406,54 @@ class _ActionButton extends StatelessWidget {
 
     if (isCommunityRequest && isHelping) {
       return Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppColors.yellowPale,
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.green.withValues(alpha: 0.1),
+          border: Border.all(color: Colors.green, width: 1),
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Text('Joined', style: AppTypography.textTheme.labelSmall),
+        child: Text(
+          '✓ Joined',
+          style: AppTypography.textTheme.labelSmall?.copyWith(
+            fontSize: 12,
+            color: Colors.green,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       );
     }
 
     if (isCommunityRequest) {
       return Wrap(
-        spacing: 6,
+        spacing: 8,
         children: [
           SizedBox(
-            height: 30,
+            height: 28,
             child: OutlinedButton(
               onPressed: () => onCommunityRoleSelected('helpee'),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 9),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                side: const BorderSide(width: 1),
               ),
-              child: const Text('Need help'),
+              child: const Text(
+                'Need help',
+                style: TextStyle(fontSize: 12),
+              ),
             ),
           ),
           SizedBox(
-            height: 30,
+            height: 28,
             child: ElevatedButton(
               onPressed: () => onCommunityRoleSelected('helper'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 9),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
               ),
-              child: const Text('Can help'),
+              child: const Text(
+                'Can help',
+                style: TextStyle(fontSize: 12),
+              ),
             ),
           ),
         ],
@@ -607,44 +622,82 @@ class _FeedContactPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final roleLabel = role == 'helper' ? 'Helping as helper' : 'Joined for help';
+    final roleLabel = role == 'helper' ? '🤝 Helping as helper' : '👋 Joined for help';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, AppSpacing.xs),
       decoration: BoxDecoration(
-        color: AppColors.cream,
-        border: Border.all(color: AppColors.tan1),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.blue.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 1),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_contactIcon(option.type), size: 18, color: AppColors.tan3),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(roleLabel, style: AppTypography.textTheme.labelSmall),
-                Text(
-                  option.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.textTheme.bodySmall,
-                ),
-              ],
+          Text(
+            roleLabel,
+            style: AppTypography.textTheme.labelSmall?.copyWith(
+              fontSize: 11,
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          IconButton(
-            tooltip: 'Copy contact',
-            onPressed: () =>
-                Clipboard.setData(ClipboardData(text: option.value)),
-            icon: const Icon(Icons.copy, size: 17),
-          ),
-          IconButton(
-            tooltip: 'Open contact',
-            onPressed: () => _openContactValue(context, option),
-            icon: const Icon(Icons.open_in_new, size: 17),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                _contactIcon(option.type),
+                size: 16,
+                color: Colors.blue.shade600,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.textTheme.labelSmall?.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    if (option.value.length < 50)
+                      Text(
+                        option.value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: Colors.blue.shade600,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 28,
+                child: IconButton(
+                  tooltip: 'Copy',
+                  onPressed: () =>
+                      Clipboard.setData(ClipboardData(text: option.value)),
+                  icon: const Icon(Icons.copy, size: 14),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+              SizedBox(
+                width: 28,
+                child: IconButton(
+                  tooltip: 'Open',
+                  onPressed: () => _openContactValue(context, option),
+                  icon: const Icon(Icons.open_in_new, size: 14),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),

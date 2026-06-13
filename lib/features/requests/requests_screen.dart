@@ -50,7 +50,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
               onActionTap: _showImpactSheet,
             ),
             SizedBox(
-              height: 36,
+              height: 32,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 scrollDirection: Axis.horizontal,
@@ -58,44 +58,48 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                   final category = _categories[index];
                   final selected = category == _selectedCategory;
                   return InkWell(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     onTap: () {
                       setState(() => _selectedCategory = category);
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
                       alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: selected
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.surface,
+                            : Colors.transparent,
                         border: Border.all(
                           color: selected
                               ? Theme.of(context).colorScheme.primary
-                              : AppColors.tan1,
+                              : AppColors.tan2,
+                          width: selected ? 1.5 : 1,
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         category,
-                        style: Theme.of(context).textTheme.labelMedium
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall
                             ?.copyWith(
+                              fontSize: 12,
                               color: selected
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : AppColors.textMid,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                             ),
                       ),
                     ),
                   );
                 },
                 separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: 6),
                 itemCount: _categories.length,
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 8),
             Expanded(
               child: state.isLoading && state.requests.isEmpty
                   ? const Center(child: CircularProgressIndicator())
