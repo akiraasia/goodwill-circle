@@ -9,6 +9,14 @@ class HelpRequest {
   final int volunteersCount;
   final String? imageUrl;
   final DateTime createdAt;
+  final bool isCommunityRequest;
+  final bool allowJoinNeed;
+  final List<String> tags;
+  final String? difficulty;
+  final String? estimatedPeopleWhoMayBenefit;
+  final int helperCount;
+  final int goodwillImpactScore;
+  final int tagCreditBonus;
 
   // We might want to join the creator's name/photo
   final String? creatorName;
@@ -32,6 +40,14 @@ class HelpRequest {
     required this.volunteersCount,
     this.imageUrl,
     required this.createdAt,
+    this.isCommunityRequest = false,
+    this.allowJoinNeed = false,
+    this.tags = const [],
+    this.difficulty,
+    this.estimatedPeopleWhoMayBenefit,
+    this.helperCount = 0,
+    this.goodwillImpactScore = 0,
+    this.tagCreditBonus = 0,
     this.creatorName,
     this.creatorPhoto,
     this.creatorPhone,
@@ -55,6 +71,15 @@ class HelpRequest {
       volunteersCount: json['volunteers_count'] as int? ?? 0,
       imageUrl: json['image_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
+      isCommunityRequest: json['community_request'] as bool? ?? false,
+      allowJoinNeed: json['allow_join_need'] as bool? ?? false,
+      tags: _stringList(json['tags']),
+      difficulty: json['difficulty'] as String?,
+      estimatedPeopleWhoMayBenefit:
+          json['estimated_people_who_may_benefit'] as String?,
+      helperCount: json['helper_count'] as int? ?? 0,
+      goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
+      tagCreditBonus: json['tag_credit_bonus'] as int? ?? 0,
       creatorName: json['profiles'] != null
           ? json['profiles']['name'] as String?
           : null,
@@ -67,6 +92,36 @@ class HelpRequest {
       creatorVerificationStatus: json['profiles'] != null
           ? json['profiles']['verification_status'] as String?
           : null,
+    );
+  }
+
+  factory HelpRequest.fromCommunityStarterJson(Map<String, dynamic> json) {
+    final joinCount = json['join_count'] as int? ?? 0;
+    final helperCount = json['helper_count'] as int? ?? 0;
+
+    return HelpRequest(
+      id: json['id'] as String,
+      creatorId: 'community-starter',
+      title: json['title'] as String,
+      description:
+          json['short_description'] as String? ??
+          json['full_description'] as String? ??
+          '',
+      category: json['category'] as String,
+      status: json['status'] as String? ?? 'open',
+      goodwillReward: json['tag_credit_bonus'] as int? ?? 0,
+      volunteersCount: joinCount,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      isCommunityRequest: json['community_request'] as bool? ?? true,
+      allowJoinNeed: json['allow_join_need'] as bool? ?? true,
+      tags: _stringList(json['tags']),
+      difficulty: json['difficulty'] as String?,
+      estimatedPeopleWhoMayBenefit:
+          json['estimated_people_who_may_benefit'] as String?,
+      helperCount: helperCount,
+      goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
+      tagCreditBonus: json['tag_credit_bonus'] as int? ?? 0,
+      creatorName: 'Goodwill Circle',
     );
   }
 
@@ -92,6 +147,14 @@ class HelpRequest {
       volunteersCount: volunteersCount,
       imageUrl: imageUrl,
       createdAt: createdAt,
+      isCommunityRequest: isCommunityRequest,
+      allowJoinNeed: allowJoinNeed,
+      tags: tags,
+      difficulty: difficulty,
+      estimatedPeopleWhoMayBenefit: estimatedPeopleWhoMayBenefit,
+      helperCount: helperCount,
+      goodwillImpactScore: goodwillImpactScore,
+      tagCreditBonus: tagCreditBonus,
       creatorName: creatorName ?? this.creatorName,
       creatorPhoto: creatorPhoto ?? this.creatorPhoto,
       creatorPhone: creatorPhone ?? this.creatorPhone,
@@ -117,6 +180,21 @@ class HelpRequest {
       'volunteers_count': volunteersCount,
       'image_url': imageUrl,
       'created_at': createdAt.toIso8601String(),
+      'community_request': isCommunityRequest,
+      'allow_join_need': allowJoinNeed,
+      'tags': tags,
+      'difficulty': difficulty,
+      'estimated_people_who_may_benefit': estimatedPeopleWhoMayBenefit,
+      'helper_count': helperCount,
+      'goodwill_impact_score': goodwillImpactScore,
+      'tag_credit_bonus': tagCreditBonus,
     };
+  }
+
+  static List<String> _stringList(dynamic value) {
+    if (value is List) {
+      return value.whereType<String>().toList();
+    }
+    return const [];
   }
 }

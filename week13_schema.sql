@@ -97,8 +97,8 @@ CREATE TABLE IF NOT EXISTS public.community_starter_requests (
   estimated_people_who_may_benefit TEXT NOT NULL,
   community_request BOOLEAN NOT NULL DEFAULT true,
   allow_join_need BOOLEAN NOT NULL DEFAULT true,
-  join_count INTEGER NOT NULL DEFAULT 0 CHECK (join_count BETWEEN 0 AND 50),
-  helper_count INTEGER NOT NULL DEFAULT 0 CHECK (helper_count BETWEEN 0 AND 10),
+  join_count INTEGER NOT NULL DEFAULT 0 CHECK (join_count >= 0),
+  helper_count INTEGER NOT NULL DEFAULT 0 CHECK (helper_count >= 0),
   goodwill_impact_score INTEGER NOT NULL DEFAULT 0 CHECK (goodwill_impact_score BETWEEN 0 AND 100),
   tag_credit_bonus INTEGER NOT NULL DEFAULT 0 CHECK (tag_credit_bonus >= 0),
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'paused', 'completed')),
@@ -106,6 +106,12 @@ CREATE TABLE IF NOT EXISTS public.community_starter_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.community_starter_requests
+  DROP CONSTRAINT IF EXISTS community_starter_requests_join_count_check,
+  DROP CONSTRAINT IF EXISTS community_starter_requests_helper_count_check,
+  ADD CONSTRAINT community_starter_requests_join_count_check CHECK (join_count >= 0),
+  ADD CONSTRAINT community_starter_requests_helper_count_check CHECK (helper_count >= 0);
 
 CREATE INDEX IF NOT EXISTS community_starter_requests_category_idx
   ON public.community_starter_requests (category);
@@ -141,6 +147,65 @@ DROP TRIGGER IF EXISTS set_community_starter_request_tag_credit_bonus_trigger ON
 CREATE TRIGGER set_community_starter_request_tag_credit_bonus_trigger
   BEFORE INSERT OR UPDATE OF tags ON public.community_starter_requests
   FOR EACH ROW EXECUTE PROCEDURE public.set_community_starter_request_tag_credit_bonus();
+
+CREATE TABLE IF NOT EXISTS public.community_starter_request_joins (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES public.community_starter_requests(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (request_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS community_starter_request_joins_user_idx
+  ON public.community_starter_request_joins (user_id, joined_at DESC);
+
+ALTER TABLE public.community_starter_request_joins ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own starter joins." ON public.community_starter_request_joins;
+CREATE POLICY "Users can view own starter joins."
+  ON public.community_starter_request_joins
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+REVOKE ALL ON public.community_starter_request_joins FROM anon, authenticated;
+GRANT SELECT ON public.community_starter_request_joins TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.join_community_starter_request(p_request_id UUID)
+RETURNS void AS $$
+DECLARE
+  v_inserted BOOLEAN;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.community_starter_requests
+    WHERE id = p_request_id
+      AND status = 'open'
+      AND allow_join_need = true
+  ) THEN
+    RAISE EXCEPTION 'Community starter request not found';
+  END IF;
+
+  INSERT INTO public.community_starter_request_joins (request_id, user_id)
+  VALUES (p_request_id, auth.uid())
+  ON CONFLICT (request_id, user_id) DO NOTHING
+  RETURNING true INTO v_inserted;
+
+  IF COALESCE(v_inserted, false) THEN
+    UPDATE public.community_starter_requests
+    SET join_count = join_count + 1,
+        goodwill_impact_score = LEAST(100, goodwill_impact_score + 1),
+        updated_at = now()
+    WHERE id = p_request_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION public.join_community_starter_request(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.join_community_starter_request(UUID) TO authenticated;
 
 INSERT INTO public.community_starter_requests (
   title,

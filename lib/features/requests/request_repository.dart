@@ -19,6 +19,7 @@ class RequestRepository {
         .order('created_at', ascending: false);
 
     final requests = data.map((json) => HelpRequest.fromJson(json)).toList();
+    final starterRequests = await _fetchCommunityStarterRequests();
     final requestIds = requests.map((request) => request.id).toList();
     final currentUserId = _client.auth.currentUser?.id;
 
@@ -27,11 +28,13 @@ class RequestRepository {
         : await _fetchRequestVolunteers(requestIds);
 
     final profileIds = {
-      ...requests.map((request) => request.creatorId),
+      ...requests
+          .where((request) => !request.isCommunityRequest)
+          .map((request) => request.creatorId),
       ...volunteersData.map((volunteer) => volunteer['volunteer_id'] as String),
     }.toList();
 
-    if (profileIds.isEmpty) return requests;
+    if (profileIds.isEmpty) return _sortRequests([...starterRequests]);
 
     final profilesData = await _fetchProfiles(profileIds);
     final profilesById = {
@@ -43,7 +46,7 @@ class RequestRepository {
       volunteersByRequest.putIfAbsent(requestId, () => []).add(volunteer);
     }
 
-    return requests.map((request) {
+    final hydratedRequests = requests.map((request) {
       final creatorProfile = profilesById[request.creatorId];
       final volunteers = volunteersByRequest[request.id] ?? const [];
       Map<String, dynamic>? myVolunteer;
@@ -79,6 +82,36 @@ class RequestRepository {
         completionMessage: myVolunteer?['completion_message'] as String?,
       );
     }).toList();
+
+    return _sortRequests([...starterRequests, ...hydratedRequests]);
+  }
+
+  Future<List<HelpRequest>> _fetchCommunityStarterRequests() async {
+    try {
+      final data = await _client
+          .from('community_starter_requests')
+          .select()
+          .eq('status', 'open')
+          .eq('allow_join_need', true)
+          .order('created_at', ascending: false);
+
+      return data
+          .map((json) => HelpRequest.fromCommunityStarterJson(json))
+          .toList();
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('community_starter_requests') ||
+          message.contains('schema cache') ||
+          message.contains('does not exist')) {
+        return const [];
+      }
+      rethrow;
+    }
+  }
+
+  List<HelpRequest> _sortRequests(List<HelpRequest> requests) {
+    requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return requests;
   }
 
   Future<List<Map<String, dynamic>>> _fetchRequestVolunteers(
@@ -162,6 +195,9 @@ class RequestRepository {
   }
 
   Future<void> volunteerForRequest(String requestId) async {
+    final starterJoined = await _tryJoinCommunityStarterRequest(requestId);
+    if (starterJoined) return;
+
     final existing = await _client
         .from('request_volunteers')
         .select('id')
@@ -192,6 +228,24 @@ class RequestRepository {
         .from('help_requests')
         .update({'volunteers_count': currentCount + 1})
         .eq('id', requestId);
+  }
+
+  Future<bool> _tryJoinCommunityStarterRequest(String requestId) async {
+    try {
+      await _client.rpc(
+        'join_community_starter_request',
+        params: {'p_request_id': requestId},
+      );
+      return true;
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('function') ||
+          message.contains('community starter request not found') ||
+          message.contains('schema cache')) {
+        return false;
+      }
+      rethrow;
+    }
   }
 
   Future<void> completeRequest(String requestId) async {

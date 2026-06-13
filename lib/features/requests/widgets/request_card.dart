@@ -27,6 +27,7 @@ class RequestCard extends StatelessWidget {
     final isCreator = currentUserId == request.creatorId;
     final isUrgent = request.goodwillReward >= 25;
     final isHelping = request.myVolunteerStatus != null;
+    final isCommunityRequest = request.isCommunityRequest;
     final isCompletionRequested =
         request.myVolunteerStatus == 'completion_requested';
     final helperName = request.contactName ?? 'Helper';
@@ -119,6 +120,30 @@ class RequestCard extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
+          if (isCommunityRequest && request.tags.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: request.tags.take(3).map((tag) {
+                return Chip(
+                  label: Text(tag),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
+            ),
+          ],
+          if (isCommunityRequest &&
+              request.estimatedPeopleWhoMayBenefit != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'May benefit ${request.estimatedPeopleWhoMayBenefit}',
+              style: AppTypography.textTheme.labelSmall?.copyWith(
+                color: AppColors.textLight,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           if (request.imageUrl != null && request.imageUrl!.isNotEmpty) ...[
             ClipRRect(
@@ -210,7 +235,9 @@ class RequestCard extends StatelessWidget {
               Icon(Icons.people_outline, size: 16, color: AppColors.textLight),
               const SizedBox(width: AppSpacing.xs),
               Text(
-                '${request.volunteersCount} helping',
+                isCommunityRequest
+                    ? '${request.volunteersCount} joined'
+                    : '${request.volunteersCount} helping',
                 style: AppTypography.textTheme.labelSmall,
               ),
               const Spacer(),
@@ -226,7 +253,7 @@ class RequestCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
                       )
-                    : isHelping
+                    : isHelping && !isCommunityRequest
                     ? ElevatedButton.icon(
                         onPressed: isCompletionRequested
                             ? null
@@ -242,7 +269,9 @@ class RequestCard extends StatelessWidget {
                     : ElevatedButton.icon(
                         onPressed: onVolunteer,
                         icon: const Icon(Icons.volunteer_activism, size: 16),
-                        label: const Text('I can help'),
+                        label: Text(
+                          isCommunityRequest ? 'Join Need' : 'I can help',
+                        ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                         ),
