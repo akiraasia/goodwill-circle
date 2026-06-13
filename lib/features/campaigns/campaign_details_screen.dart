@@ -250,7 +250,7 @@ class _CampaignDetailsScreenState extends ConsumerState<CampaignDetailsScreen> {
                     const Icon(Icons.people, color: Colors.grey),
                     const SizedBox(width: 8),
                     Text(
-                      '${campaign.supportersCount} Supporters - ${campaign.membersCount} joined - ${campaign.votesCount} votes',
+                      '${campaign.supportersCount} Supporters',
                     ),
                   ],
                 ),

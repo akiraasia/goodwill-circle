@@ -105,22 +105,24 @@ class RequestCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(request.title, style: AppTypography.textTheme.titleMedium),
-                const SizedBox(height: 6),
-                Text(
-                  request.description,
-                  style: AppTypography.textTheme.bodySmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (isCommunityRequest && request.tags.isNotEmpty) ...[
+                if (request.artAssetPath == null || request.artAssetPath!.isEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: request.tags.take(2).map(_TagPill.new).toList(),
+                  Text(request.title, style: AppTypography.textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text(
+                    request.description,
+                    style: AppTypography.textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  if (isCommunityRequest && request.tags.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: request.tags.take(2).map(_TagPill.new).toList(),
+                    ),
+                  ],
                 ],
                 const SizedBox(height: AppSpacing.sm),
                 Row(
@@ -131,19 +133,10 @@ class RequestCard extends StatelessWidget {
                       color: AppColors.textLight,
                     ),
                     const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      isCommunityRequest
-                          ? '${request.volunteersCount} joined'
-                          : '${request.volunteersCount} helping',
-                      style: AppTypography.textTheme.labelSmall,
-                    ),
-                    if (isCommunityRequest && request.helperCount > 0) ...[
-                      const SizedBox(width: AppSpacing.sm),
+                    if (!isCommunityRequest) ...[
                       Text(
-                        '${request.helperCount} helpers',
-                        style: AppTypography.textTheme.labelSmall?.copyWith(
-                          color: AppColors.textLight,
-                        ),
+                        '${request.volunteersCount} helping',
+                        style: AppTypography.textTheme.labelSmall,
                       ),
                     ],
                     const Spacer(),
@@ -291,9 +284,10 @@ class _RequestVisual extends StatelessWidget {
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
         ),
-        child: AspectRatio(
-          aspectRatio: 3.8,
-          child: Image.asset(request.artAssetPath!, fit: BoxFit.cover),
+        child: Image.asset(
+          request.artAssetPath!,
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
         ),
       );
     }
@@ -304,9 +298,10 @@ class _RequestVisual extends StatelessWidget {
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
         ),
-        child: AspectRatio(
-          aspectRatio: 2.5,
-          child: Image.network(request.imageUrl!, fit: BoxFit.cover),
+        child: Image.network(
+          request.imageUrl!,
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
         ),
       );
     }
@@ -461,6 +456,7 @@ class _ActionButton extends StatelessWidget {
               onPressed: () => onCommunityRoleSelected('helper'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 28),
               ),
               child: const Text(
                 'Can help',

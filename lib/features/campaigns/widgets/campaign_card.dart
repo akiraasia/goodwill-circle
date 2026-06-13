@@ -141,12 +141,6 @@ class CampaignCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Icon(Icons.groups_outlined, size: 16, color: AppColors.textLight),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                '${campaign.membersCount} joined - ${campaign.votesCount} votes',
-                style: AppTypography.textTheme.labelSmall,
-              ),
               const Spacer(),
               OutlinedButton.icon(
                 onPressed: campaign.isJoined ? null : onJoin,
