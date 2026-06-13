@@ -7,6 +7,8 @@ import 'package:goodwill_circle/features/requests/models/help_request.dart';
 import 'package:goodwill_circle/shared/services/external_contact_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import '../../shared/widgets/contact_exchange_screen.dart';
 
 class RequestCard extends StatelessWidget {
   final HelpRequest request;
@@ -17,6 +19,7 @@ class RequestCard extends StatelessWidget {
   onVolunteer;
   final Future<void> Function(String message, bool sendEmail) onComplete;
   final Future<void> Function(String? message) onRequestCompletion;
+  final VoidCallback? onToggleSupport;
 
   const RequestCard({
     super.key,
@@ -24,6 +27,7 @@ class RequestCard extends StatelessWidget {
     required this.onVolunteer,
     required this.onComplete,
     required this.onRequestCompletion,
+    this.onToggleSupport,
   });
 
   @override
@@ -103,6 +107,8 @@ class RequestCard extends StatelessWidget {
                 onComplete: () => _showConfirmCompletionDialog(context),
                 onShowCompletion: () => _showCompletionDialog(context),
                 launchContact: (action) => _launchContact(context, action),
+                onToggleSupport: onToggleSupport,
+                onViewContacts: () => _navigateToContacts(context, request.communityJoinRole ?? 'helper'),
               ),
             ],
           );
@@ -112,25 +118,28 @@ class RequestCard extends StatelessWidget {
   }
 
   Future<void> _handleVolunteer(BuildContext context, [String? role]) async {
-    if (!request.isCommunityRequest || request.contactOptions.isEmpty) {
-      await onVolunteer();
-      return;
-    }
-
-    final selected = await showModalBottomSheet<RequestContactOption>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _JoinChoiceSheet(options: request.contactOptions),
+    final joinRole = role ?? 'helper';
+    
+    await onVolunteer(
+      communityJoinRole: joinRole, 
+      contactOption: const RequestContactOption(label: 'Connection Hub', type: 'group', value: ''),
     );
 
-    if (selected == null) return;
-    await onVolunteer(communityJoinRole: role ?? 'helpee', contactOption: selected);
     if (!context.mounted) return;
+    _navigateToContacts(context, joinRole);
+  }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _UnlockedContactSheet(option: selected),
+  void _navigateToContacts(BuildContext context, String myRole) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContactExchangeScreen(
+          entityId: request.id,
+          entityType: 'request',
+          myRole: myRole,
+          title: 'Connection Hub',
+        ),
+      ),
     );
   }
 
@@ -244,6 +253,8 @@ class _RequestDetails extends StatelessWidget {
   final VoidCallback onComplete;
   final VoidCallback onShowCompletion;
   final void Function(Future<bool> action) launchContact;
+  final VoidCallback? onToggleSupport;
+  final VoidCallback? onViewContacts;
 
   const _RequestDetails({
     required this.request,
@@ -260,6 +271,8 @@ class _RequestDetails extends StatelessWidget {
     required this.onComplete,
     required this.onShowCompletion,
     required this.launchContact,
+    this.onToggleSupport,
+    this.onViewContacts,
   });
 
   @override
@@ -342,17 +355,37 @@ class _RequestDetails extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.people_outline,
+                LucideIcons.users,
                 size: 16,
                 color: AppColors.textLight,
               ),
               const SizedBox(width: AppSpacing.xs),
-              if (!isCommunityRequest) ...[
-                Text(
-                  '${request.volunteersCount} helping',
-                  style: AppTypography.textTheme.labelSmall,
+              Text(
+                'helpers: ${request.helperCount}, helpies: ${request.helpieCount}',
+                style: AppTypography.textTheme.labelSmall,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              InkWell(
+                onTap: onToggleSupport,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        request.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        size: 16,
+                        color: request.hasSupported ? AppColors.red : AppColors.textLight,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${request.supportCount}',
+                        style: AppTypography.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
               if (request.completedConnectionsCount > 0) ...[
                 const SizedBox(width: AppSpacing.sm),
                 Container(
@@ -381,6 +414,7 @@ class _RequestDetails extends StatelessWidget {
                 onVolunteer: onVolunteer,
                 onCommunityRoleSelected: onCommunityRoleSelected,
                 onShowCompletion: onShowCompletion,
+                onViewContacts: onViewContacts,
               ),
             ],
           ),
@@ -551,6 +585,7 @@ class _ActionButton extends StatelessWidget {
   final Future<void> Function() onVolunteer;
   final void Function(String role) onCommunityRoleSelected;
   final VoidCallback onShowCompletion;
+  final VoidCallback? onViewContacts;
 
   const _ActionButton({
     required this.isCreator,
@@ -562,6 +597,7 @@ class _ActionButton extends StatelessWidget {
     required this.onVolunteer,
     required this.onCommunityRoleSelected,
     required this.onShowCompletion,
+    this.onViewContacts,
   });
 
   @override
@@ -610,21 +646,15 @@ class _ActionButton extends StatelessWidget {
     }
 
     if (isCommunityRequest && isHelping) {
-      return Container(
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
-          border: Border.all(color: Colors.green, width: 1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          '✓ Joined',
-          style: AppTypography.textTheme.labelSmall?.copyWith(
-            fontSize: 12,
-            color: Colors.green,
-            fontWeight: FontWeight.w600,
+      return SizedBox(
+        height: 34,
+        child: ElevatedButton.icon(
+          onPressed: onViewContacts,
+          icon: const Icon(LucideIcons.users, size: 16),
+          label: const Text('View Contacts'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.blue,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
           ),
         ),
       );

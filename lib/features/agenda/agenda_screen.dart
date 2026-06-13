@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/features/agenda/agenda_controller.dart';
 import 'package:goodwill_circle/features/agenda/widgets/agenda_item_card.dart';
+import 'package:goodwill_circle/shared/widgets/contact_exchange_screen.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
 
 class AgendaScreen extends ConsumerWidget {
@@ -82,17 +83,38 @@ class AgendaScreen extends ConsumerWidget {
                                 final item = state.items[index];
                                 return AgendaItemCard(
                                   item: item,
-                                  onJoin: () async {
-                                    await controller.joinAgendaItem(item.id);
+                                  onCommunityRoleSelected: (role) async {
+                                    await controller.joinAgendaItem(item.id, role);
                                     if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Connected with this nonprofit agenda.',
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ContactExchangeScreen(
+                                          entityId: item.id,
+                                          entityType: 'agenda',
+                                          myRole: role,
+                                          title: 'Connection Hub',
                                         ),
                                       ),
                                     );
                                   },
+                                  onViewContacts: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ContactExchangeScreen(
+                                          entityId: item.id,
+                                          entityType: 'agenda',
+                                          myRole: 'helper',
+                                          title: 'Connection Hub',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onToggleSupport: () {
+                                    controller.toggleSupport(item.id);
+                                  },
+                                  onJoin: () {}, // Fallback unused, role buttons preferred
                                 );
                               },
                             ),

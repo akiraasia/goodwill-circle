@@ -5,17 +5,24 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/core/theme/app_icons.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class CampaignCard extends StatelessWidget {
   final Campaign campaign;
   final VoidCallback onTap;
   final VoidCallback? onJoin;
+  final void Function(String role)? onCommunityRoleSelected;
+  final VoidCallback? onViewContacts;
+  final VoidCallback? onToggleSupport;
 
   const CampaignCard({
     super.key,
     required this.campaign,
     required this.onTap,
     this.onJoin,
+    this.onCommunityRoleSelected,
+    this.onViewContacts,
+    this.onToggleSupport,
   });
 
   @override
@@ -147,10 +154,36 @@ class CampaignCard extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.sm),
               ],
+              Icon(
+                LucideIcons.users,
+                size: 16,
+                color: AppColors.textLight,
+              ),
+              const SizedBox(width: AppSpacing.xs),
               Text(
-                '${campaign.supportersCount} Supporters',
-                style: AppTypography.textTheme.labelMedium?.copyWith(
-                  color: AppColors.textLight,
+                'helpers: ${campaign.helperCount}, helpies: ${campaign.helpieCount}',
+                style: AppTypography.textTheme.labelSmall,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              InkWell(
+                onTap: onToggleSupport,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        campaign.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        size: 16,
+                        color: campaign.hasSupported ? AppColors.red : AppColors.textLight,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${campaign.supportCount}',
+                        style: AppTypography.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -159,14 +192,53 @@ class CampaignCard extends StatelessWidget {
           Row(
             children: [
               const Spacer(),
-              OutlinedButton.icon(
-                onPressed: campaign.isJoined ? null : onJoin,
-                icon: Icon(
-                  campaign.isJoined ? Icons.check : Icons.group_add_outlined,
-                  size: 16,
+              if (campaign.isJoined)
+                SizedBox(
+                  height: 34,
+                  child: ElevatedButton.icon(
+                    onPressed: onViewContacts,
+                    icon: const Icon(LucideIcons.users, size: 16),
+                    label: const Text('View Contacts'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                  ),
+                )
+              else if (onCommunityRoleSelected != null)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    SizedBox(
+                      height: 28,
+                      child: OutlinedButton(
+                        onPressed: () => onCommunityRoleSelected!('helpee'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          side: const BorderSide(width: 1),
+                        ),
+                        child: const Text('Need help', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 28,
+                      child: ElevatedButton(
+                        onPressed: () => onCommunityRoleSelected!('helper'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: const Size(0, 28),
+                        ),
+                        child: const Text('Can help', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: onJoin,
+                  icon: const Icon(Icons.group_add_outlined, size: 16),
+                  label: const Text('Join'),
                 ),
-                label: Text(campaign.isJoined ? 'Joined' : 'Join'),
-              ),
             ],
           ),
         ],

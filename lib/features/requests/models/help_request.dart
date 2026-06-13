@@ -16,6 +16,9 @@ class HelpRequest {
   final String? difficulty;
   final String? estimatedPeopleWhoMayBenefit;
   final int helperCount;
+  final int helpieCount;
+  final int supportCount;
+  final bool hasSupported;
   final int goodwillImpactScore;
   final int tagCreditBonus;
   final List<RequestContactOption> contactOptions;
@@ -53,6 +56,9 @@ class HelpRequest {
     this.difficulty,
     this.estimatedPeopleWhoMayBenefit,
     this.helperCount = 0,
+    this.helpieCount = 0,
+    this.supportCount = 0,
+    this.hasSupported = false,
     this.goodwillImpactScore = 0,
     this.tagCreditBonus = 0,
     this.contactOptions = const [],
@@ -91,6 +97,9 @@ class HelpRequest {
       estimatedPeopleWhoMayBenefit:
           json['estimated_people_who_may_benefit'] as String?,
       helperCount: json['helper_count'] as int? ?? 0,
+      helpieCount: json['helpie_count'] as int? ?? json['join_count'] as int? ?? 0,
+      supportCount: json['support_count'] as int? ?? 0,
+      hasSupported: json['has_supported'] as bool? ?? false,
       goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
       tagCreditBonus: json['tag_credit_bonus'] as int? ?? 0,
       contactOptions: _contactOptions(json['contact_options']),
@@ -139,6 +148,9 @@ class HelpRequest {
       estimatedPeopleWhoMayBenefit:
           json['estimated_people_who_may_benefit'] as String?,
       helperCount: helperCount,
+      helpieCount: joinCount,
+      supportCount: json['support_count'] as int? ?? 0,
+      hasSupported: false,
       goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
       tagCreditBonus: json['tag_credit_bonus'] as int? ?? 0,
       contactOptions: _contactOptions(json['contact_options']),
@@ -163,6 +175,9 @@ class HelpRequest {
     String? communityJoinRole,
     int? completedConnectionsCount,
     String? contactId,
+    int? helpieCount,
+    int? supportCount,
+    bool? hasSupported,
   }) {
     return HelpRequest(
       id: id,
@@ -182,6 +197,9 @@ class HelpRequest {
       difficulty: difficulty,
       estimatedPeopleWhoMayBenefit: estimatedPeopleWhoMayBenefit,
       helperCount: helperCount,
+      helpieCount: helpieCount ?? this.helpieCount,
+      supportCount: supportCount ?? this.supportCount,
+      hasSupported: hasSupported ?? this.hasSupported,
       goodwillImpactScore: goodwillImpactScore,
       tagCreditBonus: tagCreditBonus,
       contactOptions: contactOptions,
@@ -221,6 +239,9 @@ class HelpRequest {
       'difficulty': difficulty,
       'estimated_people_who_may_benefit': estimatedPeopleWhoMayBenefit,
       'helper_count': helperCount,
+      'helpie_count': helpieCount,
+      'support_count': supportCount,
+      'has_supported': hasSupported,
       'goodwill_impact_score': goodwillImpactScore,
       'tag_credit_bonus': tagCreditBonus,
       'contact_options': contactOptions.map((option) => option.toJson()).toList(),

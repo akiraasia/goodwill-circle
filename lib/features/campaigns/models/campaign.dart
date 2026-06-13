@@ -8,6 +8,10 @@ class Campaign {
   final int supportersCount;
   final int membersCount;
   final int votesCount;
+  final int helperCount;
+  final int helpieCount;
+  final int supportCount;
+  final bool hasSupported;
   final bool isJoined;
   final bool isVoted;
   final bool isVerified;
@@ -32,6 +36,10 @@ class Campaign {
     required this.supportersCount,
     this.membersCount = 0,
     this.votesCount = 0,
+    this.helperCount = 0,
+    this.helpieCount = 0,
+    this.supportCount = 0,
+    this.hasSupported = false,
     this.isJoined = false,
     this.isVoted = false,
     this.isVerified = false,
@@ -57,6 +65,10 @@ class Campaign {
       supportersCount: json['supporters_count'] as int? ?? 0,
       membersCount: json['members_count'] as int? ?? 0,
       votesCount: json['votes_count'] as int? ?? 0,
+      helperCount: json['helper_count'] as int? ?? 0,
+      helpieCount: json['helpie_count'] as int? ?? 0,
+      supportCount: json['support_count'] as int? ?? 0,
+      hasSupported: json['has_supported'] as bool? ?? false,
       isVerified: json['verification_status'] == 'verified',
       imageUrl: json['image_url'] as String?,
       status: json['status'] as String? ?? 'active',
@@ -85,6 +97,10 @@ class Campaign {
     String? imageUrl,
     int? membersCount,
     int? votesCount,
+    int? helperCount,
+    int? helpieCount,
+    int? supportCount,
+    bool? hasSupported,
     bool? isJoined,
     bool? isVoted,
     bool? isVerified,
@@ -102,6 +118,10 @@ class Campaign {
       supportersCount: supportersCount,
       membersCount: membersCount ?? this.membersCount,
       votesCount: votesCount ?? this.votesCount,
+      helperCount: helperCount ?? this.helperCount,
+      helpieCount: helpieCount ?? this.helpieCount,
+      supportCount: supportCount ?? this.supportCount,
+      hasSupported: hasSupported ?? this.hasSupported,
       isJoined: isJoined ?? this.isJoined,
       isVoted: isVoted ?? this.isVoted,
       isVerified: isVerified ?? this.isVerified,

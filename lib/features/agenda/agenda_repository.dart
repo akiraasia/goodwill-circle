@@ -97,10 +97,30 @@ class AgendaRepository {
     });
   }
 
-  Future<void> joinAgendaItem(String agendaItemId) async {
+  Future<void> joinAgendaItem(String agendaItemId, String role) async {
     await _client.rpc(
       'join_nonprofit_agenda_item',
-      params: {'p_agenda_item_id': agendaItemId},
+      params: {'p_agenda_item_id': agendaItemId, 'p_role': role},
     );
+  }
+
+  Future<int> toggleSupport(String agendaId) async {
+    final result = await _client.rpc(
+      'toggle_support',
+      params: {'p_entity_id': agendaId, 'p_entity_type': 'agenda'},
+    );
+    return result as int;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchContacts(String agendaId, String myRole) async {
+    final result = await _client.rpc(
+      'get_entity_contacts',
+      params: {
+        'p_entity_id': agendaId,
+        'p_entity_type': 'agenda',
+        'p_my_role': myRole,
+      },
+    );
+    return List<Map<String, dynamic>>.from(result as List);
   }
 }

@@ -115,4 +115,13 @@ class RequestController extends Notifier<RequestState> {
       state = state.copyWith(error: e.toString());
     }
   }
+
+  Future<void> toggleSupport(String requestId) async {
+    try {
+      await _repository.toggleSupport(requestId);
+      await loadRequests();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
 }

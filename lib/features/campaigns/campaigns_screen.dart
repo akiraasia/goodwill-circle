@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/campaigns/campaign_controller.dart';
 import 'package:goodwill_circle/features/campaigns/widgets/campaign_card.dart';
 import 'package:go_router/go_router.dart';
+import 'package:goodwill_circle/shared/widgets/contact_exchange_screen.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 
@@ -68,29 +69,45 @@ class CampaignsScreen extends ConsumerWidget {
                                   onTap: () {
                                     context.push('/campaign/${campaign.id}');
                                   },
-                                  onJoin: () async {
+                                  onCommunityRoleSelected: (role) async {
                                     try {
-                                      await controller.joinCampaign(
-                                        campaign.id,
-                                      );
+                                      await controller.joinCampaign(campaign.id, role);
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(
+                                        Navigator.push(
                                           context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Joined campaign.'),
+                                          MaterialPageRoute(
+                                            builder: (context) => ContactExchangeScreen(
+                                              entityId: campaign.id,
+                                              entityType: 'campaign',
+                                              myRole: role,
+                                              title: 'Connection Hub',
+                                            ),
                                           ),
                                         );
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
+                                        ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text('Error: $e')),
                                         );
                                       }
                                     }
+                                  },
+                                  onViewContacts: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ContactExchangeScreen(
+                                          entityId: campaign.id,
+                                          entityType: 'campaign',
+                                          myRole: 'helper',
+                                          title: 'Connection Hub',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onToggleSupport: () {
+                                    controller.toggleSupport(campaign.id);
                                   },
                                 );
                               },

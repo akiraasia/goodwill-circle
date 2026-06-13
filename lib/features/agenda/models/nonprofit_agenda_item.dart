@@ -15,6 +15,10 @@ class NonprofitAgendaItem {
   final String certificateTitle;
   final String certificateIssuer;
   final String status;
+  final int helperCount;
+  final int helpieCount;
+  final int supportCount;
+  final bool hasSupported;
   final DateTime createdAt;
   final String? myParticipantStatus;
   final int completedConnectionsCount;
@@ -36,6 +40,10 @@ class NonprofitAgendaItem {
     required this.certificateTitle,
     required this.certificateIssuer,
     required this.status,
+    this.helperCount = 0,
+    this.helpieCount = 0,
+    this.supportCount = 0,
+    this.hasSupported = false,
     required this.createdAt,
     this.myParticipantStatus,
     this.completedConnectionsCount = 0,
@@ -66,6 +74,10 @@ class NonprofitAgendaItem {
       certificateIssuer:
           json['certificate_issuer'] as String? ?? 'Goodwill Circle NGO',
       status: json['status'] as String? ?? 'open',
+      helperCount: json['helper_count'] as int? ?? 0,
+      helpieCount: json['helpie_count'] as int? ?? 0,
+      supportCount: json['support_count'] as int? ?? 0,
+      hasSupported: json['has_supported'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
     );
@@ -75,6 +87,10 @@ class NonprofitAgendaItem {
     String? ngoVerificationStatus,
     String? myParticipantStatus,
     int? completedConnectionsCount,
+    int? helperCount,
+    int? helpieCount,
+    int? supportCount,
+    bool? hasSupported,
   }) {
     return NonprofitAgendaItem(
       id: id,
@@ -94,6 +110,10 @@ class NonprofitAgendaItem {
       certificateTitle: certificateTitle,
       certificateIssuer: certificateIssuer,
       status: status,
+      helperCount: helperCount ?? this.helperCount,
+      helpieCount: helpieCount ?? this.helpieCount,
+      supportCount: supportCount ?? this.supportCount,
+      hasSupported: hasSupported ?? this.hasSupported,
       createdAt: createdAt,
       myParticipantStatus: myParticipantStatus ?? this.myParticipantStatus,
       completedConnectionsCount:

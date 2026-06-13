@@ -102,13 +102,14 @@ class CampaignRepository {
     );
   }
 
-  Future<void> joinCampaign(String campaignId) async {
+  Future<void> joinCampaign(String campaignId, String role) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return;
 
     await _client.from('campaign_members').upsert({
       'campaign_id': campaignId,
       'user_id': userId,
+      'join_role': role,
     }, onConflict: 'campaign_id,user_id');
   }
 
@@ -306,5 +307,25 @@ class CampaignRepository {
       return null;
     }
     return profile['photo_url'] as String?;
+  }
+
+  Future<int> toggleSupport(String campaignId) async {
+    final result = await _client.rpc(
+      'toggle_support',
+      params: {'p_entity_id': campaignId, 'p_entity_type': 'campaign'},
+    );
+    return result as int;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchContacts(String campaignId, String myRole) async {
+    final result = await _client.rpc(
+      'get_entity_contacts',
+      params: {
+        'p_entity_id': campaignId,
+        'p_entity_type': 'campaign',
+        'p_my_role': myRole,
+      },
+    );
+    return List<Map<String, dynamic>>.from(result as List);
   }
 }

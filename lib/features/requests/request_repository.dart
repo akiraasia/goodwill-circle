@@ -404,4 +404,24 @@ class RequestRepository {
       params: {'p_request_id': requestId, 'p_message': message},
     );
   }
+
+  Future<int> toggleSupport(String requestId) async {
+    final result = await _client.rpc(
+      'toggle_support',
+      params: {'p_entity_id': requestId, 'p_entity_type': 'request'},
+    );
+    return result as int;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchContacts(String requestId, String myRole) async {
+    final result = await _client.rpc(
+      'get_entity_contacts',
+      params: {
+        'p_entity_id': requestId,
+        'p_entity_type': 'request',
+        'p_my_role': myRole,
+      },
+    );
+    return List<Map<String, dynamic>>.from(result as List);
+  }
 }

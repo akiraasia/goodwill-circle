@@ -5,12 +5,23 @@ import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/features/agenda/models/nonprofit_agenda_item.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class AgendaItemCard extends StatelessWidget {
   final NonprofitAgendaItem item;
   final VoidCallback onJoin;
+  final void Function(String role)? onCommunityRoleSelected;
+  final VoidCallback? onViewContacts;
+  final VoidCallback? onToggleSupport;
 
-  const AgendaItemCard({super.key, required this.item, required this.onJoin});
+  const AgendaItemCard({
+    super.key, 
+    required this.item, 
+    required this.onJoin,
+    this.onCommunityRoleSelected,
+    this.onViewContacts,
+    this.onToggleSupport,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -149,28 +160,95 @@ class AgendaItemCard extends StatelessWidget {
                   style: AppTypography.textTheme.labelSmall,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              SizedBox(
-                height: 36,
-                child: ElevatedButton.icon(
-                  onPressed: isCreator || alreadyJoined || isFull
-                      ? null
-                      : onJoin,
-                  icon: const Icon(Icons.handshake_outlined, size: 16),
-                  label: Text(
-                    isCreator
-                        ? 'Posted'
-                        : alreadyJoined
-                        ? 'Connected'
-                        : isFull
-                        ? 'Full'
-                        : 'Connect',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Icon(
+                LucideIcons.users,
+                size: 16,
+                color: AppColors.textLight,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'helpers: ${item.helperCount}, helpies: ${item.helpieCount}',
+                style: AppTypography.textTheme.labelSmall,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              InkWell(
+                onTap: onToggleSupport,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        item.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        size: 16,
+                        color: item.hasSupported ? AppColors.red : AppColors.textLight,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${item.supportCount}',
+                        style: AppTypography.textTheme.labelSmall,
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const Spacer(),
+              if (alreadyJoined)
+                SizedBox(
+                  height: 34,
+                  child: ElevatedButton.icon(
+                    onPressed: onViewContacts,
+                    icon: const Icon(LucideIcons.users, size: 16),
+                    label: const Text('View Contacts'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                  ),
+                )
+              else if (onCommunityRoleSelected != null)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    SizedBox(
+                      height: 28,
+                      child: OutlinedButton(
+                        onPressed: isFull ? null : () => onCommunityRoleSelected!('helpee'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          side: const BorderSide(width: 1),
+                        ),
+                        child: Text(isFull ? 'Full' : 'Need help', style: const TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 28,
+                      child: ElevatedButton(
+                        onPressed: isFull ? null : () => onCommunityRoleSelected!('helper'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: const Size(0, 28),
+                        ),
+                        child: Text(isFull ? 'Full' : 'Can help', style: const TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                SizedBox(
+                  height: 36,
+                  child: ElevatedButton.icon(
+                    onPressed: isCreator || alreadyJoined || isFull ? null : onJoin,
+                    icon: const Icon(Icons.handshake_outlined, size: 16),
+                    label: Text(isCreator ? 'Posted' : alreadyJoined ? 'Connected' : isFull ? 'Full' : 'Connect'),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+                  ),
+                ),
             ],
           ),
         ],

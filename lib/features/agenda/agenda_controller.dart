@@ -74,9 +74,18 @@ class AgendaController extends Notifier<AgendaState> {
     }
   }
 
-  Future<void> joinAgendaItem(String agendaItemId) async {
+  Future<void> joinAgendaItem(String agendaItemId, String role) async {
     try {
-      await _repository.joinAgendaItem(agendaItemId);
+      await _repository.joinAgendaItem(agendaItemId, role);
+      await loadAgendaItems();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  Future<void> toggleSupport(String agendaItemId) async {
+    try {
+      await _repository.toggleSupport(agendaItemId);
       await loadAgendaItems();
     } catch (e) {
       state = state.copyWith(error: e.toString());

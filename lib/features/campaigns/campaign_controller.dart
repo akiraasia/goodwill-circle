@@ -70,10 +70,10 @@ class CampaignController extends Notifier<CampaignState> {
     }
   }
 
-  Future<void> joinCampaign(String campaignId) async {
+  Future<void> joinCampaign(String campaignId, String role) async {
     state = state.copyWith(error: null);
     try {
-      await _repository.joinCampaign(campaignId);
+      await _repository.joinCampaign(campaignId, role);
       await loadCampaigns();
     } catch (e) {
       state = state.copyWith(error: e.toString());
@@ -81,14 +81,13 @@ class CampaignController extends Notifier<CampaignState> {
     }
   }
 
-  Future<void> voteForCampaign(String campaignId) async {
+  Future<void> toggleSupport(String campaignId) async {
     state = state.copyWith(error: null);
     try {
-      await _repository.voteForCampaign(campaignId);
+      await _repository.toggleSupport(campaignId);
       await loadCampaigns();
     } catch (e) {
       state = state.copyWith(error: e.toString());
-      rethrow;
     }
   }
 }
