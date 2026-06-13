@@ -292,28 +292,41 @@ class RequestRepository {
         .maybeSingle();
     if (existing != null) return;
 
-    // 1. Add to request_volunteers
-    await _client.from('request_volunteers').insert({
-      'request_id': requestId,
-      'volunteer_id': _client.auth.currentUser!.id,
-    });
+    try {
+      await _client.rpc(
+        'join_help_request',
+        params: {
+          'p_request_id': requestId,
+          'p_join_role': communityJoinRole ?? 'helper',
+          'p_contact_choice': contactOption?.toJson(),
+        },
+      );
+    } catch (e) {
+      // Fallback for when the RPC is not deployed yet.
+      final message = e.toString().toLowerCase();
+      if (!message.contains('function') && !message.contains('could not find')) {
+        rethrow;
+      }
+      
+      // 1. Add to request_volunteers (Fallback)
+      await _client.from('request_volunteers').insert({
+        'request_id': requestId,
+        'volunteer_id': _client.auth.currentUser!.id,
+      });
 
-    // 2. Increment the volunteers_count on the request via an RPC or update.
-    // For simplicity, we can do a direct update if RLS allows, but typically we'd use an RPC for increment.
-    // Assuming RLS allows it or we'll fetch existing and add 1 (Not ideal for concurrency, but okay for MVP).
-    // Let's use standard update for now or better, ignore exact count if it's tricky without RPC.
-    // Since we didn't write an increment RPC, we'll fetch and update for the MVP.
-    final reqData = await _client
-        .from('help_requests')
-        .select('volunteers_count')
-        .eq('id', requestId)
-        .single();
-    final currentCount = reqData['volunteers_count'] as int? ?? 0;
+      // 2. Increment the volunteers_count on the request via an update.
+      final reqData = await _client
+          .from('help_requests')
+          .select('volunteers_count')
+          .eq('id', requestId)
+          .single();
+      final currentCount = reqData['volunteers_count'] as int? ?? 0;
 
-    await _client
-        .from('help_requests')
-        .update({'volunteers_count': currentCount + 1})
-        .eq('id', requestId);
+      await _client
+          .from('help_requests')
+          .update({'volunteers_count': currentCount + 1})
+          .eq('id', requestId);
+    }
   }
 
   Future<bool> _tryJoinCommunityStarterRequest(

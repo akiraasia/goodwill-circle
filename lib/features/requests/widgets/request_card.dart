@@ -46,163 +46,64 @@ class RequestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _RequestVisual(request: request),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.md,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.yellowPale,
-                      backgroundImage: request.creatorPhoto != null &&
-                              request.creatorPhoto!.isNotEmpty
-                          ? NetworkImage(request.creatorPhoto!)
-                          : null,
-                      child: request.creatorPhoto == null ||
-                              request.creatorPhoto!.isEmpty
-                          ? Text(initial, style: AppTypography.textTheme.labelLarge)
-                          : null,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            authorName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.textTheme.labelLarge,
-                          ),
-                          Text(
-                            request.category,
-                            style: AppTypography.textTheme.labelSmall?.copyWith(
-                              color: AppColors.textLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _ImpactPill(
-                      label: isCommunityRequest
-                          ? '${request.goodwillImpactScore}%'
-                          : isUrgent
-                              ? 'URGENT'
-                              : '+${request.goodwillReward}',
-                      urgent: isUrgent && !isCommunityRequest,
-                    ),
-                  ],
-                ),
-                if (request.artAssetPath == null || request.artAssetPath!.isEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(request.title, style: AppTypography.textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(
-                    request.description,
-                    style: AppTypography.textTheme.bodySmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          if (isWide) {
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _RequestVisual(request: request, isWide: true),
                   ),
-                  if (isCommunityRequest && request.tags.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: request.tags.take(2).map(_TagPill.new).toList(),
-                    ),
-                  ],
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 16,
-                      color: AppColors.textLight,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    if (!isCommunityRequest) ...[
-                      Text(
-                        '${request.volunteersCount} helping',
-                        style: AppTypography.textTheme.labelSmall,
-                      ),
-                    ],
-                    const Spacer(),
-                    _ActionButton(
+                  Expanded(
+                    flex: 3,
+                    child: _RequestDetails(
+                      request: request,
                       isCreator: isCreator,
+                      isUrgent: isUrgent,
                       isHelping: isHelping,
                       isCommunityRequest: isCommunityRequest,
                       isCompletionRequested: isCompletionRequested,
-                      onComplete: onComplete,
+                      authorName: authorName,
+                      initial: initial,
                       onVolunteer: () => _handleVolunteer(context),
                       onCommunityRoleSelected: (role) =>
                           _handleVolunteer(context, role),
+                      onComplete: onComplete,
                       onShowCompletion: () => _showCompletionDialog(context),
+                      launchContact: (action) => _launchContact(context, action),
                     ),
-                  ],
-                ),
-                if (isCommunityRequest &&
-                    isHelping &&
-                    request.joinedContactOption != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  _FeedContactPanel(
-                    option: request.joinedContactOption!,
-                    role: request.communityJoinRole,
                   ),
                 ],
-                if (request.contactPhone != null &&
-                    request.contactPhone!.trim().isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      _ContactChip(
-                        icon: Icons.call,
-                        label: 'Call',
-                        onTap: () => _launchContact(
-                          context,
-                          ExternalContactService.call(request.contactPhone!),
-                        ),
-                      ),
-                      _ContactChip(
-                        icon: Icons.chat_bubble_outline,
-                        label: 'Chat',
-                        onTap: () => _launchContact(
-                          context,
-                          ExternalContactService.chat(
-                            request.contactPhone!,
-                            message:
-                                'Hi, I am reaching out about "${request.title}".',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (isCreator && isCompletionRequested) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  _CompletionNotice(
-                    helperName: request.contactName ?? 'Helper',
-                    message: request.completionMessage,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+              ),
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RequestVisual(request: request, isWide: false),
+              _RequestDetails(
+                request: request,
+                isCreator: isCreator,
+                isUrgent: isUrgent,
+                isHelping: isHelping,
+                isCommunityRequest: isCommunityRequest,
+                isCompletionRequested: isCompletionRequested,
+                authorName: authorName,
+                initial: initial,
+                onVolunteer: () => _handleVolunteer(context),
+                onCommunityRoleSelected: (role) =>
+                    _handleVolunteer(context, role),
+                onComplete: onComplete,
+                onShowCompletion: () => _showCompletionDialog(context),
+                launchContact: (action) => _launchContact(context, action),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -271,37 +172,241 @@ class RequestCard extends StatelessWidget {
   }
 }
 
+class _RequestDetails extends StatelessWidget {
+  final HelpRequest request;
+  final bool isCreator;
+  final bool isUrgent;
+  final bool isHelping;
+  final bool isCommunityRequest;
+  final bool isCompletionRequested;
+  final String authorName;
+  final String initial;
+  final VoidCallback onComplete;
+  final Future<void> Function() onVolunteer;
+  final void Function(String) onCommunityRoleSelected;
+  final VoidCallback onShowCompletion;
+  final void Function(Future<bool>) launchContact;
+
+  const _RequestDetails({
+    required this.request,
+    required this.isCreator,
+    required this.isUrgent,
+    required this.isHelping,
+    required this.isCommunityRequest,
+    required this.isCompletionRequested,
+    required this.authorName,
+    required this.initial,
+    required this.onComplete,
+    required this.onVolunteer,
+    required this.onCommunityRoleSelected,
+    required this.onShowCompletion,
+    required this.launchContact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.yellowPale,
+                backgroundImage: request.creatorPhoto != null &&
+                        request.creatorPhoto!.isNotEmpty
+                    ? NetworkImage(request.creatorPhoto!)
+                    : null,
+                child: request.creatorPhoto == null ||
+                        request.creatorPhoto!.isEmpty
+                    ? Text(initial, style: AppTypography.textTheme.labelLarge)
+                    : null,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      authorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.textTheme.labelLarge,
+                    ),
+                    Text(
+                      request.category,
+                      style: AppTypography.textTheme.labelSmall?.copyWith(
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _ImpactPill(
+                label: isCommunityRequest
+                    ? '${request.goodwillImpactScore}%'
+                    : isUrgent
+                        ? 'URGENT'
+                        : '+${request.goodwillReward}',
+                urgent: isUrgent && !isCommunityRequest,
+              ),
+            ],
+          ),
+          if (request.artAssetPath == null || request.artAssetPath!.isEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(request.title, style: AppTypography.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(
+              request.description,
+              style: AppTypography.textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (isCommunityRequest && request.tags.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: request.tags.take(2).map(_TagPill.new).toList(),
+              ),
+            ],
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Icon(
+                Icons.people_outline,
+                size: 16,
+                color: AppColors.textLight,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              if (!isCommunityRequest) ...[
+                Text(
+                  '${request.volunteersCount} helping',
+                  style: AppTypography.textTheme.labelSmall,
+                ),
+              ],
+              const Spacer(),
+              _ActionButton(
+                isCreator: isCreator,
+                isHelping: isHelping,
+                isCommunityRequest: isCommunityRequest,
+                isCompletionRequested: isCompletionRequested,
+                onComplete: onComplete,
+                onVolunteer: onVolunteer,
+                onCommunityRoleSelected: onCommunityRoleSelected,
+                onShowCompletion: onShowCompletion,
+              ),
+            ],
+          ),
+          if (isCommunityRequest &&
+              isHelping &&
+              request.joinedContactOption != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _FeedContactPanel(
+              option: request.joinedContactOption!,
+              role: request.communityJoinRole,
+            ),
+          ],
+          if (request.contactPhone != null &&
+              request.contactPhone!.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                _ContactChip(
+                  icon: Icons.call,
+                  label: 'Call',
+                  onTap: () => launchContact(
+                    ExternalContactService.call(request.contactPhone!),
+                  ),
+                ),
+                _ContactChip(
+                  icon: Icons.chat_bubble_outline,
+                  label: 'Chat',
+                  onTap: () => launchContact(
+                    ExternalContactService.chat(
+                      request.contactPhone!,
+                      message:
+                          'Hi, I am reaching out about "${request.title}".',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (isCreator && isCompletionRequested) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _CompletionNotice(
+              helperName: request.contactName ?? 'Helper',
+              message: request.completionMessage,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _RequestVisual extends StatelessWidget {
   final HelpRequest request;
+  final bool isWide;
 
-  const _RequestVisual({required this.request});
+  const _RequestVisual({required this.request, this.isWide = false});
 
   @override
   Widget build(BuildContext context) {
     if (request.artAssetPath != null && request.artAssetPath!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          topRight: Radius.circular(8),
-        ),
-        child: Image.asset(
-          request.artAssetPath!,
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
+      return Container(
+        width: double.infinity,
+        color: AppColors.tan1,
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(8),
+            topRight: isWide ? Radius.zero : const Radius.circular(8),
+            bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: isWide ? double.infinity : 200),
+            child: Image.asset(
+              request.artAssetPath!,
+              width: double.infinity,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
 
     if (request.imageUrl != null && request.imageUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          topRight: Radius.circular(8),
-        ),
-        child: Image.network(
-          request.imageUrl!,
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
+      return Container(
+        width: double.infinity,
+        color: AppColors.tan1,
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(8),
+            topRight: isWide ? Radius.zero : const Radius.circular(8),
+            bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: isWide ? double.infinity : 200),
+            child: Image.network(
+              request.imageUrl!,
+              width: double.infinity,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       );
     }
@@ -510,22 +615,29 @@ class _JoinChoiceSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ...options.map((option) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: AppColors.tan1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  leading: Icon(_contactIcon(option.type)),
-                  title: Text(option.label),
-                  subtitle: option.note == null ? null : Text(option.note!),
-                  trailing: const Icon(Icons.arrow_forward),
-                  onTap: () => Navigator.pop(context, option),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options.map((option) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          side: const BorderSide(color: AppColors.tan1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        leading: Icon(_contactIcon(option.type)),
+                        title: Text(option.label),
+                        subtitle: option.note == null ? null : Text(option.note!),
+                        trailing: const Icon(Icons.arrow_forward),
+                        onTap: () => Navigator.pop(context, option),
+                      ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),
