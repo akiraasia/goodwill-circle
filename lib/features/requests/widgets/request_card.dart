@@ -35,6 +35,7 @@ class RequestCard extends StatelessWidget {
     final isCommunityRequest = request.isCommunityRequest;
     final isCompletionRequested =
         request.myVolunteerStatus == 'completion_requested';
+    final hasCompleted = request.myVolunteerStatus == 'completed';
     final authorName = request.creatorName ?? 'Community member';
     final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
 
@@ -69,6 +70,7 @@ class RequestCard extends StatelessWidget {
                       isCompletionRequested: isCompletionRequested,
                       authorName: authorName,
                       initial: initial,
+                      hasCompleted: hasCompleted,
                       onVolunteer: () => _handleVolunteer(context),
                       onCommunityRoleSelected: (role) =>
                           _handleVolunteer(context, role),
@@ -94,6 +96,7 @@ class RequestCard extends StatelessWidget {
                 isCompletionRequested: isCompletionRequested,
                 authorName: authorName,
                 initial: initial,
+                hasCompleted: hasCompleted,
                 onVolunteer: () => _handleVolunteer(context),
                 onCommunityRoleSelected: (role) =>
                     _handleVolunteer(context, role),
@@ -235,11 +238,12 @@ class _RequestDetails extends StatelessWidget {
   final bool isCompletionRequested;
   final String authorName;
   final String initial;
-  final VoidCallback onComplete;
+  final bool hasCompleted;
   final Future<void> Function() onVolunteer;
-  final void Function(String) onCommunityRoleSelected;
+  final void Function(String role) onCommunityRoleSelected;
+  final VoidCallback onComplete;
   final VoidCallback onShowCompletion;
-  final void Function(Future<bool>) launchContact;
+  final void Function(Future<bool> action) launchContact;
 
   const _RequestDetails({
     required this.request,
@@ -250,9 +254,10 @@ class _RequestDetails extends StatelessWidget {
     required this.isCompletionRequested,
     required this.authorName,
     required this.initial,
-    required this.onComplete,
+    required this.hasCompleted,
     required this.onVolunteer,
     required this.onCommunityRoleSelected,
+    required this.onComplete,
     required this.onShowCompletion,
     required this.launchContact,
   });
@@ -305,11 +310,9 @@ class _RequestDetails extends StatelessWidget {
                 ),
               ),
               _ImpactPill(
-                label: isCommunityRequest
-                    ? '${request.goodwillImpactScore}%'
-                    : isUrgent
-                        ? 'URGENT'
-                        : '+${request.goodwillReward}',
+                label: isUrgent && !isCommunityRequest
+                    ? 'URGENT'
+                    : '+${request.goodwillReward}',
                 urgent: isUrgent && !isCommunityRequest,
               ),
             ],
@@ -371,6 +374,7 @@ class _RequestDetails extends StatelessWidget {
                 isHelping: isHelping,
                 isCommunityRequest: isCommunityRequest,
                 isCompletionRequested: isCompletionRequested,
+                hasCompleted: hasCompleted,
                 onComplete: onComplete,
                 onVolunteer: onVolunteer,
                 onCommunityRoleSelected: onCommunityRoleSelected,
@@ -540,6 +544,7 @@ class _ActionButton extends StatelessWidget {
   final bool isHelping;
   final bool isCommunityRequest;
   final bool isCompletionRequested;
+  final bool hasCompleted;
   final VoidCallback onComplete;
   final Future<void> Function() onVolunteer;
   final void Function(String role) onCommunityRoleSelected;
@@ -550,6 +555,7 @@ class _ActionButton extends StatelessWidget {
     required this.isHelping,
     required this.isCommunityRequest,
     required this.isCompletionRequested,
+    required this.hasCompleted,
     required this.onComplete,
     required this.onVolunteer,
     required this.onCommunityRoleSelected,
@@ -567,6 +573,20 @@ class _ActionButton extends StatelessWidget {
           label: Text(isCompletionRequested ? 'Confirm' : 'Wait'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+        ),
+      );
+    }
+
+    if (hasCompleted) {
+      return SizedBox(
+        height: 34,
+        child: ElevatedButton.icon(
+          onPressed: null,
+          icon: const Icon(Icons.check, size: 16),
+          label: const Text('Connected'),
+          style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 10),
           ),
         ),
