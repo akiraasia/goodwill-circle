@@ -27,7 +27,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isProtectedRoute =
-          state.matchedLocation.startsWith('/app') ||
           state.matchedLocation.startsWith('/campaigns') ||
           state.matchedLocation.startsWith('/agenda') ||
           state.matchedLocation.startsWith('/trust') ||

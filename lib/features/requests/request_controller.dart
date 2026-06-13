@@ -68,9 +68,17 @@ class RequestController extends Notifier<RequestState> {
     }
   }
 
-  Future<void> volunteerForRequest(String requestId) async {
+  Future<void> volunteerForRequest(
+    String requestId, {
+    String? communityJoinRole,
+    RequestContactOption? contactOption,
+  }) async {
     try {
-      await _repository.volunteerForRequest(requestId);
+      await _repository.volunteerForRequest(
+        requestId,
+        communityJoinRole: communityJoinRole,
+        contactOption: contactOption,
+      );
       await loadRequests(); // Reload to get updated volunteer count
     } catch (e) {
       // Handle silently or update state error

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
@@ -12,6 +15,7 @@ class RequestRepository {
   RequestRepository(this._client);
 
   Future<List<HelpRequest>> getOpenRequests() async {
+    final currentUserId = _client.auth.currentUser?.id;
     final data = await _client
         .from('help_requests')
         .select()
@@ -19,9 +23,8 @@ class RequestRepository {
         .order('created_at', ascending: false);
 
     final requests = data.map((json) => HelpRequest.fromJson(json)).toList();
-    final starterRequests = await _fetchCommunityStarterRequests();
+    final starterRequests = await _fetchCommunityStarterRequests(currentUserId);
     final requestIds = requests.map((request) => request.id).toList();
-    final currentUserId = _client.auth.currentUser?.id;
 
     final volunteersData = requestIds.isEmpty
         ? <Map<String, dynamic>>[]
@@ -86,7 +89,9 @@ class RequestRepository {
     return _sortRequests([...starterRequests, ...hydratedRequests]);
   }
 
-  Future<List<HelpRequest>> _fetchCommunityStarterRequests() async {
+  Future<List<HelpRequest>> _fetchCommunityStarterRequests(
+    String? currentUserId,
+  ) async {
     try {
       final data = await _client
           .from('community_starter_requests')
@@ -95,17 +100,88 @@ class RequestRepository {
           .eq('allow_join_need', true)
           .order('created_at', ascending: false);
 
-      return data
+      final starterRequests = data
           .map((json) => HelpRequest.fromCommunityStarterJson(json))
           .toList();
+
+      if (starterRequests.isNotEmpty) {
+        return _hydrateStarterJoins(starterRequests, currentUserId);
+      }
+      return _loadBundledCommunityStarterRequests();
     } on PostgrestException catch (e) {
       final message = e.message.toLowerCase();
       if (message.contains('community_starter_requests') ||
           message.contains('schema cache') ||
           message.contains('does not exist')) {
-        return const [];
+        return _loadBundledCommunityStarterRequests();
       }
       rethrow;
+    }
+  }
+
+  Future<List<HelpRequest>> _loadBundledCommunityStarterRequests() async {
+    final sql = await rootBundle.loadString('week13_schema.sql');
+    final match = RegExp(
+      r'FROM jsonb_to_recordset\(\$week13_requests\$\s*(.*?)\s*\$week13_requests\$::jsonb\)',
+      dotAll: true,
+    ).firstMatch(sql);
+    if (match == null) return const [];
+
+    final decoded = jsonDecode(match.group(1)!) as List<dynamic>;
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(HelpRequest.fromCommunityStarterJson)
+        .toList();
+  }
+
+  Future<List<HelpRequest>> _hydrateStarterJoins(
+    List<HelpRequest> starterRequests,
+    String? currentUserId,
+  ) async {
+    if (currentUserId == null || starterRequests.isEmpty) {
+      return starterRequests;
+    }
+
+    final requestIds = starterRequests.map((request) => request.id).toList();
+    final joins = await _fetchCommunityStarterJoins(requestIds);
+    final joinsByRequest = {
+      for (final join in joins) join['request_id'] as String: join,
+    };
+
+    return starterRequests.map((request) {
+      final join = joinsByRequest[request.id];
+      if (join == null) return request;
+      final contactChoice = join['contact_choice'];
+
+      return request.copyWith(
+        myVolunteerStatus: 'joined',
+        communityJoinRole: join['join_role'] as String? ?? 'helpee',
+        joinedContactOption: contactChoice is Map<String, dynamic>
+            ? RequestContactOption.fromJson(contactChoice)
+            : null,
+      );
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCommunityStarterJoins(
+    List<String> requestIds,
+  ) async {
+    try {
+      return await _client
+          .from('community_starter_request_joins')
+          .select('request_id, join_role, contact_choice')
+          .inFilter('request_id', requestIds);
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (!message.contains('join_role') &&
+          !message.contains('contact_choice') &&
+          !message.contains('schema cache')) {
+        rethrow;
+      }
+      return await _client
+          .from('community_starter_request_joins')
+          .select('request_id')
+          .inFilter('request_id', requestIds);
     }
   }
 
@@ -194,8 +270,18 @@ class RequestRepository {
     }
   }
 
-  Future<void> volunteerForRequest(String requestId) async {
-    final starterJoined = await _tryJoinCommunityStarterRequest(requestId);
+  Future<void> volunteerForRequest(
+    String requestId, {
+    String? communityJoinRole,
+    RequestContactOption? contactOption,
+  }) async {
+    if (requestId.startsWith('starter:')) return;
+
+    final starterJoined = await _tryJoinCommunityStarterRequest(
+      requestId,
+      communityJoinRole: communityJoinRole,
+      contactOption: contactOption,
+    );
     if (starterJoined) return;
 
     final existing = await _client
@@ -230,7 +316,37 @@ class RequestRepository {
         .eq('id', requestId);
   }
 
-  Future<bool> _tryJoinCommunityStarterRequest(String requestId) async {
+  Future<bool> _tryJoinCommunityStarterRequest(
+    String requestId, {
+    String? communityJoinRole,
+    RequestContactOption? contactOption,
+  }) async {
+    try {
+      await _client.rpc(
+        'join_community_starter_request',
+        params: {
+          'p_request_id': requestId,
+          'p_join_role': communityJoinRole ?? 'helpee',
+          'p_contact_choice': contactOption?.toJson(),
+        },
+      );
+      return true;
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('p_join_role') ||
+          message.contains('p_contact_choice') ||
+          message.contains('function')) {
+        return _tryJoinLegacyCommunityStarterRequest(requestId);
+      }
+      if (message.contains('community starter request not found') ||
+          message.contains('schema cache')) {
+        return false;
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> _tryJoinLegacyCommunityStarterRequest(String requestId) async {
     try {
       await _client.rpc(
         'join_community_starter_request',

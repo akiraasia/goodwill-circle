@@ -6,6 +6,7 @@ import 'package:goodwill_circle/features/trust/trust_repository.dart';
 import 'package:goodwill_circle/features/trust/widgets/platform_impact_overview.dart';
 import 'package:go_router/go_router.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 
 class RequestsScreen extends ConsumerStatefulWidget {
@@ -18,28 +19,11 @@ class RequestsScreen extends ConsumerStatefulWidget {
 class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   static const _categories = [
     'All',
-    'Education',
     'Career',
     'Technology',
-    'Health Awareness',
-    'Blood Donation Awareness',
-    'Volunteering',
-    'Environment',
-    'Transportation',
-    'Food Support',
-    'Community Events',
-    'Elderly Assistance',
-    'Mental Wellbeing',
-    'Financial Literacy',
-    'Entrepreneurship',
-    'Government Services',
+    'Education',
     'Skill Development',
-    'Food',
-    'Medical',
-    'Finance',
-    'Housing',
-    'Emotional Support',
-    'Other',
+    'Entrepreneurship',
   ];
 
   String _selectedCategory = 'All';
@@ -66,19 +50,44 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
               onActionTap: _showImpactSheet,
             ),
             SizedBox(
-              height: 44,
+              height: 36,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 scrollDirection: Axis.horizontal,
                 itemBuilder: (context, index) {
                   final category = _categories[index];
                   final selected = category == _selectedCategory;
-                  return ChoiceChip(
-                    label: Text(category),
-                    selected: selected,
-                    onSelected: (_) {
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
                       setState(() => _selectedCategory = category);
                     },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surface,
+                        border: Border.all(
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : AppColors.tan1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        category,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: selected
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : AppColors.textMid,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
                   );
                 },
                 separatorBuilder: (_, _) =>
@@ -149,9 +158,12 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                 final request = visibleRequests[index];
                                 return RequestCard(
                                   request: request,
-                                  onVolunteer: () async {
+                                  onVolunteer:
+                                      ({communityJoinRole, contactOption}) async {
                                     await controller.volunteerForRequest(
                                       request.id,
+                                      communityJoinRole: communityJoinRole,
+                                      contactOption: contactOption,
                                     );
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
