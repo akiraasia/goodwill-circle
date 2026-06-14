@@ -167,14 +167,24 @@ class CampaignRepository {
     try {
       final membersData = await _client
           .from('campaign_members')
-          .select('campaign_id, user_id')
+          .select('campaign_id, user_id, join_role')
           .inFilter('campaign_id', campaignIds);
       final countsByCampaign = <String, int>{};
+      final helperCountsByCampaign = <String, int>{};
+      final helpieCountsByCampaign = <String, int>{};
       final joinedCampaignIds = <String>{};
 
       for (final member in membersData) {
         final campaignId = member['campaign_id'] as String;
         countsByCampaign[campaignId] = (countsByCampaign[campaignId] ?? 0) + 1;
+        
+        final role = member['join_role'] as String? ?? 'helper';
+        if (role == 'helper') {
+          helperCountsByCampaign[campaignId] = (helperCountsByCampaign[campaignId] ?? 0) + 1;
+        } else if (role == 'helpee') {
+          helpieCountsByCampaign[campaignId] = (helpieCountsByCampaign[campaignId] ?? 0) + 1;
+        }
+        
         if (userId != null && member['user_id'] == userId) {
           joinedCampaignIds.add(campaignId);
         }
@@ -183,6 +193,8 @@ class CampaignRepository {
       return campaigns.map((campaign) {
         return campaign.copyWith(
           membersCount: countsByCampaign[campaign.id] ?? campaign.membersCount,
+          helperCount: helperCountsByCampaign[campaign.id] ?? campaign.helperCount,
+          helpieCount: helpieCountsByCampaign[campaign.id] ?? campaign.helpieCount,
           isJoined: joinedCampaignIds.contains(campaign.id),
         );
       }).toList();

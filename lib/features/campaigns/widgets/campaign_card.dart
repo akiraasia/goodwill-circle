@@ -137,23 +137,6 @@ class CampaignCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (campaign.completedConnectionsCount > 0) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '🤝 Connected ${campaign.completedConnectionsCount} times',
-                    style: AppTypography.textTheme.labelSmall?.copyWith(
-                      color: Colors.green.shade700,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
               Icon(
                 Icons.group,
                 size: 16,
@@ -164,7 +147,7 @@ class CampaignCard extends StatelessWidget {
                 'helpers: ${campaign.helperCount}, helpies: ${campaign.helpieCount}',
                 style: AppTypography.textTheme.labelSmall,
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
                 borderRadius: BorderRadius.circular(4),
@@ -186,6 +169,23 @@ class CampaignCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (campaign.completedConnectionsCount > 0) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '🤝 ${campaign.completedConnectionsCount}',
+                    style: AppTypography.textTheme.labelSmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

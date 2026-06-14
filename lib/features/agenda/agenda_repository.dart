@@ -52,7 +52,7 @@ class AgendaRepository {
 
     final participantData = await _client
         .from('agenda_participants')
-        .select('agenda_item_id, status')
+        .select('agenda_item_id, status, join_role')
         .eq('volunteer_id', userId)
         .inFilter('agenda_item_id', items.map((item) => item.id).toList());
 
@@ -61,12 +61,34 @@ class AgendaRepository {
         participant['agenda_item_id'] as String: participant['status'] as String,
     };
 
+    // Calculate helper and helpie counts for all agenda items
+    final agendaIds = items.map((item) => item.id).toList();
+    final allParticipantsData = await _client
+        .from('agenda_participants')
+        .select('agenda_item_id, join_role')
+        .inFilter('agenda_item_id', agendaIds);
+    
+    final helperCountsByAgenda = <String, int>{};
+    final helpieCountsByAgenda = <String, int>{};
+    
+    for (final participant in allParticipantsData) {
+      final agendaId = participant['agenda_item_id'] as String;
+      final role = participant['join_role'] as String? ?? 'helper';
+      if (role == 'helper') {
+        helperCountsByAgenda[agendaId] = (helperCountsByAgenda[agendaId] ?? 0) + 1;
+      } else if (role == 'helpee') {
+        helpieCountsByAgenda[agendaId] = (helpieCountsByAgenda[agendaId] ?? 0) + 1;
+      }
+    }
+
     return items
         .map(
           (item) => item.copyWith(
             ngoVerificationStatus:
                 verificationByNgoId[item.ngoId] ?? 'unverified',
             myParticipantStatus: statusByAgendaId[item.id],
+            helperCount: helperCountsByAgenda[item.id] ?? item.helperCount,
+            helpieCount: helpieCountsByAgenda[item.id] ?? item.helpieCount,
           ),
         )
         .toList();

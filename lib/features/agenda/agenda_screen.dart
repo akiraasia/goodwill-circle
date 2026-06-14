@@ -105,7 +105,7 @@ class AgendaScreen extends ConsumerWidget {
                                         builder: (context) => ContactExchangeScreen(
                                           entityId: item.id,
                                           entityType: 'agenda',
-                                          myRole: 'helper',
+                                          myRole: item.myParticipantStatus == 'helper' ? 'helper' : 'helpee',
                                           title: 'Connection Hub',
                                         ),
                                       ),

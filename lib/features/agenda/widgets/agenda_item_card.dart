@@ -143,7 +143,7 @@ class AgendaItemCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Icon(
@@ -175,7 +175,7 @@ class AgendaItemCard extends StatelessWidget {
                 'helpers: ${item.helperCount}, helpies: ${item.helpieCount}',
                 style: AppTypography.textTheme.labelSmall,
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
                 borderRadius: BorderRadius.circular(4),
@@ -200,53 +200,53 @@ class AgendaItemCard extends StatelessWidget {
               const Spacer(),
               if (alreadyJoined)
                 SizedBox(
-                  height: 34,
+                  height: 32,
                   child: ElevatedButton.icon(
                     onPressed: onViewContacts,
-                    icon: const Icon(Icons.group, size: 16),
-                    label: const Text('View Contacts'),
+                    icon: const Icon(Icons.group, size: 14),
+                    label: const Text('View Contacts', style: TextStyle(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                   ),
                 )
               else if (onCommunityRoleSelected != null)
                 Wrap(
-                  spacing: 8,
+                  spacing: 6,
                   children: [
                     SizedBox(
-                      height: 28,
+                      height: 26,
                       child: OutlinedButton(
                         onPressed: isFull ? null : () => onCommunityRoleSelected!('helpee'),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           side: const BorderSide(width: 1),
                         ),
-                        child: Text(isFull ? 'Full' : 'Need help', style: const TextStyle(fontSize: 12)),
+                        child: Text(isFull ? 'Full' : 'Need help', style: const TextStyle(fontSize: 11)),
                       ),
                     ),
                     SizedBox(
-                      height: 28,
+                      height: 26,
                       child: ElevatedButton(
                         onPressed: isFull ? null : () => onCommunityRoleSelected!('helper'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          minimumSize: const Size(0, 28),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 26),
                         ),
-                        child: Text(isFull ? 'Full' : 'Can help', style: const TextStyle(fontSize: 12)),
+                        child: Text(isFull ? 'Full' : 'Can help', style: const TextStyle(fontSize: 11)),
                       ),
                     ),
                   ],
                 )
               else
                 SizedBox(
-                  height: 36,
+                  height: 32,
                   child: ElevatedButton.icon(
                     onPressed: isCreator || alreadyJoined || isFull ? null : onJoin,
-                    icon: const Icon(Icons.handshake_outlined, size: 16),
-                    label: Text(isCreator ? 'Posted' : alreadyJoined ? 'Connected' : isFull ? 'Full' : 'Connect'),
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+                    icon: const Icon(Icons.handshake_outlined, size: 14),
+                    label: Text(isCreator ? 'Posted' : alreadyJoined ? 'Connected' : isFull ? 'Full' : 'Connect', style: const TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10)),
                   ),
                 ),
             ],

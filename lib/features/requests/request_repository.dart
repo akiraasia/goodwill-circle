@@ -52,6 +52,19 @@ class RequestRepository {
     final hydratedRequests = requests.map((request) {
       final creatorProfile = profilesById[request.creatorId];
       final volunteers = volunteersByRequest[request.id] ?? const [];
+      
+      // Calculate actual helper and helpie counts from volunteers
+      int helperCount = 0;
+      int helpieCount = 0;
+      for (final volunteer in volunteers) {
+        final role = volunteer['join_role'] as String? ?? 'helper';
+        if (role == 'helper') {
+          helperCount++;
+        } else if (role == 'helpee') {
+          helpieCount++;
+        }
+      }
+      
       Map<String, dynamic>? myVolunteer;
       for (final volunteer in volunteers) {
         if (volunteer['volunteer_id'] == currentUserId) {
@@ -84,6 +97,8 @@ class RequestRepository {
         myVolunteerStatus: myVolunteer?['status'] as String?,
         completionMessage: myVolunteer?['completion_message'] as String?,
         contactId: myVolunteer?['volunteer_id'] as String?,
+        helperCount: helperCount > 0 ? helperCount : request.helperCount,
+        helpieCount: helpieCount > 0 ? helpieCount : request.helpieCount,
       );
     }).toList();
 

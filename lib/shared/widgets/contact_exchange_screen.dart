@@ -116,24 +116,41 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
               : _contacts.isEmpty
                   ? Center(
-                      child: Text(
-                        widget.myRole == 'helper'
-                            ? 'No helpies have joined yet.'
-                            : 'No helpers have joined yet.',
-                        style: const TextStyle(fontSize: 16, color: Colors.black54),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            widget.myRole == 'helper' ? Icons.people_outline : Icons.handshake_outlined,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.myRole == 'helper'
+                                ? 'No helpies have joined yet.'
+                                : 'No helpers have joined yet.',
+                            style: const TextStyle(fontSize: 16, color: Colors.black54),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Share this ${widget.entityType} to get more connections!',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
+                      padding: const EdgeInsets.all(16),
                       itemCount: _contacts.length,
                       itemBuilder: (context, index) {
                         final contact = _contacts[index];
                         final isAccepted = contact['status'] == 'accepted';
                         return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: 2,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey.shade200),
                           ),
                           child: ListTile(
                             contentPadding: const EdgeInsets.all(16),
@@ -153,15 +170,30 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                                   children: [
                                     const Icon(Icons.mail, size: 14, color: Colors.black54),
                                     const SizedBox(width: 4),
-                                    Text(contact['email'] ?? 'No email'),
+                                    Expanded(
+                                      child: Text(
+                                        contact['email'] ?? 'No email',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  'Status: ${contact['status'] ?? 'pending'}',
-                                  style: TextStyle(
-                                    color: isAccepted ? Colors.green : Colors.orange,
-                                    fontSize: 12,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isAccepted 
+                                        ? Colors.green.shade50 
+                                        : Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Status: ${contact['status'] ?? 'pending'}',
+                                    style: TextStyle(
+                                      color: isAccepted ? Colors.green.shade700 : Colors.orange.shade700,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -175,10 +207,23 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     ),
-                                    child: const Text('Confirm Help'),
+                                    child: const Text('Confirm Help', style: TextStyle(fontSize: 12)),
                                   )
-                                : null,
+                                : IconButton(
+                                    icon: const Icon(Icons.copy, size: 18),
+                                    onPressed: () {
+                                      final email = contact['email'] as String?;
+                                      if (email != null && email.isNotEmpty) {
+                                        Clipboard.setData(ClipboardData(text: email));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Email copied to clipboard')),
+                                        );
+                                      }
+                                    },
+                                    tooltip: 'Copy email',
+                                  ),
                           ),
                         );
                       },

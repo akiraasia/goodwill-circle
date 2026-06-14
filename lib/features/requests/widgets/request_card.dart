@@ -130,13 +130,18 @@ class RequestCard extends StatelessWidget {
   }
 
   void _navigateToContacts(BuildContext context, String myRole) {
+    // Determine the actual role based on the user's volunteer status
+    final actualRole = request.myVolunteerStatus != null 
+        ? (request.communityJoinRole ?? 'helper')
+        : myRole;
+    
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ContactExchangeScreen(
           entityId: request.id,
           entityType: 'request',
-          myRole: myRole,
+          myRole: actualRole,
           title: 'Connection Hub',
         ),
       ),
@@ -364,7 +369,7 @@ class _RequestDetails extends StatelessWidget {
                 'helpers: ${request.helperCount}, helpies: ${request.helpieCount}',
                 style: AppTypography.textTheme.labelSmall,
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
                 borderRadius: BorderRadius.circular(4),
@@ -386,8 +391,8 @@ class _RequestDetails extends StatelessWidget {
                   ),
                 ),
               ),
-              if (request.completedConnectionsCount > 0) ...[
-                const SizedBox(width: AppSpacing.sm),
+              const Spacer(),
+              if (request.completedConnectionsCount > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
@@ -395,15 +400,14 @@ class _RequestDetails extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '🤝 Connected ${request.completedConnectionsCount} times',
+                    '🤝 ${request.completedConnectionsCount}',
                     style: AppTypography.textTheme.labelSmall?.copyWith(
                       color: Colors.green.shade700,
                       fontSize: 10,
                     ),
                   ),
                 ),
-              ],
-              const Spacer(),
+              const SizedBox(width: AppSpacing.sm),
               _ActionButton(
                 isCreator: isCreator,
                 isHelping: isHelping,
@@ -805,8 +809,12 @@ class _FeedContactPanel extends StatelessWidget {
                 width: 28,
                 child: IconButton(
                   tooltip: 'Copy',
-                  onPressed: () =>
-                      Clipboard.setData(ClipboardData(text: option.value)),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: option.value));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Copied to clipboard')),
+                    );
+                  },
                   icon: const Icon(Icons.copy, size: 14),
                   padding: EdgeInsets.zero,
                 ),
@@ -872,13 +880,21 @@ Future<void> _openContactValue(
   final uri = Uri.tryParse(option.value);
   if (uri == null || !uri.hasScheme) {
     await Clipboard.setData(ClipboardData(text: option.value));
-    if (context.mounted) Navigator.pop(context);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copied to clipboard (not a valid URL)')),
+      );
+    }
     return;
   }
 
   final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!opened) {
     await Clipboard.setData(ClipboardData(text: option.value));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open link, copied to clipboard')),
+      );
+    }
   }
-  if (context.mounted) Navigator.pop(context);
 }
