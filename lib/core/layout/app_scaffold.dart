@@ -41,7 +41,6 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
       body: SafeArea(
         bottom: false,
         child: AnimatedSwitcher(
@@ -49,9 +48,12 @@ class AppScaffold extends StatelessWidget {
           child: body,
         ),
       ),
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: _calculateSelectedIndex(context),
-        onTap: (index) => _onItemTapped(index, context),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: AppBottomNavigation(
+          currentIndex: _calculateSelectedIndex(context),
+          onTap: (index) => _onItemTapped(index, context),
+        ),
       ),
     );
   }

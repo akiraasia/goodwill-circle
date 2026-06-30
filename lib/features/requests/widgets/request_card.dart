@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
+import 'package:goodwill_circle/features/requests/request_controller.dart';
 import 'package:goodwill_circle/shared/services/external_contact_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:goodwill_circle/shared/widgets/contact_exchange_screen.dart';
 
-class RequestCard extends StatelessWidget {
+class RequestCard extends ConsumerStatefulWidget {
   final HelpRequest request;
   final Future<void> Function({
     String? communityJoinRole,
     RequestContactOption? contactOption,
+    String? joinType,
   })
   onVolunteer;
   final Future<void> Function(String message, bool sendEmail) onComplete;
@@ -31,121 +34,123 @@ class RequestCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isCreator = currentUserId == request.creatorId;
-    final isUrgent = request.goodwillReward >= 25;
-    final isHelping = request.myVolunteerStatus != null;
-    final isCommunityRequest = request.isCommunityRequest;
-    final isCompletionRequested =
-        request.myVolunteerStatus == 'completion_requested';
-    final hasCompleted = request.myVolunteerStatus == 'completed';
-    final authorName = request.creatorName ?? 'Community member';
-    final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
+  ConsumerState<RequestCard> createState() => _RequestCardState();
+}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        border: Border.all(color: AppColors.tan1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 600;
-          if (isWide) {
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: _RequestVisual(request: request, isWide: true),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: _RequestDetails(
-                      request: request,
-                      isCreator: isCreator,
-                      isUrgent: isUrgent,
-                      isHelping: isHelping,
-                      isCommunityRequest: isCommunityRequest,
-                      isCompletionRequested: isCompletionRequested,
-                      authorName: authorName,
-                      initial: initial,
-                      hasCompleted: hasCompleted,
-                      onVolunteer: () => _handleVolunteer(context),
-                      onCommunityRoleSelected: (role) =>
-                          _handleVolunteer(context, role),
-                      onComplete: () => _showConfirmCompletionDialog(context),
-                      onShowCompletion: () => _showCompletionDialog(context),
-                      launchContact: (action) => _launchContact(context, action),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _RequestVisual(request: request, isWide: false),
-              _RequestDetails(
-                request: request,
-                isCreator: isCreator,
-                isUrgent: isUrgent,
-                isHelping: isHelping,
-                isCommunityRequest: isCommunityRequest,
-                isCompletionRequested: isCompletionRequested,
-                authorName: authorName,
-                initial: initial,
-                hasCompleted: hasCompleted,
-                onVolunteer: () => _handleVolunteer(context),
-                onCommunityRoleSelected: (role) =>
-                    _handleVolunteer(context, role),
-                onComplete: () => _showConfirmCompletionDialog(context),
-                onShowCompletion: () => _showCompletionDialog(context),
-                launchContact: (action) => _launchContact(context, action),
-                onToggleSupport: onToggleSupport,
-                onViewContacts: () => _navigateToContacts(context, request.communityJoinRole ?? 'helper'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _handleVolunteer(BuildContext context, [String? role]) async {
-    final joinRole = role ?? 'helper';
-    
-    await onVolunteer(
-      communityJoinRole: joinRole, 
-      contactOption: const RequestContactOption(label: 'Connection Hub', type: 'group', value: ''),
-    );
-
-    if (!context.mounted) return;
-    _navigateToContacts(context, joinRole);
-  }
-
+class _RequestCardState extends ConsumerState<RequestCard> {
   void _navigateToContacts(BuildContext context, String myRole) {
-    // Determine the actual role based on the user's volunteer status
-    final actualRole = request.myVolunteerStatus != null 
-        ? (request.communityJoinRole ?? 'helper')
+    final actualRole = widget.request.myVolunteerStatus != null
+        ? (widget.request.communityJoinRole ?? 'helper')
         : myRole;
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ContactExchangeScreen(
-          entityId: request.id,
+          entityId: widget.request.id,
           entityType: 'request',
           myRole: actualRole,
           title: 'Connection Hub',
         ),
       ),
     );
+  }
+
+  Future<void> _handleVolunteer(BuildContext context, [String? role]) async {
+    // Show a dialog to let the user select their role and join type
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Join Goodwill Loop',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Choose how you would like to join this help request:'),
+            const SizedBox(height: 16),
+            if (role == null || role == 'helper') ...[
+              ListTile(
+                leading: const Icon(
+                  Icons.volunteer_activism,
+                  color: Colors.blue,
+                ),
+                title: const Text('Join as Helper (Individual)'),
+                subtitle: const Text('Help out as a single volunteer'),
+                onTap: () => Navigator.pop(context, {
+                  'role': 'helper',
+                  'type': 'individual',
+                }),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.group, color: Colors.blue),
+                title: const Text('Join as Helper (Multiple/Group)'),
+                subtitle: const Text('Help out with a group/team'),
+                onTap: () => Navigator.pop(context, {
+                  'role': 'helper',
+                  'type': 'multiple',
+                }),
+              ),
+            ],
+            if (role == null) const Divider(thickness: 1.5),
+            if (role == null || role == 'helpee') ...[
+              ListTile(
+                leading: const Icon(Icons.person_outline, color: Colors.green),
+                title: const Text('Join as Helpie (Individual)'),
+                subtitle: const Text('Need help for yourself'),
+                onTap: () => Navigator.pop(context, {
+                  'role': 'helpee',
+                  'type': 'individual',
+                }),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.groups_outlined, color: Colors.green),
+                title: const Text('Join as Helpie (Multiple/Group)'),
+                subtitle: const Text('Need help for a group/community'),
+                onTap: () => Navigator.pop(context, {
+                  'role': 'helpee',
+                  'type': 'multiple',
+                }),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null) return;
+    final selectedRole = result['role']!;
+    final type = result['type']!;
+
+    try {
+      await widget.onVolunteer(
+        communityJoinRole: selectedRole,
+        joinType: type,
+        contactOption: const RequestContactOption(
+          label: 'Connection Hub',
+          type: 'group',
+          value: '',
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not join Connection Hub: $e')),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+    _navigateToContacts(context, selectedRole);
   }
 
   Future<void> _launchContact(BuildContext context, Future<bool> action) async {
@@ -185,7 +190,7 @@ class RequestCard extends StatelessWidget {
     );
     controller.dispose();
     if (message == null) return;
-    await onRequestCompletion(message.isEmpty ? null : message);
+    await widget.onRequestCompletion(message.isEmpty ? null : message);
   }
 
   Future<void> _showConfirmCompletionDialog(BuildContext context) async {
@@ -209,7 +214,10 @@ class RequestCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               CheckboxListTile(
-                title: const Text('Email this helper after completing', style: TextStyle(fontSize: 14)),
+                title: const Text(
+                  'Email this helper after completing',
+                  style: TextStyle(fontSize: 14),
+                ),
                 value: sendEmail,
                 onChanged: (val) {
                   setState(() {
@@ -239,7 +247,108 @@ class RequestCard extends StatelessWidget {
     );
     controller.dispose();
     if (result == null) return;
-    await onComplete(result['message'] as String, result['sendEmail'] as bool);
+    await widget.onComplete(
+      result['message'] as String,
+      result['sendEmail'] as bool,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isCreator = currentUserId == widget.request.creatorId;
+    final isUrgent = widget.request.goodwillReward >= 25;
+    final isHelping = widget.request.myVolunteerStatus != null;
+    final isCommunityRequest = widget.request.isCommunityRequest;
+    final isCompletionRequested =
+        widget.request.myVolunteerStatus == 'completion_requested';
+    final hasCompleted = widget.request.myVolunteerStatus == 'completed';
+    final authorName = widget.request.creatorName ?? 'Community member';
+    final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.tan1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          if (isWide) {
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _RequestVisual(
+                      request: widget.request,
+                      isWide: true,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: _RequestDetails(
+                      request: widget.request,
+                      isCreator: isCreator,
+                      isUrgent: isUrgent,
+                      isHelping: isHelping,
+                      isCommunityRequest: isCommunityRequest,
+                      isCompletionRequested: isCompletionRequested,
+                      authorName: authorName,
+                      initial: initial,
+                      hasCompleted: hasCompleted,
+                      onVolunteer: () => _handleVolunteer(context),
+                      onCommunityRoleSelected: (role) =>
+                          _handleVolunteer(context, role),
+                      onComplete: () => _showConfirmCompletionDialog(context),
+                      onShowCompletion: () => _showCompletionDialog(context),
+                      launchContact: (action) =>
+                          _launchContact(context, action),
+                      onToggleSupport: widget.onToggleSupport,
+                      onViewContacts: () => _navigateToContacts(
+                        context,
+                        widget.request.communityJoinRole ?? 'helper',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RequestVisual(request: widget.request, isWide: false),
+              _RequestDetails(
+                request: widget.request,
+                isCreator: isCreator,
+                isUrgent: isUrgent,
+                isHelping: isHelping,
+                isCommunityRequest: isCommunityRequest,
+                isCompletionRequested: isCompletionRequested,
+                authorName: authorName,
+                initial: initial,
+                hasCompleted: hasCompleted,
+                onVolunteer: () => _handleVolunteer(context),
+                onCommunityRoleSelected: (role) =>
+                    _handleVolunteer(context, role),
+                onComplete: () => _showConfirmCompletionDialog(context),
+                onShowCompletion: () => _showCompletionDialog(context),
+                launchContact: (action) => _launchContact(context, action),
+                onToggleSupport: widget.onToggleSupport,
+                onViewContacts: () => _navigateToContacts(
+                  context,
+                  widget.request.communityJoinRole ?? 'helper',
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -298,11 +407,13 @@ class _RequestDetails extends StatelessWidget {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.yellowPale,
-                backgroundImage: request.creatorPhoto != null &&
+                backgroundImage:
+                    request.creatorPhoto != null &&
                         request.creatorPhoto!.isNotEmpty
                     ? NetworkImage(request.creatorPhoto!)
                     : null,
-                child: request.creatorPhoto == null ||
+                child:
+                    request.creatorPhoto == null ||
                         request.creatorPhoto!.isEmpty
                     ? Text(initial, style: AppTypography.textTheme.labelLarge)
                     : null,
@@ -330,14 +441,15 @@ class _RequestDetails extends StatelessWidget {
               _ImpactPill(
                 label: isUrgent && !isCommunityRequest
                     ? 'URGENT'
-                    : isCommunityRequest 
-                        ? '${request.volunteersCount} joined'
-                        : '+${request.goodwillReward}',
+                    : isCommunityRequest
+                    ? '${request.volunteersCount} joined'
+                    : '+${request.goodwillReward}',
                 urgent: isUrgent && !isCommunityRequest,
               ),
             ],
           ),
-          if (request.artAssetPath == null || request.artAssetPath!.isEmpty) ...[
+          if (request.artAssetPath == null ||
+              request.artAssetPath!.isEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(request.title, style: AppTypography.textTheme.titleMedium),
             const SizedBox(height: 6),
@@ -357,30 +469,37 @@ class _RequestDetails extends StatelessWidget {
             ],
           ],
           const SizedBox(height: AppSpacing.sm),
-          Row(
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(
-                Icons.group,
-                size: 16,
-                color: AppColors.textLight,
-              ),
+              Icon(Icons.group, size: 16, color: AppColors.textLight),
               const SizedBox(width: AppSpacing.xs),
               Text(
                 'helpers: ${request.helperCount}, helpies: ${request.helpieCount}',
                 style: AppTypography.textTheme.labelSmall,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   child: Row(
                     children: [
                       Icon(
-                        request.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        request.hasSupported
+                            ? Icons.favorite
+                            : Icons.favorite_border,
                         size: 16,
-                        color: request.hasSupported ? AppColors.red : AppColors.textLight,
+                        color: request.hasSupported
+                            ? AppColors.red
+                            : AppColors.textLight,
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
@@ -391,10 +510,12 @@ class _RequestDetails extends StatelessWidget {
                   ),
                 ),
               ),
-              const Spacer(),
               if (request.completedConnectionsCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -407,20 +528,24 @@ class _RequestDetails extends StatelessWidget {
                     ),
                   ),
                 ),
-              const SizedBox(width: AppSpacing.sm),
-              _ActionButton(
-                isCreator: isCreator,
-                isHelping: isHelping,
-                isCommunityRequest: isCommunityRequest,
-                isCompletionRequested: isCompletionRequested,
-                hasCompleted: hasCompleted,
-                onComplete: onComplete,
-                onVolunteer: onVolunteer,
-                onCommunityRoleSelected: onCommunityRoleSelected,
-                onShowCompletion: onShowCompletion,
-                onViewContacts: onViewContacts,
-              ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Action button container (Placed underneath stats row to fit beautifully on Android)
+          SizedBox(
+            width: double.infinity,
+            child: _ActionButton(
+              isCreator: isCreator,
+              isHelping: isHelping,
+              isCommunityRequest: isCommunityRequest,
+              isCompletionRequested: isCompletionRequested,
+              hasCompleted: hasCompleted,
+              onComplete: onComplete,
+              onVolunteer: onVolunteer,
+              onCommunityRoleSelected: onCommunityRoleSelected,
+              onShowCompletion: onShowCompletion,
+              onViewContacts: onViewContacts,
+            ),
           ),
           if (isCommunityRequest &&
               isHelping &&
@@ -429,6 +554,8 @@ class _RequestDetails extends StatelessWidget {
             _FeedContactPanel(
               option: request.joinedContactOption!,
               role: request.communityJoinRole,
+              request: request,
+              onViewContacts: onViewContacts,
             ),
           ],
           if (request.contactPhone != null &&
@@ -466,6 +593,8 @@ class _RequestDetails extends StatelessWidget {
               message: request.completionMessage,
             ),
           ],
+          // short post box and activity history inside every help request
+          _RequestActivityFeed(request: request),
         ],
       ),
     );
@@ -492,7 +621,9 @@ class _RequestVisual extends StatelessWidget {
             bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: isWide ? double.infinity : 200),
+            constraints: BoxConstraints(
+              maxHeight: isWide ? double.infinity : 200,
+            ),
             child: Image.asset(
               request.artAssetPath!,
               width: double.infinity,
@@ -515,7 +646,9 @@ class _RequestVisual extends StatelessWidget {
             bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: isWide ? double.infinity : 200),
+            constraints: BoxConstraints(
+              maxHeight: isWide ? double.infinity : 200,
+            ),
             child: Image.network(
               request.imageUrl!,
               width: double.infinity,
@@ -667,6 +800,7 @@ class _ActionButton extends StatelessWidget {
     if (isCommunityRequest) {
       return Wrap(
         spacing: 8,
+        runSpacing: 6,
         children: [
           SizedBox(
             height: 28,
@@ -676,10 +810,7 @@ class _ActionButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 side: const BorderSide(width: 1),
               ),
-              child: const Text(
-                'Need help',
-                style: TextStyle(fontSize: 12),
-              ),
+              child: const Text('Need help', style: TextStyle(fontSize: 12)),
             ),
           ),
           SizedBox(
@@ -690,10 +821,7 @@ class _ActionButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 minimumSize: const Size(0, 28),
               ),
-              child: const Text(
-                'Can help',
-                style: TextStyle(fontSize: 12),
-              ),
+              child: const Text('Can help', style: TextStyle(fontSize: 12)),
             ),
           ),
         ],
@@ -705,14 +833,13 @@ class _ActionButton extends StatelessWidget {
       child: ElevatedButton.icon(
         onPressed: onVolunteer,
         icon: const Icon(Icons.volunteer_activism, size: 16),
-        label: Text(isCommunityRequest ? 'Join' : 'Help'),
+        label: const Text('Join/Help'),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 10),
         ),
       ),
     );
   }
-
 }
 
 class _CompletionNotice extends StatelessWidget {
@@ -744,16 +871,32 @@ class _CompletionNotice extends StatelessWidget {
 class _FeedContactPanel extends StatelessWidget {
   final RequestContactOption option;
   final String? role;
+  final HelpRequest request;
+  final VoidCallback? onViewContacts;
 
-  const _FeedContactPanel({required this.option, this.role});
+  bool get isConnectionHub => _isConnectionHubOption(option);
+
+  const _FeedContactPanel({
+    required this.option,
+    this.role,
+    required this.request,
+    this.onViewContacts,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final roleLabel = role == 'helper' ? '🤝 Helping as helper' : '👋 Joined for help';
+    final roleLabel = role == 'helper'
+        ? '🤝 Helping as helper'
+        : '👋 Joined for help';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: Colors.blue.withValues(alpha: 0.05),
         border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 1),
@@ -792,7 +935,7 @@ class _FeedContactPanel extends StatelessWidget {
                         color: AppColors.textDark,
                       ),
                     ),
-                    if (option.value.length < 50)
+                    if (option.value.length < 50 && option.value.isNotEmpty)
                       Text(
                         option.value,
                         maxLines: 1,
@@ -810,22 +953,41 @@ class _FeedContactPanel extends StatelessWidget {
                 child: IconButton(
                   tooltip: 'Copy',
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: option.value));
+                    final textToCopy = isConnectionHub
+                        ? 'Connection Hub for ${request.title}'
+                        : option.value;
+                    Clipboard.setData(ClipboardData(text: textToCopy));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
+                      const SnackBar(
+                        content: Text('Copied details to clipboard'),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.copy, size: 14),
                   padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
                 ),
               ),
               SizedBox(
                 width: 28,
                 child: IconButton(
                   tooltip: 'Open',
-                  onPressed: () => _openContactValue(context, option),
+                  onPressed: () {
+                    if (isConnectionHub) {
+                      onViewContacts?.call();
+                    } else {
+                      _openContactValue(context, option);
+                    }
+                  },
                   icon: const Icon(Icons.open_in_new, size: 14),
                   padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
                 ),
               ),
             ],
@@ -873,6 +1035,15 @@ IconData _contactIcon(String type) {
   }
 }
 
+bool _isConnectionHubOption(RequestContactOption option) {
+  final normalizedLabel = option.label.trim().toLowerCase();
+  final normalizedValue = option.value.trim();
+  return normalizedLabel == 'connection hub' ||
+      (option.type == 'group' && normalizedValue.isEmpty) ||
+      normalizedValue ==
+          'Your registered email and phone number will be used to connect.';
+}
+
 Future<void> _openContactValue(
   BuildContext context,
   RequestContactOption option,
@@ -893,8 +1064,215 @@ Future<void> _openContactValue(
     await Clipboard.setData(ClipboardData(text: option.value));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open link, copied to clipboard')),
+        const SnackBar(
+          content: Text('Could not open link, copied to clipboard'),
+        ),
       );
     }
+  }
+}
+
+class _RequestActivityFeed extends ConsumerStatefulWidget {
+  final HelpRequest request;
+
+  const _RequestActivityFeed({required this.request});
+
+  @override
+  ConsumerState<_RequestActivityFeed> createState() =>
+      _RequestActivityFeedState();
+}
+
+class _RequestActivityFeedState extends ConsumerState<_RequestActivityFeed> {
+  final _commentController = TextEditingController();
+  bool _isPosting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitPost() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isPosting = true);
+    try {
+      await ref
+          .read(requestControllerProvider.notifier)
+          .addRequestPost(widget.request.id, text);
+      _commentController.clear();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPosting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final postsAsync = ref.watch(requestPostsProvider(widget.request.id));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(Icons.notes, size: 16, color: Colors.blueGrey),
+              SizedBox(width: 6),
+              Text(
+                'Instructions & Updates',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ],
+          ),
+        ),
+        postsAsync.when(
+          data: (posts) {
+            if (posts.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'No instructions or updates yet.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              );
+            }
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: posts.length,
+              itemBuilder: (context, index) {
+                final post = posts[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 10,
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage:
+                            post.userPhoto != null && post.userPhoto!.isNotEmpty
+                            ? NetworkImage(post.userPhoto!)
+                            : null,
+                        child: post.userPhoto == null || post.userPhoto!.isEmpty
+                            ? Text(
+                                post.userName != null &&
+                                        post.userName!.isNotEmpty
+                                    ? post.userName![0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(fontSize: 8),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${post.userName ?? 'User'}: ',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: post.message,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (e, _) => Text(
+            'Error loading updates: $e',
+            style: const TextStyle(fontSize: 10, color: Colors.red),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 32,
+                child: TextField(
+                  controller: _commentController,
+                  decoration: InputDecoration(
+                    hintText: 'Add instructions/updates...',
+                    hintStyle: const TextStyle(fontSize: 11),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: Colors.blue),
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 11),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submitPost(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _isPosting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.send, size: 18, color: Colors.blue),
+                    onPressed: _submitPost,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+          ],
+        ),
+      ],
+    );
   }
 }

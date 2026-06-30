@@ -41,9 +41,7 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+      body: Column(
           children: [
             SectionHeader(
               title: 'Goodwill Feed',
@@ -164,11 +162,12 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                                 return RequestCard(
                                   request: request,
                                   onVolunteer:
-                                      ({communityJoinRole, contactOption}) async {
+                                      ({communityJoinRole, contactOption, joinType}) async {
                                     await controller.volunteerForRequest(
                                       request.id,
                                       communityJoinRole: communityJoinRole,
                                       contactOption: contactOption,
+                                      joinType: joinType,
                                     );
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -233,7 +232,6 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
             ),
           ],
         ),
-      ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 80.0),
         child: FloatingActionButton.extended(

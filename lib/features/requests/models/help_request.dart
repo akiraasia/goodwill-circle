@@ -97,7 +97,8 @@ class HelpRequest {
       estimatedPeopleWhoMayBenefit:
           json['estimated_people_who_may_benefit'] as String?,
       helperCount: json['helper_count'] as int? ?? 0,
-      helpieCount: json['helpie_count'] as int? ?? json['join_count'] as int? ?? 0,
+      helpieCount:
+          json['helpie_count'] as int? ?? json['join_count'] as int? ?? 0,
       supportCount: json['support_count'] as int? ?? 0,
       hasSupported: json['has_supported'] as bool? ?? false,
       goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
@@ -117,14 +118,16 @@ class HelpRequest {
       creatorVerificationStatus: json['profiles'] != null
           ? json['profiles']['verification_status'] as String?
           : null,
-      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
+      completedConnectionsCount:
+          json['completed_connections_count'] as int? ?? 0,
     );
   }
 
   factory HelpRequest.fromCommunityStarterJson(Map<String, dynamic> json) {
     final title = json['title'] as String;
-    final joinCount = json['join_count'] as int? ?? 0;
+    final helpieCount = json['join_count'] as int? ?? 0;
     final helperCount = json['helper_count'] as int? ?? 0;
+    final totalJoinCount = helperCount + helpieCount;
 
     return HelpRequest(
       id: json['id'] as String? ?? 'starter:${_slug(title)}',
@@ -137,9 +140,10 @@ class HelpRequest {
       category: json['category'] as String,
       status: json['status'] as String? ?? 'open',
       goodwillReward: json['tag_credit_bonus'] as int? ?? 0,
-      volunteersCount: joinCount,
+      volunteersCount: totalJoinCount,
       artAssetPath: json['art_asset_path'] as String?,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
       isCommunityRequest: json['community_request'] as bool? ?? true,
       allowJoinNeed: json['allow_join_need'] as bool? ?? true,
@@ -148,7 +152,7 @@ class HelpRequest {
       estimatedPeopleWhoMayBenefit:
           json['estimated_people_who_may_benefit'] as String?,
       helperCount: helperCount,
-      helpieCount: joinCount,
+      helpieCount: helpieCount,
       supportCount: json['support_count'] as int? ?? 0,
       hasSupported: false,
       goodwillImpactScore: json['goodwill_impact_score'] as int? ?? 0,
@@ -157,7 +161,8 @@ class HelpRequest {
       joinedContactOption: _singleContactOption(json['joined_contact_option']),
       communityJoinRole: json['community_join_role'] as String?,
       creatorName: 'Goodwill Circle',
-      completedConnectionsCount: json['completed_connections_count'] as int? ?? 0,
+      completedConnectionsCount:
+          json['completed_connections_count'] as int? ?? 0,
     );
   }
 
@@ -175,6 +180,7 @@ class HelpRequest {
     String? communityJoinRole,
     int? completedConnectionsCount,
     String? contactId,
+    int? helperCount,
     int? helpieCount,
     int? supportCount,
     bool? hasSupported,
@@ -196,7 +202,7 @@ class HelpRequest {
       tags: tags,
       difficulty: difficulty,
       estimatedPeopleWhoMayBenefit: estimatedPeopleWhoMayBenefit,
-      helperCount: helperCount,
+      helperCount: helperCount ?? this.helperCount,
       helpieCount: helpieCount ?? this.helpieCount,
       supportCount: supportCount ?? this.supportCount,
       hasSupported: hasSupported ?? this.hasSupported,
@@ -215,7 +221,8 @@ class HelpRequest {
       contactPhone: contactPhone ?? this.contactPhone,
       myVolunteerStatus: myVolunteerStatus ?? this.myVolunteerStatus,
       completionMessage: completionMessage ?? this.completionMessage,
-      completedConnectionsCount: completedConnectionsCount ?? this.completedConnectionsCount,
+      completedConnectionsCount:
+          completedConnectionsCount ?? this.completedConnectionsCount,
       contactId: contactId ?? this.contactId,
     );
   }
@@ -244,7 +251,9 @@ class HelpRequest {
       'has_supported': hasSupported,
       'goodwill_impact_score': goodwillImpactScore,
       'tag_credit_bonus': tagCreditBonus,
-      'contact_options': contactOptions.map((option) => option.toJson()).toList(),
+      'contact_options': contactOptions
+          .map((option) => option.toJson())
+          .toList(),
       'joined_contact_option': joinedContactOption?.toJson(),
       'community_join_role': communityJoinRole,
       'completed_connections_count': completedConnectionsCount,

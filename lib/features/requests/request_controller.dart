@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
+import 'package:goodwill_circle/features/requests/models/help_request_post.dart';
 import 'package:goodwill_circle/features/requests/request_repository.dart';
 
 class RequestState {
@@ -72,17 +73,20 @@ class RequestController extends Notifier<RequestState> {
     String requestId, {
     String? communityJoinRole,
     RequestContactOption? contactOption,
+    String? joinType,
   }) async {
     try {
       await _repository.volunteerForRequest(
         requestId,
         communityJoinRole: communityJoinRole,
         contactOption: contactOption,
+        joinType: joinType,
       );
       await loadRequests(); // Reload to get updated volunteer count
     } catch (e) {
       // Handle silently or update state error
       state = state.copyWith(error: e.toString());
+      rethrow;
     }
   }
 
@@ -92,7 +96,11 @@ class RequestController extends Notifier<RequestState> {
     String message,
   ) async {
     try {
-      final email = await _repository.completeRequest(requestId, participantId, message);
+      final email = await _repository.completeRequest(
+        requestId,
+        participantId,
+        message,
+      );
       await loadRequests();
       return email;
     } catch (e) {
@@ -124,4 +132,22 @@ class RequestController extends Notifier<RequestState> {
       state = state.copyWith(error: e.toString());
     }
   }
+
+  Future<void> addRequestPost(String requestId, String message) async {
+    try {
+      await _repository.addRequestPost(requestId, message);
+      ref.invalidate(requestPostsProvider(requestId));
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
 }
+
+final requestPostsProvider =
+    FutureProvider.family<List<HelpRequestPost>, String>((
+      ref,
+      requestId,
+    ) async {
+      final repository = ref.read(requestRepositoryProvider);
+      return repository.getRequestPosts(requestId);
+    });

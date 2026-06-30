@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
@@ -179,22 +180,43 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isAccepted 
-                                        ? Colors.green.shade50 
-                                        : Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'Status: ${contact['status'] ?? 'pending'}',
-                                    style: TextStyle(
-                                      color: isAccepted ? Colors.green.shade700 : Colors.orange.shade700,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isAccepted 
+                                            ? Colors.green.shade50 
+                                            : Colors.orange.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Status: ${contact['status'] ?? 'pending'}',
+                                        style: TextStyle(
+                                          color: isAccepted ? Colors.green.shade700 : Colors.orange.shade700,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    if (contact['join_type'] != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade50,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          contact['join_type'] == 'multiple' ? '👥 Group' : '👤 Individual',
+                                          style: TextStyle(
+                                            color: Colors.blue.shade700,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -218,11 +240,11 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
                                       if (email != null && email.isNotEmpty) {
                                         Clipboard.setData(ClipboardData(text: email));
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Email copied to clipboard')),
+                                          SnackBar(content: Text('Copied email: $email')),
                                         );
                                       }
                                     },
-                                    tooltip: 'Copy email',
+                                    tooltip: 'Show email',
                                   ),
                           ),
                         );
