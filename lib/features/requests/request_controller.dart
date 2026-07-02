@@ -71,6 +71,7 @@ class RequestController extends Notifier<RequestState> {
 
   Future<void> volunteerForRequest(
     String requestId, {
+    bool isCommunityRequest = false,
     String? communityJoinRole,
     RequestContactOption? contactOption,
     String? joinType,
@@ -78,6 +79,7 @@ class RequestController extends Notifier<RequestState> {
     try {
       await _repository.volunteerForRequest(
         requestId,
+        isCommunityRequest: isCommunityRequest,
         communityJoinRole: communityJoinRole,
         contactOption: contactOption,
         joinType: joinType,

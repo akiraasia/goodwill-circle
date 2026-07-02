@@ -1,16 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-
-import '../../features/requests/request_repository.dart';
-import '../../features/campaigns/campaign_repository.dart';
-import '../../features/agenda/agenda_repository.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
+import 'package:goodwill_circle/core/theme/app_theme.dart';
+import 'package:goodwill_circle/features/agenda/agenda_repository.dart';
+import 'package:goodwill_circle/features/campaigns/campaign_repository.dart';
+import 'package:goodwill_circle/features/requests/request_controller.dart';
+import 'package:goodwill_circle/features/requests/request_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ContactExchangeScreen extends ConsumerStatefulWidget {
   final String entityId;
-  final String entityType; // 'request', 'campaign', 'agenda'
-  final String myRole; // 'helper' or 'helpee'
+  final String entityType;
+  final String myRole;
   final String title;
 
   const ContactExchangeScreen({
@@ -22,11 +26,15 @@ class ContactExchangeScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ContactExchangeScreen> createState() => _ContactExchangeScreenState();
+  ConsumerState<ContactExchangeScreen> createState() =>
+      _ContactExchangeScreenState();
 }
 
 class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
+  final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _contacts = [];
+  RealtimeChannel? _channel;
+  Timer? _refreshDebounce;
   bool _isLoading = true;
   String? _error;
 
@@ -34,32 +42,94 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
   void initState() {
     super.initState();
     _fetchContacts();
+    _subscribeToHub();
   }
 
-  Future<void> _fetchContacts() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
+  @override
+  void dispose() {
+    _refreshDebounce?.cancel();
+    final channel = _channel;
+    if (channel != null) {
+      _supabase.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeToHub() {
+    final channel = _supabase.channel(
+      'connection-hub:${widget.entityType}:${widget.entityId}',
+    );
+
+    if (widget.entityType == 'request') {
+      _listenToTable(channel, 'request_volunteers', 'request_id');
+      _listenToTable(channel, 'community_starter_request_joins', 'request_id');
+      _listenToTable(channel, 'help_request_posts', 'request_id');
+    } else if (widget.entityType == 'campaign') {
+      _listenToTable(channel, 'campaign_members', 'campaign_id');
+    } else if (widget.entityType == 'agenda') {
+      _listenToTable(channel, 'agenda_participants', 'agenda_item_id');
+    }
+
+    _channel = channel.subscribe();
+  }
+
+  void _listenToTable(RealtimeChannel channel, String table, String idColumn) {
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: table,
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: idColumn,
+        value: widget.entityId,
+      ),
+      callback: (_) => _scheduleRefresh(),
+    );
+  }
+
+  void _scheduleRefresh() {
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      if (widget.entityType == 'request') {
+        ref.invalidate(requestPostsProvider(widget.entityId));
+      }
+      _fetchContacts(showLoading: false);
     });
+  }
+
+  Future<void> _fetchContacts({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       List<Map<String, dynamic>> contacts = [];
       if (widget.entityType == 'request') {
-        final repo = ref.read(requestRepositoryProvider);
-        contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
+        contacts = await ref
+            .read(requestRepositoryProvider)
+            .fetchContacts(widget.entityId, widget.myRole);
       } else if (widget.entityType == 'campaign') {
-        final repo = ref.read(campaignRepositoryProvider);
-        contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
+        contacts = await ref
+            .read(campaignRepositoryProvider)
+            .fetchContacts(widget.entityId, widget.myRole);
       } else if (widget.entityType == 'agenda') {
-        final repo = ref.read(agendaRepositoryProvider);
-        contacts = await repo.fetchContacts(widget.entityId, widget.myRole);
+        contacts = await ref
+            .read(agendaRepositoryProvider)
+            .fetchContacts(widget.entityId, widget.myRole);
       }
-      
+
+      if (!mounted) return;
       setState(() {
         _contacts = contacts;
         _isLoading = false;
+        _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Failed to load contacts: $e';
         _isLoading = false;
@@ -70,186 +140,654 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
   Future<void> _confirmHelpCompletion(String participantId) async {
     try {
       if (widget.entityType == 'request') {
-        final repo = ref.read(requestRepositoryProvider);
-        await repo.completeRequest(widget.entityId, participantId, 'Helped successfully.');
-      } else if (widget.entityType == 'campaign') {
-        // Assume completeConnection exists, or just show a snackbar
+        await ref
+            .read(requestRepositoryProvider)
+            .completeRequest(
+              widget.entityId,
+              participantId,
+              'Helped successfully.',
+            );
+      } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Help completion confirmed!')),
-        );
-      } else if (widget.entityType == 'agenda') {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Help completion confirmed!')),
+          const SnackBar(content: Text('Help completion confirmed.')),
         );
       }
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Help confirmed successfully!')),
+        const SnackBar(content: Text('Help confirmed successfully.')),
       );
-      _fetchContacts();
+      _fetchContacts(showLoading: false);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final helpers = _contacts
+        .where((contact) => _roleFor(contact, widget.myRole) == 'helper')
+        .toList();
+    final helpies = _contacts
+        .where((contact) => _roleFor(contact, widget.myRole) == 'helpee')
+        .toList();
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.cream,
       appBar: AppBar(
         title: Text(
           widget.title,
-          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.cream,
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () => _fetchContacts(showLoading: false),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : _contacts.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () => _fetchContacts(showLoading: false),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  120,
+                ),
+                children: [
+                  _HubHeader(
+                    helpersCount: helpers.length,
+                    helpiesCount: helpies.length,
+                  ),
+                  if (widget.entityType == 'request') ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _HubActivityFeed(requestId: widget.entityId),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 720;
+                      final sections = [
+                        _ParticipantSection(
+                          title: 'Helpers',
+                          emptyText: 'No helpers have joined yet.',
+                          role: 'helper',
+                          contacts: helpers,
+                          onConfirmHelp: widget.myRole == 'helpee'
+                              ? _confirmHelpCompletion
+                              : null,
+                        ),
+                        _ParticipantSection(
+                          title: 'Helpies',
+                          emptyText: 'No helpies have joined yet.',
+                          role: 'helpee',
+                          contacts: helpies,
+                        ),
+                      ];
+
+                      if (!isWide) {
+                        return Column(
+                          children: [
+                            sections.first,
+                            const SizedBox(height: AppSpacing.md),
+                            sections.last,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            widget.myRole == 'helper' ? Icons.people_outline : Icons.handshake_outlined,
-                            size: 48,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            widget.myRole == 'helper'
-                                ? 'No helpies have joined yet.'
-                                : 'No helpers have joined yet.',
-                            style: const TextStyle(fontSize: 16, color: Colors.black54),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Share this ${widget.entityType} to get more connections!',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                          Expanded(child: sections.first),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(child: sections.last),
                         ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _HubHeader extends StatelessWidget {
+  final int helpersCount;
+  final int helpiesCount;
+
+  const _HubHeader({required this.helpersCount, required this.helpiesCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.tan1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.yellowPale,
+            child: Icon(Icons.groups_2_outlined, color: AppColors.tan3),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Connection Hub',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _CountPill(
+                      icon: Icons.volunteer_activism_outlined,
+                      label: 'Helpers',
+                      count: helpersCount,
+                      color: _roleColor('helper'),
+                    ),
+                    _CountPill(
+                      icon: Icons.person_search_outlined,
+                      label: 'Helpies',
+                      count: helpiesCount,
+                      color: _roleColor('helpee'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+
+  const _CountPill({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$count $label',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParticipantSection extends StatelessWidget {
+  final String title;
+  final String emptyText;
+  final String role;
+  final List<Map<String, dynamic>> contacts;
+  final Future<void> Function(String participantId)? onConfirmHelp;
+
+  const _ParticipantSection({
+    required this.title,
+    required this.emptyText,
+    required this.role,
+    required this.contacts,
+    this.onConfirmHelp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.tan1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_roleIcon(role), size: 18, color: _roleColor(role)),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (contacts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Text(
+                emptyText,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textLight),
+              ),
+            )
+          else
+            ...contacts.asMap().entries.map((entry) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: entry.key == contacts.length - 1 ? 0 : AppSpacing.sm,
+                ),
+                child: _ParticipantTile(
+                  number: entry.key + 1,
+                  role: role,
+                  contact: entry.value,
+                  onConfirmHelp: onConfirmHelp,
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParticipantTile extends StatelessWidget {
+  final int number;
+  final String role;
+  final Map<String, dynamic> contact;
+  final Future<void> Function(String participantId)? onConfirmHelp;
+
+  const _ParticipantTile({
+    required this.number,
+    required this.role,
+    required this.contact,
+    this.onConfirmHelp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (contact['name'] as String?)?.trim().isNotEmpty == true
+        ? contact['name'] as String
+        : 'Unknown';
+    final email = (contact['email'] as String?)?.trim() ?? '';
+    final phone = (contact['phone'] as String?)?.trim() ?? '';
+    final contactLine = phone.isNotEmpty
+        ? phone
+        : email.isNotEmpty
+        ? email
+        : 'No contact shared';
+    final status = contact['status'] as String? ?? 'accepted';
+    final joinType = contact['join_type'] as String? ?? 'individual';
+    final participantId = contact['participant_id'] as String?;
+    final isAccepted = status == 'accepted';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: _roleColor(role).withValues(alpha: 0.06),
+        border: Border.all(color: _roleColor(role).withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: _roleColor(role).withValues(alpha: 0.12),
+                child: Icon(_roleIcon(role), color: _roleColor(role), size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_roleLabel(role)} $number: $name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _contacts.length,
-                      itemBuilder: (context, index) {
-                        final contact = _contacts[index];
-                        final isAccepted = contact['status'] == 'accepted';
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue.shade50,
-                              child: const Icon(Icons.person, color: Colors.blue),
-                            ),
-                            title: Text(
-                              contact['name'] ?? 'Unknown',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.mail, size: 14, color: Colors.black54),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        contact['email'] ?? 'No email',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isAccepted 
-                                            ? Colors.green.shade50 
-                                            : Colors.orange.shade50,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Status: ${contact['status'] ?? 'pending'}',
-                                        style: TextStyle(
-                                          color: isAccepted ? Colors.green.shade700 : Colors.orange.shade700,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (contact['join_type'] != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.shade50,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          contact['join_type'] == 'multiple' ? '👥 Group' : '👤 Individual',
-                                          style: TextStyle(
-                                            color: Colors.blue.shade700,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            trailing: (widget.myRole == 'helpee' && isAccepted)
-                                ? ElevatedButton(
-                                    onPressed: () => _confirmHelpCompletion(contact['participant_id']),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    ),
-                                    child: const Text('Confirm Help', style: TextStyle(fontSize: 12)),
-                                  )
-                                : IconButton(
-                                    icon: const Icon(Icons.copy, size: 18),
-                                    onPressed: () {
-                                      final email = contact['email'] as String?;
-                                      if (email != null && email.isNotEmpty) {
-                                        Clipboard.setData(ClipboardData(text: email));
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Copied email: $email')),
-                                        );
-                                      }
-                                    },
-                                    tooltip: 'Show email',
-                                  ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Contact: $contactLine',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Copy contact',
+                onPressed: contactLine == 'No contact shared'
+                    ? null
+                    : () {
+                        Clipboard.setData(ClipboardData(text: contactLine));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Copied contact details.'),
                           ),
                         );
                       },
-                    ),
+                icon: const Icon(Icons.copy, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _MiniPill(label: status),
+              _MiniPill(label: joinType == 'multiple' ? 'Group' : 'Individual'),
+              if (onConfirmHelp != null && isAccepted && participantId != null)
+                TextButton.icon(
+                  onPressed: () => onConfirmHelp!(participantId),
+                  icon: const Icon(Icons.check_circle_outline, size: 16),
+                  label: const Text('Confirm'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _MiniPill extends StatelessWidget {
+  final String label;
+
+  const _MiniPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.yellowPale,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: AppColors.textMid),
+      ),
+    );
+  }
+}
+
+class _HubActivityFeed extends ConsumerStatefulWidget {
+  final String requestId;
+
+  const _HubActivityFeed({required this.requestId});
+
+  @override
+  ConsumerState<_HubActivityFeed> createState() => _HubActivityFeedState();
+}
+
+class _HubActivityFeedState extends ConsumerState<_HubActivityFeed> {
+  final _controller = TextEditingController();
+  bool _isPosting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitPost() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isPosting = true);
+    try {
+      await ref
+          .read(requestControllerProvider.notifier)
+          .addRequestPost(widget.requestId, text);
+      _controller.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isPosting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final postsAsync = ref.watch(requestPostsProvider(widget.requestId));
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.tan1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.forum_outlined, size: 18, color: AppColors.textMid),
+              const SizedBox(width: 6),
+              Text(
+                'Group Chat',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          postsAsync.when(
+            data: (posts) {
+              if (posts.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text(
+                    'No instructions or updates yet. Start the room here.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.textLight),
+                  ),
+                );
+              }
+              return Column(
+                children: posts.map((post) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: AppColors.yellowPale,
+                          backgroundImage:
+                              post.userPhoto != null &&
+                                  post.userPhoto!.isNotEmpty
+                              ? NetworkImage(post.userPhoto!)
+                              : null,
+                          child:
+                              post.userPhoto == null || post.userPhoto!.isEmpty
+                              ? Text(
+                                  post.userName != null &&
+                                          post.userName!.isNotEmpty
+                                      ? post.userName![0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(fontSize: 11),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${post.userName ?? 'User'}: ',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textDark,
+                                      ),
+                                ),
+                                TextSpan(
+                                  text: post.message,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppColors.textDark),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.sm),
+              child: SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            error: (e, _) => Text(
+              'Error loading updates: $e',
+              style: const TextStyle(fontSize: 12, color: Colors.red),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Ask for help, share instructions, or post updates...',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submitPost(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _isPosting
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton.filled(
+                      onPressed: _submitPost,
+                      icon: const Icon(Icons.send, size: 18),
+                    ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _roleFor(Map<String, dynamic> contact, String myRole) {
+  return contact['role'] as String? ??
+      contact['join_role'] as String? ??
+      (myRole == 'helper' ? 'helpee' : 'helper');
+}
+
+String _roleLabel(String role) {
+  return role == 'helper' ? 'Helper' : 'Helpie';
+}
+
+IconData _roleIcon(String role) {
+  return role == 'helper'
+      ? Icons.volunteer_activism_outlined
+      : Icons.person_search_outlined;
+}
+
+Color _roleColor(String role) {
+  return role == 'helper' ? Colors.blue.shade700 : Colors.green.shade700;
 }

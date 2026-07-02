@@ -57,14 +57,20 @@ class RequestRepository {
       // Calculate actual helper and helpie counts from volunteers
       int helperCount = 0;
       int helpieCount = 0;
+      var creatorAlreadyCountedAsHelpie = false;
       for (final volunteer in volunteers) {
         final role = volunteer['join_role'] as String? ?? 'helper';
         if (role == 'helper') {
           helperCount++;
         } else if (role == 'helpee') {
           helpieCount++;
+          if (volunteer['volunteer_id'] == request.creatorId) {
+            creatorAlreadyCountedAsHelpie = true;
+          }
         }
       }
+      final visibleHelpieCount =
+          helpieCount + (creatorAlreadyCountedAsHelpie ? 0 : 1);
 
       Map<String, dynamic>? myVolunteer;
       for (final volunteer in volunteers) {
@@ -99,8 +105,9 @@ class RequestRepository {
         completionMessage: myVolunteer?['completion_message'] as String?,
         contactId: myVolunteer?['volunteer_id'] as String?,
         communityJoinRole: myVolunteer?['join_role'] as String?,
-        helperCount: volunteers.isNotEmpty ? helperCount : request.helperCount,
-        helpieCount: volunteers.isNotEmpty ? helpieCount : request.helpieCount,
+        helperCount: helperCount,
+        helpieCount: visibleHelpieCount,
+        volunteersCount: helperCount + visibleHelpieCount,
       );
     }).toList();
 
@@ -156,53 +163,92 @@ class RequestRepository {
     List<HelpRequest> starterRequests,
     String? currentUserId,
   ) async {
-    if (currentUserId == null || starterRequests.isEmpty) {
+    if (starterRequests.isEmpty) {
       return starterRequests;
     }
 
     final requestIds = starterRequests.map((request) => request.id).toList();
     final joins = await _fetchCommunityStarterJoins(requestIds, currentUserId);
-    final joinsByRequest = {
-      for (final join in joins) join['request_id'] as String: join,
-    };
+    final joinsByRequest = <String, List<Map<String, dynamic>>>{};
+    for (final join in joins) {
+      final requestId = join['request_id'] as String;
+      joinsByRequest.putIfAbsent(requestId, () => []).add(join);
+    }
 
     return starterRequests.map((request) {
-      final join = joinsByRequest[request.id];
-      if (join == null) return request;
-      final contactChoice = join['contact_choice'];
+      final requestJoins = joinsByRequest[request.id] ?? const [];
+      final helperCount = requestJoins
+          .where(
+            (join) => (join['join_role'] as String? ?? 'helpee') == 'helper',
+          )
+          .length;
+      final helpieCount = requestJoins
+          .where(
+            (join) => (join['join_role'] as String? ?? 'helpee') == 'helpee',
+          )
+          .length;
+      Map<String, dynamic>? myJoin;
+      if (currentUserId != null) {
+        for (final join in requestJoins) {
+          if (join['user_id'] == currentUserId) {
+            myJoin = join;
+            break;
+          }
+        }
+      }
+      final contactChoice = myJoin?['contact_choice'];
+      final joinedOption = contactChoice is Map<String, dynamic>
+          ? RequestContactOption.fromJson(contactChoice)
+          : null;
+
+      if (myJoin == null) {
+        return request.copyWith(
+          helperCount: helperCount,
+          helpieCount: helpieCount,
+          volunteersCount: helperCount + helpieCount,
+        );
+      }
 
       return request.copyWith(
         myVolunteerStatus: 'joined',
-        communityJoinRole: join['join_role'] as String? ?? 'helpee',
-        joinedContactOption: contactChoice is Map<String, dynamic>
-            ? RequestContactOption.fromJson(contactChoice)
-            : null,
+        communityJoinRole: myJoin['join_role'] as String? ?? 'helpee',
+        joinedContactOption: joinedOption,
+        helperCount: helperCount,
+        helpieCount: helpieCount,
+        volunteersCount: helperCount + helpieCount,
       );
     }).toList();
   }
 
   Future<List<Map<String, dynamic>>> _fetchCommunityStarterJoins(
     List<String> requestIds,
-    String currentUserId,
+    String? currentUserId,
   ) async {
     try {
-      return await _client
+      var query = _client
           .from('community_starter_request_joins')
-          .select('request_id, join_role, contact_choice, join_type')
-          .eq('user_id', currentUserId)
+          .select('request_id, user_id, join_role, contact_choice, join_type')
           .inFilter('request_id', requestIds);
+      if (currentUserId == null) {
+        return await query;
+      }
+      return await query;
     } on PostgrestException catch (e) {
       final message = e.message.toLowerCase();
       if (!message.contains('join_role') &&
           !message.contains('contact_choice') &&
+          !message.contains('user_id') &&
           !message.contains('schema cache')) {
         rethrow;
       }
-      return await _client
+      var query = _client
           .from('community_starter_request_joins')
-          .select('request_id')
-          .eq('user_id', currentUserId)
+          .select('request_id, user_id')
           .inFilter('request_id', requestIds);
+      if (currentUserId == null) {
+        return await query;
+      }
+      return await query;
     }
   }
 
@@ -301,11 +347,12 @@ class RequestRepository {
 
   Future<void> volunteerForRequest(
     String requestId, {
+    bool isCommunityRequest = false,
     String? communityJoinRole,
     RequestContactOption? contactOption,
     String? joinType,
   }) async {
-    if (requestId.startsWith('starter:')) {
+    if (isCommunityRequest || requestId.startsWith('starter:')) {
       final joined = await _tryJoinCommunityStarterRequest(
         requestId,
         communityJoinRole: communityJoinRole,
@@ -342,6 +389,16 @@ class RequestRepository {
     } catch (e) {
       // Fallback for older RPC
       final message = e.toString().toLowerCase();
+      if (_shouldTryCommunityStarterJoin(e)) {
+        final joined = await _tryJoinCommunityStarterRequest(
+          requestId,
+          communityJoinRole: communityJoinRole,
+          contactOption: contactOption,
+          joinType: joinType,
+        );
+        if (joined) return;
+      }
+
       if (message.contains('p_join_type') || message.contains('parameter')) {
         try {
           await _client.rpc(
@@ -356,12 +413,25 @@ class RequestRepository {
         } catch (_) {}
       }
 
-      await _upsertRequestVolunteerFallback(
-        requestId,
-        communityJoinRole: communityJoinRole,
-        contactOption: contactOption,
-        joinType: joinType,
-      );
+      try {
+        await _upsertRequestVolunteerFallback(
+          requestId,
+          communityJoinRole: communityJoinRole,
+          contactOption: contactOption,
+          joinType: joinType,
+        );
+      } catch (fallbackError) {
+        if (_shouldTryCommunityStarterJoin(fallbackError)) {
+          final joined = await _tryJoinCommunityStarterRequest(
+            requestId,
+            communityJoinRole: communityJoinRole,
+            contactOption: contactOption,
+            joinType: joinType,
+          );
+          if (joined) return;
+        }
+        rethrow;
+      }
 
       final rows = await _client
           .from('request_volunteers')
@@ -377,7 +447,7 @@ class RequestRepository {
       await _syncRequestJoinCounts(
         requestId,
         helperCount: helperCount,
-        helpieCount: helpieCount,
+        helpieCount: helpieCount + 1,
       );
     }
   }
@@ -426,7 +496,7 @@ class RequestRepository {
       await _client
           .from('help_requests')
           .update({
-            'volunteers_count': helperCount,
+            'volunteers_count': helperCount + helpieCount,
             'join_count': helpieCount,
             'helper_count': helperCount,
             'helpie_count': helpieCount,
@@ -442,7 +512,7 @@ class RequestRepository {
       }
       await _client
           .from('help_requests')
-          .update({'volunteers_count': helperCount})
+          .update({'volunteers_count': helperCount + helpieCount})
           .eq('id', requestId);
     }
   }
@@ -476,6 +546,8 @@ class RequestRepository {
         );
       }
       if (message.contains('community starter request not found') ||
+          message.contains('invalid input syntax') ||
+          message.contains('invalid uuid') ||
           message.contains('schema cache')) {
         return false;
       }
@@ -628,15 +700,210 @@ class RequestRepository {
     String requestId,
     String myRole,
   ) async {
-    final result = await _client.rpc(
-      'get_entity_contacts',
-      params: {
-        'p_entity_id': requestId,
-        'p_entity_type': 'request',
-        'p_my_role': myRole,
-      },
-    );
-    return List<Map<String, dynamic>>.from(result as List);
+    List<Map<String, dynamic>> rpcContacts = const [];
+
+    try {
+      final result = await _client.rpc(
+        'get_entity_contacts',
+        params: {
+          'p_entity_id': requestId,
+          'p_entity_type': 'request',
+          'p_my_role': myRole,
+        },
+      );
+      rpcContacts = List<Map<String, dynamic>>.from(result as List);
+    } catch (e) {
+      if (requestId.startsWith('starter:')) {
+        rethrow;
+      }
+    }
+
+    if (requestId.startsWith('starter:')) {
+      return rpcContacts;
+    }
+
+    final fallbackContacts = await _fetchRequestContactsFallback(requestId);
+    if (fallbackContacts.isEmpty) {
+      return rpcContacts;
+    }
+    if (rpcContacts.isEmpty) {
+      return fallbackContacts;
+    }
+
+    return _mergeContactRows(fallbackContacts, rpcContacts);
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRequestContactsFallback(
+    String requestId,
+  ) async {
+    if (!_looksLikeUuid(requestId)) {
+      return const [];
+    }
+
+    final starterContacts = await _fetchStarterContactRows(requestId);
+    if (starterContacts.isNotEmpty) {
+      return starterContacts;
+    }
+
+    Map<String, dynamic>? request;
+    try {
+      request = await _client
+          .from('help_requests')
+          .select('creator_id')
+          .eq('id', requestId)
+          .maybeSingle();
+    } on PostgrestException {
+      return const [];
+    }
+
+    if (request == null) {
+      return const [];
+    }
+
+    final volunteers = await _fetchRequestVolunteers([requestId]);
+    final profileIds = <String>{
+      request['creator_id'] as String,
+      ...volunteers.map((volunteer) => volunteer['volunteer_id'] as String),
+    }.toList();
+    final profiles = await _fetchProfiles(profileIds);
+    final profilesById = {
+      for (final profile in profiles) profile['id'] as String: profile,
+    };
+
+    return [
+      _contactRow(
+        participantId: request['creator_id'] as String,
+        profile: profilesById[request['creator_id']],
+        status: 'accepted',
+        joinType: 'individual',
+        role: 'helpee',
+      ),
+      ...volunteers.map((volunteer) {
+        final userId = volunteer['volunteer_id'] as String;
+        return _contactRow(
+          participantId: userId,
+          profile: profilesById[userId],
+          status: volunteer['status'] as String? ?? 'accepted',
+          joinType: volunteer['join_type'] as String? ?? 'individual',
+          role: volunteer['join_role'] as String? ?? 'helper',
+        );
+      }),
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchStarterContactRows(
+    String requestId,
+  ) async {
+    try {
+      final starter = await _client
+          .from('community_starter_requests')
+          .select('id')
+          .eq('id', requestId)
+          .maybeSingle();
+      if (starter == null) {
+        return const [];
+      }
+
+      final joins = await _fetchCommunityStarterJoins(
+        [requestId],
+        _client.auth.currentUser?.id,
+      );
+      if (joins.isEmpty) {
+        return const [];
+      }
+
+      final profileIds = joins.map((join) => join['user_id'] as String).toList();
+      final profiles = await _fetchProfiles(profileIds);
+      final profilesById = {
+        for (final profile in profiles) profile['id'] as String: profile,
+      };
+
+      return joins.map((join) {
+        final userId = join['user_id'] as String;
+        return _contactRow(
+          participantId: userId,
+          profile: profilesById[userId],
+          status: 'accepted',
+          joinType: join['join_type'] as String? ?? 'individual',
+          role: join['join_role'] as String? ?? 'helpee',
+        );
+      }).toList();
+    } on PostgrestException {
+      return const [];
+    }
+  }
+
+  Map<String, dynamic> _contactRow({
+    required String participantId,
+    required Map<String, dynamic>? profile,
+    required String status,
+    required String joinType,
+    required String role,
+  }) {
+    return {
+      'participant_id': participantId,
+      'name': profile?['name'] as String? ?? 'Unknown',
+      'email': '',
+      'phone': profile?['phone'] as String? ?? '',
+      'status': status,
+      'join_type': joinType,
+      'role': role,
+    };
+  }
+
+  List<Map<String, dynamic>> _mergeContactRows(
+    List<Map<String, dynamic>> baseRows,
+    List<Map<String, dynamic>> enrichedRows,
+  ) {
+    final rowsById = {
+      for (final row in baseRows) row['participant_id'] as String: row,
+    };
+
+    for (final enriched in enrichedRows) {
+      final id = enriched['participant_id'] as String?;
+      if (id == null) continue;
+      final base = rowsById[id];
+      if (base == null) {
+        rowsById[id] = enriched;
+        continue;
+      }
+      rowsById[id] = {
+        ...base,
+        if ((enriched['name'] as String?)?.trim().isNotEmpty == true)
+          'name': enriched['name'],
+        if ((enriched['email'] as String?)?.trim().isNotEmpty == true)
+          'email': enriched['email'],
+        if ((enriched['phone'] as String?)?.trim().isNotEmpty == true)
+          'phone': enriched['phone'],
+        if ((enriched['status'] as String?)?.trim().isNotEmpty == true)
+          'status': enriched['status'],
+      };
+    }
+
+    final rows = rowsById.values.toList();
+    rows.sort((a, b) {
+      final roleCompare = (a['role'] as String).compareTo(b['role'] as String);
+      if (roleCompare != 0) return roleCompare;
+      return (a['name'] as String).compareTo(b['name'] as String);
+    });
+    return rows;
+  }
+
+  bool _looksLikeUuid(String value) {
+    return RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value);
+  }
+
+  bool _shouldTryCommunityStarterJoin(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('help request not found') ||
+        message.contains('not found or not open') ||
+        message.contains('request_volunteers_request_id_fkey') ||
+        message.contains('key is not present in table "help_requests"')) {
+      return true;
+    }
+    return error is PostgrestException && error.code == '23503';
   }
 
   bool _contactChoiceEquals(

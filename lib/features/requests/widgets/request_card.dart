@@ -5,7 +5,6 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
-import 'package:goodwill_circle/features/requests/request_controller.dart';
 import 'package:goodwill_circle/shared/services/external_contact_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,7 +21,6 @@ class RequestCard extends ConsumerStatefulWidget {
   onVolunteer;
   final Future<void> Function(String message, bool sendEmail) onComplete;
   final Future<void> Function(String? message) onRequestCompletion;
-  final VoidCallback? onToggleSupport;
 
   const RequestCard({
     super.key,
@@ -30,7 +28,6 @@ class RequestCard extends ConsumerStatefulWidget {
     required this.onVolunteer,
     required this.onComplete,
     required this.onRequestCompletion,
-    this.onToggleSupport,
   });
 
   @override
@@ -307,10 +304,11 @@ class _RequestCardState extends ConsumerState<RequestCard> {
                       onShowCompletion: () => _showCompletionDialog(context),
                       launchContact: (action) =>
                           _launchContact(context, action),
-                      onToggleSupport: widget.onToggleSupport,
                       onViewContacts: () => _navigateToContacts(
                         context,
-                        widget.request.communityJoinRole ?? 'helper',
+                        isCreator
+                            ? 'helpee'
+                            : widget.request.communityJoinRole ?? 'helper',
                       ),
                     ),
                   ),
@@ -338,10 +336,11 @@ class _RequestCardState extends ConsumerState<RequestCard> {
                 onComplete: () => _showConfirmCompletionDialog(context),
                 onShowCompletion: () => _showCompletionDialog(context),
                 launchContact: (action) => _launchContact(context, action),
-                onToggleSupport: widget.onToggleSupport,
                 onViewContacts: () => _navigateToContacts(
                   context,
-                  widget.request.communityJoinRole ?? 'helper',
+                  isCreator
+                      ? 'helpee'
+                      : widget.request.communityJoinRole ?? 'helper',
                 ),
               ),
             ],
@@ -367,7 +366,6 @@ class _RequestDetails extends StatelessWidget {
   final VoidCallback onComplete;
   final VoidCallback onShowCompletion;
   final void Function(Future<bool> action) launchContact;
-  final VoidCallback? onToggleSupport;
   final VoidCallback? onViewContacts;
 
   const _RequestDetails({
@@ -385,7 +383,6 @@ class _RequestDetails extends StatelessWidget {
     required this.onComplete,
     required this.onShowCompletion,
     required this.launchContact,
-    this.onToggleSupport,
     this.onViewContacts,
   });
 
@@ -481,35 +478,6 @@ class _RequestDetails extends StatelessWidget {
                 style: AppTypography.textTheme.labelSmall,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: AppSpacing.sm),
-              InkWell(
-                onTap: onToggleSupport,
-                borderRadius: BorderRadius.circular(4),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        request.hasSupported
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        size: 16,
-                        color: request.hasSupported
-                            ? AppColors.red
-                            : AppColors.textLight,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        '${request.supportCount}',
-                        style: AppTypography.textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
               if (request.completedConnectionsCount > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -521,7 +489,7 @@ class _RequestDetails extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '🤝 ${request.completedConnectionsCount}',
+                    'Completed ${request.completedConnectionsCount}',
                     style: AppTypography.textTheme.labelSmall?.copyWith(
                       color: Colors.green.shade700,
                       fontSize: 10,
@@ -547,9 +515,18 @@ class _RequestDetails extends StatelessWidget {
               onViewContacts: onViewContacts,
             ),
           ),
-          if (isCommunityRequest &&
-              isHelping &&
-              request.joinedContactOption != null) ...[
+          if (!isCommunityRequest && (isHelping || isCreator)) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onViewContacts,
+                icon: const Icon(Icons.groups_2_outlined, size: 16),
+                label: const Text('Connection Hub'),
+              ),
+            ),
+          ],
+          if (isHelping && request.joinedContactOption != null) ...[
             const SizedBox(height: AppSpacing.sm),
             _FeedContactPanel(
               option: request.joinedContactOption!,
@@ -593,8 +570,6 @@ class _RequestDetails extends StatelessWidget {
               message: request.completionMessage,
             ),
           ],
-          // short post box and activity history inside every help request
-          _RequestActivityFeed(request: request),
         ],
       ),
     );
@@ -886,8 +861,8 @@ class _FeedContactPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final roleLabel = role == 'helper'
-        ? '🤝 Helping as helper'
-        : '👋 Joined for help';
+        ? 'Helping as helper'
+        : 'Joined for help';
 
     return Container(
       width: double.infinity,
@@ -1069,210 +1044,5 @@ Future<void> _openContactValue(
         ),
       );
     }
-  }
-}
-
-class _RequestActivityFeed extends ConsumerStatefulWidget {
-  final HelpRequest request;
-
-  const _RequestActivityFeed({required this.request});
-
-  @override
-  ConsumerState<_RequestActivityFeed> createState() =>
-      _RequestActivityFeedState();
-}
-
-class _RequestActivityFeedState extends ConsumerState<_RequestActivityFeed> {
-  final _commentController = TextEditingController();
-  bool _isPosting = false;
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitPost() async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() => _isPosting = true);
-    try {
-      await ref
-          .read(requestControllerProvider.notifier)
-          .addRequestPost(widget.request.id, text);
-      _commentController.clear();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isPosting = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final postsAsync = ref.watch(requestPostsProvider(widget.request.id));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              Icon(Icons.notes, size: 16, color: Colors.blueGrey),
-              SizedBox(width: 6),
-              Text(
-                'Instructions & Updates',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey,
-                ),
-              ),
-            ],
-          ),
-        ),
-        postsAsync.when(
-          data: (posts) {
-            if (posts.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  'No instructions or updates yet.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              );
-            }
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: Colors.grey.shade200,
-                        backgroundImage:
-                            post.userPhoto != null && post.userPhoto!.isNotEmpty
-                            ? NetworkImage(post.userPhoto!)
-                            : null,
-                        child: post.userPhoto == null || post.userPhoto!.isEmpty
-                            ? Text(
-                                post.userName != null &&
-                                        post.userName!.isNotEmpty
-                                    ? post.userName![0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(fontSize: 8),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: '${post.userName ?? 'User'}: ',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: post.message,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-          loading: () => const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-          error: (e, _) => Text(
-            'Error loading updates: $e',
-            style: const TextStyle(fontSize: 10, color: Colors.red),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 32,
-                child: TextField(
-                  controller: _commentController,
-                  decoration: InputDecoration(
-                    hintText: 'Add instructions/updates...',
-                    hintStyle: const TextStyle(fontSize: 11),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 0,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.blue),
-                    ),
-                  ),
-                  style: const TextStyle(fontSize: 11),
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _submitPost(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            _isPosting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.send, size: 18, color: Colors.blue),
-                    onPressed: _submitPost,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-          ],
-        ),
-      ],
-    );
   }
 }

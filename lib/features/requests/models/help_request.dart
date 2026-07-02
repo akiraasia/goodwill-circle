@@ -182,6 +182,7 @@ class HelpRequest {
     String? contactId,
     int? helperCount,
     int? helpieCount,
+    int? volunteersCount,
     int? supportCount,
     bool? hasSupported,
   }) {
@@ -193,7 +194,7 @@ class HelpRequest {
       category: category,
       status: status,
       goodwillReward: goodwillReward,
-      volunteersCount: volunteersCount,
+      volunteersCount: volunteersCount ?? this.volunteersCount,
       imageUrl: imageUrl,
       artAssetPath: artAssetPath,
       createdAt: createdAt,
