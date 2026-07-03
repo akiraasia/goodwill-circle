@@ -69,9 +69,8 @@ class RequestRepository {
           }
         }
       }
-      final visibleHelpieCount = request.isCommunityRequest
-          ? helpieCount
-          : helpieCount + (creatorAlreadyCountedAsHelpie ? 0 : 1);
+      final visibleHelpieCount =
+          helpieCount + (creatorAlreadyCountedAsHelpie ? 0 : 1);
 
       Map<String, dynamic>? myVolunteer;
       for (final volunteer in volunteers) {
@@ -131,7 +130,30 @@ class RequestRepository {
           .toList();
 
       if (starterRequests.isNotEmpty) {
-        return _hydrateStarterJoins(starterRequests, currentUserId);
+        final requestIds = starterRequests.map((r) => r.id).toList();
+        final supportsData = await _client
+            .from('entity_supports')
+            .select('entity_id, user_id')
+            .inFilter('entity_id', requestIds)
+            .eq('entity_type', 'request');
+
+        final supportsByRequest = <String, List<String>>{};
+        for (final row in supportsData) {
+          final entityId = row['entity_id'] as String;
+          final userId = row['user_id'] as String;
+          supportsByRequest.putIfAbsent(entityId, () => []).add(userId);
+        }
+
+        final hydratedStarter = starterRequests.map((request) {
+          final userIds = supportsByRequest[request.id] ?? const [];
+          final hasSupported = currentUserId != null && userIds.contains(currentUserId);
+          return request.copyWith(
+            supportCount: userIds.length,
+            hasSupported: hasSupported,
+          );
+        }).toList();
+
+        return _hydrateStarterJoins(hydratedStarter, currentUserId);
       }
       return _loadBundledCommunityStarterRequests();
     } on PostgrestException catch (e) {
@@ -684,7 +706,7 @@ class RequestRepository {
       'toggle_support',
       params: {'p_entity_id': requestId, 'p_entity_type': 'request'},
     );
-    return result as int;
+    return (result as int?) ?? 0;
   }
 
   Future<List<Map<String, dynamic>>> fetchContacts(
