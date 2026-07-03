@@ -529,6 +529,8 @@ class _ParticipantTile extends StatelessWidget {
     final isConfirmed = contact['is_confirmed'] as bool? ?? false;
     final isLiked = contact['is_liked'] as bool? ?? false;
     final isCompletionRequested = status == 'completion_requested';
+    final isAccepted = status == 'accepted';
+    final isCompleted = status == 'completed';
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
