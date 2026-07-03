@@ -1,165 +1,37 @@
 -- week17_schema.sql
---
--- Request Connection Hub repair migration.
--- Run this whole file in Supabase SQL editor. Do not highlight only the
--- BEGIN/IF body of any function; the IF statements must stay inside CREATE
--- OR REPLACE FUNCTION ... AS $$ ... $$ LANGUAGE plpgsql.
+-- Supports multiple joiners (both helpers and helpies), individual/multiple selections,
+-- and post/instruction box inside every help request.
 
--- 0. Minimal baseline tables, only used if an older environment is missing
--- them. Existing tables are left untouched.
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  name TEXT,
-  photo_url TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.user_stats (
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  credits INTEGER NOT NULL DEFAULT 50,
-  trust_score INTEGER NOT NULL DEFAULT 0,
-  impact_score INTEGER NOT NULL DEFAULT 0,
-  help_count INTEGER NOT NULL DEFAULT 0,
-  campaign_count INTEGER NOT NULL DEFAULT 0,
-  free_requests INTEGER NOT NULL DEFAULT 1,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.help_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL DEFAULT '',
-  description TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL DEFAULT 'Other',
-  status TEXT NOT NULL DEFAULT 'open',
-  goodwill_reward INTEGER NOT NULL DEFAULT 0,
-  volunteers_count INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.request_volunteers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID REFERENCES public.help_requests(id) ON DELETE CASCADE NOT NULL,
-  volunteer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  status TEXT NOT NULL DEFAULT 'accepted',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (request_id, volunteer_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.campaigns (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL DEFAULT '',
-  description TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'active',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.campaign_members (
-  campaign_id UUID REFERENCES public.campaigns(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (campaign_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS public.nonprofit_agenda_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ngo_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL DEFAULT '',
-  description TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'open',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.agenda_participants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agenda_item_id UUID REFERENCES public.nonprofit_agenda_items(id) ON DELETE CASCADE NOT NULL,
-  volunteer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  status TEXT NOT NULL DEFAULT 'accepted',
-  connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (agenda_item_id, volunteer_id)
-);
-
--- 1. Columns used by request cards, join roles, contact exchange, and hub chat.
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS phone TEXT,
-  ADD COLUMN IF NOT EXISTS profile_photo_public BOOLEAN NOT NULL DEFAULT false;
-
-ALTER TABLE public.user_stats
-  ADD COLUMN IF NOT EXISTS credits_earned INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS reputation_score INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE public.help_requests
-  ADD COLUMN IF NOT EXISTS creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open',
-  ADD COLUMN IF NOT EXISTS goodwill_reward INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS volunteers_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS image_url TEXT,
-  ADD COLUMN IF NOT EXISTS join_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS helper_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS helpie_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS support_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS goodwill_impact_score INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER NOT NULL DEFAULT 0;
-
+-- 1. Required columns for request joins, contacts, and completion flows
 ALTER TABLE public.request_volunteers
   ADD COLUMN IF NOT EXISTS join_role TEXT NOT NULL DEFAULT 'helper',
-  ADD COLUMN IF NOT EXISTS contact_choice JSONB,
-  ADD COLUMN IF NOT EXISTS join_type TEXT NOT NULL DEFAULT 'individual',
-  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+  ADD COLUMN IF NOT EXISTS contact_choice JSONB;
 
 ALTER TABLE public.campaign_members
-  ADD COLUMN IF NOT EXISTS join_role TEXT NOT NULL DEFAULT 'helper',
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'accepted',
-  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+  ADD COLUMN IF NOT EXISTS join_role TEXT DEFAULT 'helper',
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'accepted';
 
 ALTER TABLE public.agenda_participants
-  ADD COLUMN IF NOT EXISTS join_role TEXT NOT NULL DEFAULT 'helper',
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'accepted',
-  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+  ADD COLUMN IF NOT EXISTS join_role TEXT DEFAULT 'helper',
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'accepted';
 
-ALTER TABLE public.campaigns
-  ADD COLUMN IF NOT EXISTS helper_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS helpie_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS support_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE public.nonprofit_agenda_items
-  ADD COLUMN IF NOT EXISTS helper_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS helpie_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS support_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.request_volunteers
+  ADD COLUMN IF NOT EXISTS join_type TEXT;
 
 UPDATE public.request_volunteers
-SET join_role = COALESCE(NULLIF(join_role, ''), 'helper'),
-    join_type = COALESCE(NULLIF(join_type, ''), 'individual');
+SET join_type = 'individual'
+WHERE join_type IS NULL;
 
-UPDATE public.campaign_members
-SET join_role = COALESCE(NULLIF(join_role, ''), 'helper'),
-    status = COALESCE(NULLIF(status, ''), 'accepted');
-
-UPDATE public.agenda_participants
-SET join_role = COALESCE(NULLIF(join_role, ''), 'helper'),
-    status = COALESCE(NULLIF(status, ''), 'accepted');
+ALTER TABLE public.request_volunteers
+  ALTER COLUMN join_type SET DEFAULT 'individual',
+  ALTER COLUMN join_type SET NOT NULL;
 
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint
-    WHERE conrelid = 'public.request_volunteers'::regclass
-      AND conname = 'request_volunteers_role_check'
-  ) THEN
-    ALTER TABLE public.request_volunteers
-      ADD CONSTRAINT request_volunteers_role_check
-      CHECK (join_role IN ('helpee', 'helper'));
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conrelid = 'public.request_volunteers'::regclass
-      AND conname = 'request_volunteers_join_type_check'
+    WHERE conname = 'request_volunteers_join_type_check'
   ) THEN
     ALTER TABLE public.request_volunteers
       ADD CONSTRAINT request_volunteers_join_type_check
@@ -168,101 +40,54 @@ BEGIN
 END;
 $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS request_volunteers_request_volunteer_uidx
-  ON public.request_volunteers (request_id, volunteer_id);
+ALTER TABLE public.help_requests
+  ADD COLUMN IF NOT EXISTS join_count INTEGER DEFAULT 0;
 
--- 2. Community starter hub tables. These are real starter prompts, so their
--- displayed counts are recalculated from actual joins below instead of seed
--- numbers.
-CREATE TABLE IF NOT EXISTS public.community_starter_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL UNIQUE,
-  short_description TEXT NOT NULL DEFAULT '',
-  full_description TEXT NOT NULL DEFAULT '',
-  category TEXT NOT NULL DEFAULT 'Education',
-  tags TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
-  difficulty TEXT NOT NULL DEFAULT 'medium',
-  estimated_people_who_may_benefit TEXT NOT NULL DEFAULT '',
-  community_request BOOLEAN NOT NULL DEFAULT true,
-  allow_join_need BOOLEAN NOT NULL DEFAULT true,
-  join_count INTEGER NOT NULL DEFAULT 0,
-  helper_count INTEGER NOT NULL DEFAULT 0,
-  goodwill_impact_score INTEGER NOT NULL DEFAULT 0,
-  tag_credit_bonus INTEGER NOT NULL DEFAULT 0,
-  art_asset_path TEXT,
-  contact_options JSONB NOT NULL DEFAULT '[]'::JSONB,
-  status TEXT NOT NULL DEFAULT 'open',
-  source TEXT NOT NULL DEFAULT 'week13_seed',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+ALTER TABLE public.help_requests
+  ADD COLUMN IF NOT EXISTS helper_count INTEGER DEFAULT 0;
 
-ALTER TABLE public.community_starter_requests
-  ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
-  ADD COLUMN IF NOT EXISTS allow_join_need BOOLEAN NOT NULL DEFAULT true,
-  ADD COLUMN IF NOT EXISTS join_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS helper_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS goodwill_impact_score INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS tag_credit_bonus INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS art_asset_path TEXT,
-  ADD COLUMN IF NOT EXISTS contact_options JSONB NOT NULL DEFAULT '[]'::JSONB,
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open',
-  ADD COLUMN IF NOT EXISTS seed_helper_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS seed_join_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE public.help_requests
+  ADD COLUMN IF NOT EXISTS helpie_count INTEGER DEFAULT 0;
 
-UPDATE public.community_starter_requests SET seed_join_count = 24, seed_helper_count = 6 WHERE title = 'How do I get my first internship?';
-UPDATE public.community_starter_requests SET seed_join_count = 18, seed_helper_count = 5 WHERE title = 'What skills should I learn for AI/ML in 2026?';
-UPDATE public.community_starter_requests SET seed_join_count = 31, seed_helper_count = 8 WHERE title = 'Can someone review my resume?';
-UPDATE public.community_starter_requests SET seed_join_count = 29, seed_helper_count = 7 WHERE title = 'How do I prepare for placement interviews?';
-UPDATE public.community_starter_requests SET seed_join_count = 17, seed_helper_count = 4 WHERE title = 'Which projects should I build for my portfolio?';
-UPDATE public.community_starter_requests SET seed_join_count = 21, seed_helper_count = 6 WHERE title = 'Can someone explain this topic to me?';
-UPDATE public.community_starter_requests SET seed_join_count = 13, seed_helper_count = 3 WHERE title = 'Looking for teammates for a hackathon';
-UPDATE public.community_starter_requests SET seed_join_count = 16, seed_helper_count = 4 WHERE title = 'Which certification is worth doing?';
-UPDATE public.community_starter_requests SET seed_join_count = 19, seed_helper_count = 5 WHERE title = 'How do I improve my LinkedIn profile?';
-UPDATE public.community_starter_requests SET seed_join_count = 11, seed_helper_count = 3 WHERE title = 'Need feedback on my startup idea';
+ALTER TABLE public.help_requests
+  ADD COLUMN IF NOT EXISTS goodwill_impact_score INTEGER DEFAULT 0;
 
-CREATE TABLE IF NOT EXISTS public.community_starter_request_joins (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL REFERENCES public.community_starter_requests(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  join_role TEXT NOT NULL DEFAULT 'helpee',
-  contact_choice JSONB,
-  join_type TEXT NOT NULL DEFAULT 'individual',
-  status TEXT NOT NULL DEFAULT 'accepted',
-  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (request_id, user_id)
-);
+ALTER TABLE public.help_requests
+  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
 
+ALTER TABLE public.campaigns
+  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
+
+ALTER TABLE public.nonprofit_agenda_items
+  ADD COLUMN IF NOT EXISTS completed_connections_count INTEGER DEFAULT 0;
+
+ALTER TABLE public.request_volunteers
+  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+
+ALTER TABLE public.campaign_members
+  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+
+ALTER TABLE public.agenda_participants
+  ADD COLUMN IF NOT EXISTS completion_message TEXT;
+
+-- 2. Add join_type to community_starter_request_joins
 ALTER TABLE public.community_starter_request_joins
-  ADD COLUMN IF NOT EXISTS join_role TEXT NOT NULL DEFAULT 'helpee',
-  ADD COLUMN IF NOT EXISTS contact_choice JSONB,
-  ADD COLUMN IF NOT EXISTS join_type TEXT NOT NULL DEFAULT 'individual',
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'accepted',
-  ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ NOT NULL DEFAULT now();
+  ADD COLUMN IF NOT EXISTS join_type TEXT;
 
 UPDATE public.community_starter_request_joins
-SET join_role = COALESCE(NULLIF(join_role, ''), 'helpee'),
-    join_type = COALESCE(NULLIF(join_type, ''), 'individual');
+SET join_type = 'individual'
+WHERE join_type IS NULL;
+
+ALTER TABLE public.community_starter_request_joins
+  ALTER COLUMN join_type SET DEFAULT 'individual',
+  ALTER COLUMN join_type SET NOT NULL;
 
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint
-    WHERE conrelid = 'public.community_starter_request_joins'::regclass
-      AND conname = 'community_starter_request_joins_role_check'
-  ) THEN
-    ALTER TABLE public.community_starter_request_joins
-      ADD CONSTRAINT community_starter_request_joins_role_check
-      CHECK (join_role IN ('helpee', 'helper'));
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conrelid = 'public.community_starter_request_joins'::regclass
-      AND conname = 'community_starter_request_joins_join_type_check'
+    WHERE conname = 'community_starter_request_joins_join_type_check'
   ) THEN
     ALTER TABLE public.community_starter_request_joins
       ADD CONSTRAINT community_starter_request_joins_join_type_check
@@ -271,21 +96,16 @@ BEGIN
 END;
 $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS community_starter_request_joins_request_user_uidx
-  ON public.community_starter_request_joins (request_id, user_id);
-
-CREATE INDEX IF NOT EXISTS community_starter_request_joins_request_idx
-  ON public.community_starter_request_joins (request_id, joined_at);
-
--- 3. Hub group chat posts for both normal requests and UUID starter requests.
+-- 3. Create help_request_posts table for comments/instructions
 CREATE TABLE IF NOT EXISTS public.help_request_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL,
+  request_id UUID NOT NULL, -- references either help_requests or community_starter_requests
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   message TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Enable RLS and add policies
 ALTER TABLE public.help_request_posts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Help request posts are viewable by everyone." ON public.help_request_posts;
@@ -306,151 +126,48 @@ GRANT SELECT ON public.help_request_posts TO anon;
 CREATE INDEX IF NOT EXISTS help_request_posts_request_created_idx
   ON public.help_request_posts (request_id, created_at);
 
--- 4. RLS permissions for starter hubs.
-ALTER TABLE public.community_starter_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.community_starter_request_joins ENABLE ROW LEVEL SECURITY;
+-- Keep request counters honest by deriving them from real joins.
+UPDATE public.help_requests hr
+SET helper_count = counts.helper_count,
+    helpie_count = counts.helpie_count + 1,
+    volunteers_count = counts.helper_count + counts.helpie_count + 1,
+    join_count = counts.helpie_count + 1
+FROM (
+  SELECT
+    request_id,
+    COUNT(*) FILTER (WHERE join_role = 'helper')::INTEGER AS helper_count,
+    COUNT(*) FILTER (WHERE join_role = 'helpee')::INTEGER AS helpie_count
+  FROM public.request_volunteers
+  GROUP BY request_id
+) counts
+WHERE hr.id = counts.request_id;
 
-DROP POLICY IF EXISTS "Community starter requests are viewable by everyone." ON public.community_starter_requests;
-CREATE POLICY "Community starter requests are viewable by everyone."
-  ON public.community_starter_requests
-  FOR SELECT
-  USING (true);
-
-DROP POLICY IF EXISTS "Starter joins are viewable by authenticated users." ON public.community_starter_request_joins;
-CREATE POLICY "Starter joins are viewable by authenticated users."
-  ON public.community_starter_request_joins
-  FOR SELECT
-  USING (auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Authenticated users can join starter requests." ON public.community_starter_request_joins;
-CREATE POLICY "Authenticated users can join starter requests."
-  ON public.community_starter_request_joins
-  FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can update own starter joins." ON public.community_starter_request_joins;
-CREATE POLICY "Users can update own starter joins."
-  ON public.community_starter_request_joins
-  FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
-GRANT SELECT ON public.community_starter_requests TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.community_starter_request_joins TO authenticated;
-
--- 5. Counter refresh helpers. Normal user requests count the creator as the
--- first helpie. Community starter requests do not use seed counts.
-CREATE OR REPLACE FUNCTION public.refresh_help_request_counts(p_request_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE public.help_requests hr
-  SET helper_count = (
-        SELECT COUNT(*)::INTEGER
-        FROM public.request_volunteers rv
-        WHERE rv.request_id = hr.id
-          AND rv.join_role = 'helper'
-      ),
-      helpie_count = 1 + (
-        SELECT COUNT(*)::INTEGER
-        FROM public.request_volunteers rv
-        WHERE rv.request_id = hr.id
-          AND rv.join_role = 'helpee'
-          AND rv.volunteer_id <> hr.creator_id
-      ),
-      volunteers_count = 1 + (
-        SELECT COUNT(*)::INTEGER
-        FROM public.request_volunteers rv
-        WHERE rv.request_id = hr.id
-          AND rv.volunteer_id <> hr.creator_id
-      ),
-      join_count = 1 + (
-        SELECT COUNT(*)::INTEGER
-        FROM public.request_volunteers rv
-        WHERE rv.request_id = hr.id
-          AND rv.join_role = 'helpee'
-          AND rv.volunteer_id <> hr.creator_id
-      )
-  WHERE hr.id = p_request_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
-
-CREATE OR REPLACE FUNCTION public.refresh_community_starter_request_counts(p_request_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE public.community_starter_requests csr
-  SET helper_count = csr.seed_helper_count + (
-        SELECT COUNT(*)::INTEGER
-        FROM public.community_starter_request_joins cj
-        WHERE cj.request_id = csr.id
-          AND cj.join_role = 'helper'
-      ),
-      join_count = csr.seed_join_count + (
-        SELECT COUNT(*)::INTEGER
-        FROM public.community_starter_request_joins cj
-        WHERE cj.request_id = csr.id
-          AND cj.join_role = 'helpee'
-      ),
-      goodwill_impact_score = LEAST(
-        100,
-        csr.seed_helper_count + csr.seed_join_count + (
-          SELECT COUNT(*)::INTEGER
-          FROM public.community_starter_request_joins cj
-          WHERE cj.request_id = csr.id
-        )
-      ),
-      updated_at = now()
-  WHERE csr.id = p_request_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
-
-UPDATE public.help_requests
+UPDATE public.help_requests hr
 SET helper_count = 0,
     helpie_count = 1,
     volunteers_count = 1,
     join_count = 1
 WHERE NOT EXISTS (
-  SELECT 1
-  FROM public.request_volunteers rv
-  WHERE rv.request_id = help_requests.id
+  SELECT 1 FROM public.request_volunteers rv WHERE rv.request_id = hr.id
 );
 
-UPDATE public.help_requests hr
-SET helper_count = counts.helper_count,
-    helpie_count = 1 + counts.helpie_count,
-    volunteers_count = 1 + counts.visible_join_count,
-    join_count = 1 + counts.helpie_count
-FROM (
-  SELECT
-    rv.request_id,
-    COUNT(*) FILTER (WHERE rv.join_role = 'helper')::INTEGER AS helper_count,
-    COUNT(*) FILTER (WHERE rv.join_role = 'helpee' AND rv.volunteer_id <> hr_inner.creator_id)::INTEGER AS helpie_count,
-    COUNT(*) FILTER (WHERE rv.volunteer_id <> hr_inner.creator_id)::INTEGER AS visible_join_count
-  FROM public.request_volunteers rv
-  JOIN public.help_requests hr_inner ON hr_inner.id = rv.request_id
-  GROUP BY rv.request_id
-) counts
-WHERE hr.id = counts.request_id;
-
 UPDATE public.community_starter_requests csr
-SET helper_count = csr.seed_helper_count + counts.helper_count,
-    join_count = csr.seed_join_count + counts.helpie_count,
-    goodwill_impact_score = LEAST(100, csr.seed_helper_count + csr.seed_join_count + counts.total_count),
+SET helper_count = counts.helper_count,
+    join_count = counts.helpie_count,
     updated_at = now()
 FROM (
   SELECT
     request_id,
     COUNT(*) FILTER (WHERE join_role = 'helper')::INTEGER AS helper_count,
-    COUNT(*) FILTER (WHERE join_role = 'helpee')::INTEGER AS helpie_count,
-    COUNT(*)::INTEGER AS total_count
+    COUNT(*) FILTER (WHERE join_role = 'helpee')::INTEGER AS helpie_count
   FROM public.community_starter_request_joins
   GROUP BY request_id
 ) counts
 WHERE csr.id = counts.request_id;
 
 UPDATE public.community_starter_requests csr
-SET helper_count = seed_helper_count,
-    join_count = seed_join_count,
-    goodwill_impact_score = LEAST(100, seed_helper_count + seed_join_count),
+SET helper_count = 0,
+    join_count = 0,
     updated_at = now()
 WHERE NOT EXISTS (
   SELECT 1
@@ -458,17 +175,21 @@ WHERE NOT EXISTS (
   WHERE cj.request_id = csr.id
 );
 
--- 6. Joining normal requests and starter requests.
+-- 4. Update join_help_request RPC to support join_type
 CREATE OR REPLACE FUNCTION public.join_help_request(
   p_request_id UUID,
   p_join_role TEXT DEFAULT 'helper',
   p_contact_choice JSONB DEFAULT NULL,
   p_join_type TEXT DEFAULT 'individual'
 )
-RETURNS void AS $$
+RETURNS void
+AS $join_help_request$
 DECLARE
+  v_inserted BOOLEAN;
+  v_previous_role TEXT;
   v_role TEXT := COALESCE(NULLIF(p_join_role, ''), 'helper');
   v_type TEXT := COALESCE(NULLIF(p_join_type, ''), 'individual');
+  v_request RECORD;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required';
@@ -482,15 +203,18 @@ BEGIN
     RAISE EXCEPTION 'Invalid join type';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.help_requests
-    WHERE id = p_request_id
-      AND status = 'open'
-  ) THEN
+  SELECT * INTO v_request FROM public.help_requests WHERE id = p_request_id AND status = 'open';
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'Help request not found or not open';
   END IF;
 
+  SELECT join_role INTO v_previous_role
+  FROM public.request_volunteers
+  WHERE request_id = p_request_id
+    AND volunteer_id = auth.uid()
+  FOR UPDATE;
+
+  -- Insert or update volunteer/joiner
   INSERT INTO public.request_volunteers (
     request_id,
     volunteer_id,
@@ -501,26 +225,51 @@ BEGIN
   )
   VALUES (p_request_id, auth.uid(), 'accepted', v_role, p_contact_choice, v_type)
   ON CONFLICT (request_id, volunteer_id) DO UPDATE SET
-    status = 'accepted',
     join_role = EXCLUDED.join_role,
     contact_choice = EXCLUDED.contact_choice,
-    join_type = EXCLUDED.join_type;
+    join_type = EXCLUDED.join_type
+  RETURNING (xmax = 0) INTO v_inserted;
 
-  PERFORM public.refresh_help_request_counts(p_request_id);
+  IF v_previous_role IS NULL THEN
+    UPDATE public.help_requests
+    SET join_count = GREATEST(join_count, 1) + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helpie_count = GREATEST(helpie_count, 1) + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helper_count = helper_count + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
+        volunteers_count = GREATEST(volunteers_count, 1) + 1,
+        goodwill_impact_score = LEAST(100, goodwill_impact_score + 1)
+    WHERE id = p_request_id;
+  ELSIF v_previous_role IS DISTINCT FROM v_role THEN
+    UPDATE public.help_requests
+    SET join_count = GREATEST(1, join_count - CASE WHEN v_previous_role = 'helpee' THEN 1 ELSE 0 END)
+          + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helpie_count = GREATEST(1, helpie_count - CASE WHEN v_previous_role = 'helpee' THEN 1 ELSE 0 END)
+          + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helper_count = GREATEST(0, helper_count - CASE WHEN v_previous_role = 'helper' THEN 1 ELSE 0 END)
+          + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
+        volunteers_count = GREATEST(volunteers_count, 1)
+    WHERE id = p_request_id;
+  END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+$join_help_request$
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.join_help_request(UUID, TEXT, JSONB, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.join_help_request(UUID, TEXT, JSONB, TEXT) TO authenticated;
 
+-- 5. Update join_community_starter_request RPC to support join_type
 CREATE OR REPLACE FUNCTION public.join_community_starter_request(
   p_request_id UUID,
   p_join_role TEXT DEFAULT 'helpee',
   p_contact_choice JSONB DEFAULT NULL,
   p_join_type TEXT DEFAULT 'individual'
 )
-RETURNS void AS $$
+RETURNS void
+AS $join_community_starter_request$
 DECLARE
+  v_inserted BOOLEAN;
+  v_previous_role TEXT;
   v_role TEXT := COALESCE(NULLIF(p_join_role, ''), 'helpee');
   v_type TEXT := COALESCE(NULLIF(p_join_type, ''), 'individual');
 BEGIN
@@ -546,6 +295,12 @@ BEGIN
     RAISE EXCEPTION 'Community starter request not found';
   END IF;
 
+  SELECT join_role INTO v_previous_role
+  FROM public.community_starter_request_joins
+  WHERE request_id = p_request_id
+    AND user_id = auth.uid()
+  FOR UPDATE;
+
   INSERT INTO public.community_starter_request_joins (
     request_id,
     user_id,
@@ -557,69 +312,43 @@ BEGIN
   ON CONFLICT (request_id, user_id) DO UPDATE SET
     join_role = EXCLUDED.join_role,
     contact_choice = EXCLUDED.contact_choice,
-    join_type = EXCLUDED.join_type,
-    joined_at = now();
+    join_type = EXCLUDED.join_type
+  RETURNING (xmax = 0) INTO v_inserted;
 
-  PERFORM public.refresh_community_starter_request_counts(p_request_id);
+  IF v_previous_role IS NULL THEN
+    UPDATE public.community_starter_requests
+    SET join_count = join_count + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helper_count = helper_count + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
+        goodwill_impact_score = LEAST(100, goodwill_impact_score + 1),
+        updated_at = now()
+    WHERE id = p_request_id;
+  ELSIF v_previous_role IS DISTINCT FROM v_role THEN
+    UPDATE public.community_starter_requests
+    SET join_count = GREATEST(0, join_count - CASE WHEN v_previous_role = 'helpee' THEN 1 ELSE 0 END)
+          + CASE WHEN v_role = 'helpee' THEN 1 ELSE 0 END,
+        helper_count = GREATEST(0, helper_count - CASE WHEN v_previous_role = 'helper' THEN 1 ELSE 0 END)
+          + CASE WHEN v_role = 'helper' THEN 1 ELSE 0 END,
+        updated_at = now()
+    WHERE id = p_request_id;
+  END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+$join_community_starter_request$
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.join_community_starter_request(UUID, TEXT, JSONB, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.join_community_starter_request(UUID, TEXT, JSONB, TEXT) TO authenticated;
 
--- 7. Completion review used by the request cards.
-CREATE OR REPLACE FUNCTION public.request_help_completion_review(
-  p_request_id UUID,
-  p_message TEXT DEFAULT NULL
-)
-RETURNS void AS $$
-DECLARE
-  v_is_starter BOOLEAN;
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  SELECT EXISTS(SELECT 1 FROM public.community_starter_requests WHERE id = p_request_id) INTO v_is_starter;
-
-  IF v_is_starter THEN
-    UPDATE public.community_starter_request_joins
-    SET status = 'completion_requested'
-    WHERE request_id = p_request_id
-      AND user_id = auth.uid()
-      AND join_role = 'helper'
-      AND status IS DISTINCT FROM 'completed';
-      
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Helper connection not found for this starter request';
-    END IF;
-  ELSE
-    UPDATE public.request_volunteers
-    SET status = 'completion_requested',
-        completion_message = NULLIF(trim(COALESCE(p_message, '')), '')
-    WHERE request_id = p_request_id
-      AND volunteer_id = auth.uid()
-      AND join_role = 'helper'
-      AND status IS DISTINCT FROM 'completed';
-
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Helper connection not found for this request';
-    END IF;
-  END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
-
-REVOKE ALL ON FUNCTION public.request_help_completion_review(UUID, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.request_help_completion_review(UUID, TEXT) TO authenticated;
-
--- 8. Complete one participant connection.
+-- 6. Update complete_connection to match the current campaign/agenda schema
 CREATE OR REPLACE FUNCTION public.complete_connection(
   p_entity_id UUID,
   p_entity_type TEXT,
   p_participant_id UUID,
   p_completion_message TEXT
 )
-RETURNS TEXT AS $$
+RETURNS TEXT
+AS $complete_connection$
 DECLARE
   v_creator_id UUID;
   v_participant_email TEXT;
@@ -717,12 +446,23 @@ BEGIN
   INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reference_id)
   VALUES (p_participant_id, v_actual_reward, 'EARN', p_entity_id);
 
+  INSERT INTO public.goodwill_chain_links (
+    source_user_id,
+    affected_user_id,
+    source_type,
+    reference_id,
+    impact_value
+  )
+  VALUES (p_participant_id, v_creator_id, p_entity_type, p_entity_id, v_actual_reward);
+
   INSERT INTO public.notifications (user_id, title, message)
   VALUES (
     p_participant_id,
     'Connection Completed: ' || v_title,
     'You earned ' || v_actual_reward || ' credits. Message from creator: ' || COALESCE(p_completion_message, 'Thank you!')
   );
+
+  PERFORM public.check_and_award_badges(p_participant_id);
 
   SELECT email
   INTO v_participant_email
@@ -731,12 +471,23 @@ BEGIN
 
   RETURN v_participant_email;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+$complete_connection$
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.complete_connection(UUID, TEXT, UUID, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.complete_connection(UUID, TEXT, UUID, TEXT) TO authenticated;
 
--- 9. Return both sides of the Connection Hub, not only the opposite side.
+-- 7. Allow the app to hydrate live starter counts and participant lists.
+DROP POLICY IF EXISTS "Users can view own starter joins." ON public.community_starter_request_joins;
+DROP POLICY IF EXISTS "Starter joins are viewable by authenticated users." ON public.community_starter_request_joins;
+CREATE POLICY "Starter joins are viewable by authenticated users."
+  ON public.community_starter_request_joins
+  FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- 8. Update get_entity_contacts to return both sides of the hub.
 DROP FUNCTION IF EXISTS public.get_entity_contacts(UUID, TEXT, TEXT);
 
 CREATE OR REPLACE FUNCTION public.get_entity_contacts(
@@ -751,31 +502,22 @@ RETURNS TABLE (
   phone TEXT,
   status TEXT,
   join_type TEXT,
-  role TEXT,
-  is_confirmed BOOLEAN,
-  is_liked BOOLEAN
-) AS $$
+  role TEXT
+)
+AS $get_entity_contacts$
 BEGIN
   IF p_entity_type = 'request' THEN
+    -- Check if it is a community starter request
     IF EXISTS (SELECT 1 FROM public.community_starter_requests WHERE id = p_entity_id) THEN
       RETURN QUERY
       SELECT
         u.id,
-        COALESCE(p.name, 'Unknown')::TEXT,
-        COALESCE(u.email::TEXT, '')::TEXT,
-        COALESCE(p.phone, '')::TEXT,
-        COALESCE(cj.status, 'accepted')::TEXT,
-        COALESCE(cj.join_type, 'individual')::TEXT,
-        COALESCE(cj.join_role, 'helpee')::TEXT,
-        EXISTS(
-          SELECT 1 FROM public.connection_confirmations cc
-          WHERE cc.request_id = p_entity_id AND cc.helper_id = u.id AND cc.helpie_id = auth.uid()
-        ) AS is_confirmed,
-        COALESCE(
-          (SELECT cc.liked FROM public.connection_confirmations cc
-           WHERE cc.request_id = p_entity_id AND cc.helper_id = u.id AND cc.helpie_id = auth.uid()),
-          false
-        ) AS is_liked
+        COALESCE(p.name, 'Unknown'),
+        COALESCE(u.email::TEXT, ''),
+        COALESCE(p.phone, ''),
+        'accepted'::TEXT AS status,
+        cj.join_type,
+        cj.join_role
       FROM public.community_starter_request_joins cj
       JOIN auth.users u ON cj.user_id = u.id
       LEFT JOIN public.profiles p ON u.id = p.id
@@ -785,14 +527,12 @@ BEGIN
       RETURN QUERY
       SELECT
         u.id,
-        COALESCE(p.name, 'Unknown')::TEXT,
-        COALESCE(u.email::TEXT, '')::TEXT,
-        COALESCE(p.phone, '')::TEXT,
-        'accepted'::TEXT,
-        'individual'::TEXT,
-        'helpee'::TEXT,
-        false AS is_confirmed,
-        false AS is_liked
+        COALESCE(p.name, 'Unknown'),
+        COALESCE(u.email::TEXT, ''),
+        COALESCE(p.phone, ''),
+        'accepted'::TEXT AS status,
+        'individual'::TEXT AS join_type,
+        'helpee'::TEXT AS role
       FROM public.help_requests hr
       JOIN auth.users u ON hr.creator_id = u.id
       LEFT JOIN public.profiles p ON u.id = p.id
@@ -800,39 +540,28 @@ BEGIN
       UNION ALL
       SELECT
         u.id,
-        COALESCE(p.name, 'Unknown')::TEXT,
-        COALESCE(u.email::TEXT, '')::TEXT,
-        COALESCE(p.phone, '')::TEXT,
-        COALESCE(rv.status, 'accepted')::TEXT,
-        COALESCE(rv.join_type, 'individual')::TEXT,
-        COALESCE(rv.join_role, 'helper')::TEXT,
-        EXISTS(
-          SELECT 1 FROM public.connection_confirmations cc
-          WHERE cc.request_id = p_entity_id AND cc.helper_id = u.id AND cc.helpie_id = auth.uid()
-        ) AS is_confirmed,
-        COALESCE(
-          (SELECT cc.liked FROM public.connection_confirmations cc
-           WHERE cc.request_id = p_entity_id AND cc.helper_id = u.id AND cc.helpie_id = auth.uid()),
-          false
-        ) AS is_liked
+        COALESCE(p.name, 'Unknown'),
+        COALESCE(u.email::TEXT, ''),
+        COALESCE(p.phone, ''),
+        rv.status,
+        rv.join_type,
+        rv.join_role
       FROM public.request_volunteers rv
       JOIN auth.users u ON rv.volunteer_id = u.id
       LEFT JOIN public.profiles p ON u.id = p.id
       WHERE rv.request_id = p_entity_id
-      ORDER BY 7, 2;
+      ORDER BY role, name;
     END IF;
   ELSIF p_entity_type = 'campaign' THEN
     RETURN QUERY
     SELECT
       u.id,
-      COALESCE(p.name, 'Unknown')::TEXT,
-      COALESCE(u.email::TEXT, '')::TEXT,
-      COALESCE(p.phone, '')::TEXT,
-      COALESCE(cm.status, 'accepted')::TEXT,
-      'individual'::TEXT,
-      COALESCE(cm.join_role, 'helper')::TEXT,
-      false AS is_confirmed,
-      false AS is_liked
+      COALESCE(p.name, 'Unknown'),
+      COALESCE(u.email::TEXT, ''),
+      COALESCE(p.phone, ''),
+      cm.status,
+      'individual'::TEXT AS join_type,
+      cm.join_role
     FROM public.campaign_members cm
     JOIN auth.users u ON cm.user_id = u.id
     LEFT JOIN public.profiles p ON u.id = p.id
@@ -842,14 +571,12 @@ BEGIN
     RETURN QUERY
     SELECT
       u.id,
-      COALESCE(p.name, 'Unknown')::TEXT,
-      COALESCE(u.email::TEXT, '')::TEXT,
-      COALESCE(p.phone, '')::TEXT,
-      COALESCE(ap.status, 'accepted')::TEXT,
-      'individual'::TEXT,
-      COALESCE(ap.join_role, 'helper')::TEXT,
-      false AS is_confirmed,
-      false AS is_liked
+      COALESCE(p.name, 'Unknown'),
+      COALESCE(u.email::TEXT, ''),
+      COALESCE(p.phone, ''),
+      ap.status,
+      'individual'::TEXT AS join_type,
+      ap.join_role
     FROM public.agenda_participants ap
     JOIN auth.users u ON ap.volunteer_id = u.id
     LEFT JOIN public.profiles p ON u.id = p.id
@@ -857,99 +584,10 @@ BEGIN
     ORDER BY ap.join_role, p.name;
   END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+$get_entity_contacts$
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth;
 
 REVOKE ALL ON FUNCTION public.get_entity_contacts(UUID, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_entity_contacts(UUID, TEXT, TEXT) TO authenticated;
-
--- 10. Connection Confirmations Table & confirm_and_like_helper RPC
-CREATE TABLE IF NOT EXISTS public.connection_confirmations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id UUID NOT NULL,
-  helper_id UUID NOT NULL,
-  helpie_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  liked BOOLEAN NOT NULL DEFAULT false,
-  confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (request_id, helper_id, helpie_id)
-);
-
-ALTER TABLE public.connection_confirmations ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Confirmations are viewable by authenticated users." ON public.connection_confirmations;
-CREATE POLICY "Confirmations are viewable by authenticated users."
-  ON public.connection_confirmations
-  FOR SELECT
-  USING (auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Authenticated users can insert confirmations." ON public.connection_confirmations;
-CREATE POLICY "Authenticated users can insert confirmations."
-  ON public.connection_confirmations
-  FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = helpie_id);
-
-GRANT SELECT, INSERT ON public.connection_confirmations TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.confirm_and_like_helper(
-  p_request_id UUID,
-  p_helper_id UUID,
-  p_liked BOOLEAN
-)
-RETURNS void AS $$
-DECLARE
-  v_helpie_id UUID := auth.uid();
-  v_is_starter BOOLEAN;
-BEGIN
-  IF v_helpie_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required';
-  END IF;
-
-  -- Ensure the helpie actually joined the request (either regular or starter)
-  SELECT EXISTS(SELECT 1 FROM public.community_starter_requests WHERE id = p_request_id) INTO v_is_starter;
-  
-  IF v_is_starter THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM public.community_starter_request_joins
-      WHERE request_id = p_request_id AND user_id = v_helpie_id AND join_role = 'helpee'
-    ) THEN
-      RAISE EXCEPTION 'Only joined helpies can confirm helpers';
-    END IF;
-  ELSE
-    IF NOT EXISTS (
-      SELECT 1 FROM public.help_requests WHERE id = p_request_id AND creator_id = v_helpie_id
-    ) AND NOT EXISTS (
-      SELECT 1 FROM public.request_volunteers
-      WHERE request_id = p_request_id AND volunteer_id = v_helpie_id AND join_role = 'helpee'
-    ) THEN
-      RAISE EXCEPTION 'Only joined helpies or the creator can confirm helpers';
-    END IF;
-  END IF;
-
-  -- Check if already confirmed
-  IF EXISTS (
-    SELECT 1 FROM public.connection_confirmations
-    WHERE request_id = p_request_id AND helper_id = p_helper_id AND helpie_id = v_helpie_id
-  ) THEN
-    UPDATE public.connection_confirmations
-    SET liked = p_liked
-    WHERE request_id = p_request_id AND helper_id = p_helper_id AND helpie_id = v_helpie_id;
-  ELSE
-    -- Insert confirmation
-    INSERT INTO public.connection_confirmations (request_id, helper_id, helpie_id, liked)
-    VALUES (p_request_id, p_helper_id, v_helpie_id, p_liked);
-
-    -- Update helper's stats
-    UPDATE public.user_stats
-    SET credits = credits + 1,
-        credits_earned = COALESCE(credits_earned, 0) + 1,
-        impact_score = impact_score + 1
-    WHERE user_id = p_helper_id;
-
-    -- Add credit transaction
-    INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reference_id)
-    VALUES (p_helper_id, 1, 'EARN', p_request_id);
-  END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
-
-REVOKE ALL ON FUNCTION public.confirm_and_like_helper(UUID, UUID, BOOLEAN) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.confirm_and_like_helper(UUID, UUID, BOOLEAN) TO authenticated;

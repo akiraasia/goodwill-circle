@@ -595,7 +595,7 @@ class _ParticipantTile extends StatelessWidget {
             children: [
               _MiniPill(label: status),
               _MiniPill(label: joinType == 'multiple' ? 'Group' : 'Individual'),
-              if (onConfirmHelp != null && participantId != null && (isCompletionRequested || isConfirmed)) ...[
+              if (onConfirmHelp != null && participantId != null && (isCompletionRequested || isConfirmed || isAccepted || isCompleted)) ...[
                 if (isConfirmed)
                   ElevatedButton.icon(
                     onPressed: null,
