@@ -137,16 +137,17 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
     }
   }
 
-  Future<void> _confirmHelpCompletion(String participantId) async {
+  Future<void> _confirmHelpCompletion(String participantId, bool liked) async {
     try {
       if (widget.entityType == 'request') {
-        await ref
-            .read(requestRepositoryProvider)
-            .completeRequest(
-              widget.entityId,
-              participantId,
-              'Helped successfully.',
-            );
+        await _supabase.rpc(
+          'confirm_and_like_helper',
+          params: {
+            'p_request_id': widget.entityId,
+            'p_helper_id': participantId,
+            'p_liked': liked,
+          },
+        );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,7 +157,7 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Help confirmed successfully.')),
+        SnackBar(content: Text(liked ? 'Confirmed and liked!' : 'Confirmed successfully!')),
       );
       _fetchContacts(showLoading: false);
     } catch (e) {
@@ -164,6 +165,29 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _handleDoneWithRequest() async {
+    try {
+      if (widget.entityType == 'request') {
+        await ref
+            .read(requestRepositoryProvider)
+            .requestCompletionReview(
+              requestId: widget.entityId,
+              message: 'Helper completed request.',
+            );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Completion requested successfully.')),
+        );
+        _fetchContacts(showLoading: false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -176,8 +200,35 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
         .where((contact) => _roleFor(contact, widget.myRole) == 'helpee')
         .toList();
 
+    final currentUserId = _supabase.auth.currentUser?.id;
+    final myContact = _contacts.firstWhere(
+      (contact) => contact['participant_id'] == currentUserId,
+      orElse: () => <String, dynamic>{},
+    );
+    final myStatus = myContact['status'] as String? ?? 'accepted';
+    final isDoneRequested = myStatus == 'completion_requested' || myStatus == 'completed';
+
     return Scaffold(
       backgroundColor: AppColors.cream,
+      bottomNavigationBar: widget.myRole == 'helper' && widget.entityType == 'request'
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: ElevatedButton.icon(
+                  onPressed: isDoneRequested
+                      ? null
+                      : _handleDoneWithRequest,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: Text(isDoneRequested ? 'Completion Requested' : 'Done with Request'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDoneRequested ? Colors.grey : Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            )
+          : null,
       appBar: AppBar(
         title: Text(
           widget.title,
@@ -382,7 +433,7 @@ class _ParticipantSection extends StatelessWidget {
   final String emptyText;
   final String role;
   final List<Map<String, dynamic>> contacts;
-  final Future<void> Function(String participantId)? onConfirmHelp;
+  final Future<void> Function(String participantId, bool liked)? onConfirmHelp;
 
   const _ParticipantSection({
     required this.title,
@@ -451,7 +502,7 @@ class _ParticipantTile extends StatelessWidget {
   final int number;
   final String role;
   final Map<String, dynamic> contact;
-  final Future<void> Function(String participantId)? onConfirmHelp;
+  final Future<void> Function(String participantId, bool liked)? onConfirmHelp;
 
   const _ParticipantTile({
     required this.number,
@@ -475,7 +526,9 @@ class _ParticipantTile extends StatelessWidget {
     final status = contact['status'] as String? ?? 'accepted';
     final joinType = contact['join_type'] as String? ?? 'individual';
     final participantId = contact['participant_id'] as String?;
-    final isAccepted = status == 'accepted';
+    final isConfirmed = contact['is_confirmed'] as bool? ?? false;
+    final isLiked = contact['is_liked'] as bool? ?? false;
+    final isCompletionRequested = status == 'completion_requested';
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -542,16 +595,41 @@ class _ParticipantTile extends StatelessWidget {
             children: [
               _MiniPill(label: status),
               _MiniPill(label: joinType == 'multiple' ? 'Group' : 'Individual'),
-              if (onConfirmHelp != null && isAccepted && participantId != null)
-                TextButton.icon(
-                  onPressed: () => onConfirmHelp!(participantId),
-                  icon: const Icon(Icons.check_circle_outline, size: 16),
-                  label: const Text('Confirm'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size(0, 32),
+              if (onConfirmHelp != null && participantId != null && (isCompletionRequested || isConfirmed)) ...[
+                if (isConfirmed)
+                  ElevatedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.check, size: 16, color: Colors.green),
+                    label: const Text('Confirmed'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                    ),
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: () => onConfirmHelp!(participantId, isLiked),
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text('Confirm'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                    ),
                   ),
+                IconButton(
+                  tooltip: 'Like Helper',
+                  onPressed: () => onConfirmHelp!(participantId, !isLiked),
+                  icon: Icon(
+                    isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    color: isLiked ? Colors.blue : Colors.grey,
+                  ),
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
+              ],
             ],
           ),
         ],

@@ -177,16 +177,6 @@ class RequestRepository {
 
     return starterRequests.map((request) {
       final requestJoins = joinsByRequest[request.id] ?? const [];
-      final helperCount = requestJoins
-          .where(
-            (join) => (join['join_role'] as String? ?? 'helpee') == 'helper',
-          )
-          .length;
-      final helpieCount = requestJoins
-          .where(
-            (join) => (join['join_role'] as String? ?? 'helpee') == 'helpee',
-          )
-          .length;
       Map<String, dynamic>? myJoin;
       if (currentUserId != null) {
         for (final join in requestJoins) {
@@ -203,9 +193,9 @@ class RequestRepository {
 
       if (myJoin == null) {
         return request.copyWith(
-          helperCount: helperCount,
-          helpieCount: helpieCount,
-          volunteersCount: helperCount + helpieCount,
+          helperCount: request.helperCount,
+          helpieCount: request.helpieCount,
+          volunteersCount: request.helperCount + request.helpieCount,
         );
       }
 
@@ -213,9 +203,9 @@ class RequestRepository {
         myVolunteerStatus: 'joined',
         communityJoinRole: myJoin['join_role'] as String? ?? 'helpee',
         joinedContactOption: joinedOption,
-        helperCount: helperCount,
-        helpieCount: helpieCount,
-        volunteersCount: helperCount + helpieCount,
+        helperCount: request.helperCount,
+        helpieCount: request.helpieCount,
+        volunteersCount: request.helperCount + request.helpieCount,
       );
     }).toList();
   }
@@ -760,6 +750,21 @@ class RequestRepository {
       return const [];
     }
 
+    final currentUserId = _client.auth.currentUser?.id;
+    final Map<String, bool> confirmedHelpers = {};
+    if (currentUserId != null) {
+      try {
+        final confirmations = await _client
+            .from('connection_confirmations')
+            .select('helper_id, liked')
+            .eq('request_id', requestId)
+            .eq('helpie_id', currentUserId);
+        for (final conf in confirmations) {
+          confirmedHelpers[conf['helper_id'] as String] = conf['liked'] as bool? ?? false;
+        }
+      } catch (_) {}
+    }
+
     final volunteers = await _fetchRequestVolunteers([requestId]);
     final profileIds = <String>{
       request['creator_id'] as String,
@@ -780,12 +785,16 @@ class RequestRepository {
       ),
       ...volunteers.map((volunteer) {
         final userId = volunteer['volunteer_id'] as String;
+        final isConfirmed = confirmedHelpers.containsKey(userId);
+        final isLiked = confirmedHelpers[userId] ?? false;
         return _contactRow(
           participantId: userId,
           profile: profilesById[userId],
           status: volunteer['status'] as String? ?? 'accepted',
           joinType: volunteer['join_type'] as String? ?? 'individual',
           role: volunteer['join_role'] as String? ?? 'helper',
+          isConfirmed: isConfirmed,
+          isLiked: isLiked,
         );
       }),
     ];
@@ -812,6 +821,21 @@ class RequestRepository {
         return const [];
       }
 
+      final currentUserId = _client.auth.currentUser?.id;
+      final Map<String, bool> confirmedHelpers = {};
+      if (currentUserId != null) {
+        try {
+          final confirmations = await _client
+              .from('connection_confirmations')
+              .select('helper_id, liked')
+              .eq('request_id', requestId)
+              .eq('helpie_id', currentUserId);
+          for (final conf in confirmations) {
+            confirmedHelpers[conf['helper_id'] as String] = conf['liked'] as bool? ?? false;
+          }
+        } catch (_) {}
+      }
+
       final profileIds = joins.map((join) => join['user_id'] as String).toList();
       final profiles = await _fetchProfiles(profileIds);
       final profilesById = {
@@ -820,12 +844,16 @@ class RequestRepository {
 
       return joins.map((join) {
         final userId = join['user_id'] as String;
+        final isConfirmed = confirmedHelpers.containsKey(userId);
+        final isLiked = confirmedHelpers[userId] ?? false;
         return _contactRow(
           participantId: userId,
           profile: profilesById[userId],
-          status: 'accepted',
+          status: join['status'] as String? ?? 'accepted',
           joinType: join['join_type'] as String? ?? 'individual',
           role: join['join_role'] as String? ?? 'helpee',
+          isConfirmed: isConfirmed,
+          isLiked: isLiked,
         );
       }).toList();
     } on PostgrestException {
@@ -839,6 +867,8 @@ class RequestRepository {
     required String status,
     required String joinType,
     required String role,
+    bool isConfirmed = false,
+    bool isLiked = false,
   }) {
     return {
       'participant_id': participantId,
@@ -848,6 +878,8 @@ class RequestRepository {
       'status': status,
       'join_type': joinType,
       'role': role,
+      'is_confirmed': isConfirmed,
+      'is_liked': isLiked,
     };
   }
 
@@ -877,6 +909,8 @@ class RequestRepository {
           'phone': enriched['phone'],
         if ((enriched['status'] as String?)?.trim().isNotEmpty == true)
           'status': enriched['status'],
+        'is_confirmed': enriched['is_confirmed'] ?? base['is_confirmed'] ?? false,
+        'is_liked': enriched['is_liked'] ?? base['is_liked'] ?? false,
       };
     }
 
