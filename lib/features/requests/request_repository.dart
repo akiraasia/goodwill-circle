@@ -69,8 +69,9 @@ class RequestRepository {
           }
         }
       }
-      final visibleHelpieCount =
-          helpieCount + (creatorAlreadyCountedAsHelpie ? 0 : 1);
+      final visibleHelpieCount = request.isCommunityRequest
+          ? helpieCount
+          : helpieCount + (creatorAlreadyCountedAsHelpie ? 0 : 1);
 
       Map<String, dynamic>? myVolunteer;
       for (final volunteer in volunteers) {

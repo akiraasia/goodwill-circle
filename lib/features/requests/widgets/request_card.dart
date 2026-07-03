@@ -21,6 +21,7 @@ class RequestCard extends ConsumerStatefulWidget {
   onVolunteer;
   final Future<void> Function(String message, bool sendEmail) onComplete;
   final Future<void> Function(String? message) onRequestCompletion;
+  final VoidCallback? onToggleSupport;
 
   const RequestCard({
     super.key,
@@ -28,6 +29,7 @@ class RequestCard extends ConsumerStatefulWidget {
     required this.onVolunteer,
     required this.onComplete,
     required this.onRequestCompletion,
+    this.onToggleSupport,
   });
 
   @override
@@ -310,6 +312,7 @@ class _RequestCardState extends ConsumerState<RequestCard> {
                             ? 'helpee'
                             : widget.request.communityJoinRole ?? 'helper',
                       ),
+                      onToggleSupport: widget.onToggleSupport,
                     ),
                   ),
                 ],
@@ -342,6 +345,7 @@ class _RequestCardState extends ConsumerState<RequestCard> {
                       ? 'helpee'
                       : widget.request.communityJoinRole ?? 'helper',
                 ),
+                onToggleSupport: widget.onToggleSupport,
               ),
             ],
           );
@@ -367,6 +371,7 @@ class _RequestDetails extends StatelessWidget {
   final VoidCallback onShowCompletion;
   final void Function(Future<bool> action) launchContact;
   final VoidCallback? onViewContacts;
+  final VoidCallback? onToggleSupport;
 
   const _RequestDetails({
     required this.request,
@@ -384,6 +389,7 @@ class _RequestDetails extends StatelessWidget {
     required this.onShowCompletion,
     required this.launchContact,
     this.onViewContacts,
+    this.onToggleSupport,
   });
 
   @override
@@ -496,6 +502,29 @@ class _RequestDetails extends StatelessWidget {
                     ),
                   ),
                 ),
+              const SizedBox(width: AppSpacing.sm),
+              InkWell(
+                onTap: onToggleSupport,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        request.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        size: 16,
+                        color: request.hasSupported ? Colors.red : AppColors.textLight,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${request.supportCount}',
+                        style: AppTypography.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

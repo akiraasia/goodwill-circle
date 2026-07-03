@@ -210,6 +210,9 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
                               final request = visibleRequests[index];
                               return RequestCard(
                                 request: request,
+                                onToggleSupport: () async {
+                                  await controller.toggleSupport(request.id);
+                                },
                                 onVolunteer:
                                     ({
                                       communityJoinRole,
