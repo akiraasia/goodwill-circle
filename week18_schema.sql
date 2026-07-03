@@ -298,6 +298,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
 
 
 -- 7. get_entity_contacts Updates
+DROP FUNCTION IF EXISTS public.get_entity_contacts(UUID, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.get_entity_contacts(
   p_entity_id UUID, p_entity_type TEXT, p_my_role TEXT
 ) RETURNS TABLE (
