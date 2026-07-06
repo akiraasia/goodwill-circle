@@ -15,6 +15,63 @@ class RequestRepository {
 
   RequestRepository(this._client);
 
+  static int countJoinRole(Iterable<Map<String, dynamic>> rows, String role) {
+    return rows.where((row) {
+      final joinRole = row['join_role'] as String? ?? 'helper';
+      return joinRole == role;
+    }).length;
+  }
+
+  static List<Map<String, dynamic>> deduplicateContacts(
+    List<Map<String, dynamic>> contacts,
+  ) {
+    final rowsByParticipant = <String, Map<String, dynamic>>{};
+
+    for (final contact in contacts) {
+      final participantId = contact['participant_id'] as String?;
+      if (participantId == null || participantId.isEmpty) {
+        continue;
+      }
+
+      final existing = rowsByParticipant[participantId];
+      if (existing == null) {
+        rowsByParticipant[participantId] = Map<String, dynamic>.from(contact);
+        continue;
+      }
+
+      final merged = <String, dynamic>{...existing, ...contact};
+
+      final existingRole =
+          (existing['role'] as String? ??
+                  existing['join_role'] as String? ??
+                  '')
+              .toLowerCase();
+      final incomingRole =
+          (contact['role'] as String? ?? contact['join_role'] as String? ?? '')
+              .toLowerCase();
+      if (incomingRole == 'helper' || existingRole == 'helper') {
+        merged['role'] = 'helper';
+        merged['join_role'] = 'helper';
+      } else if (incomingRole == 'helpee' || existingRole == 'helpee') {
+        merged['role'] = 'helpee';
+        merged['join_role'] = 'helpee';
+      }
+
+      if (merged['is_confirmed'] == null) {
+        merged['is_confirmed'] =
+            existing['is_confirmed'] ?? contact['is_confirmed'] ?? false;
+      }
+      if (merged['is_liked'] == null) {
+        merged['is_liked'] =
+            existing['is_liked'] ?? contact['is_liked'] ?? false;
+      }
+
+      rowsByParticipant[participantId] = merged;
+    }
+
+    return rowsByParticipant.values.toList();
+  }
+
   Future<List<HelpRequest>> getOpenRequests() async {
     final currentUserId = _client.auth.currentUser?.id;
     final data = await _client
@@ -55,14 +112,12 @@ class RequestRepository {
       final volunteers = volunteersByRequest[request.id] ?? const [];
 
       // Calculate actual helper and helpie counts from volunteers
-      int helperCount = 0;
+      int helperCount = countJoinRole(volunteers, 'helper');
       int helpieCount = 0;
       var creatorAlreadyCountedAsHelpie = false;
       for (final volunteer in volunteers) {
         final role = volunteer['join_role'] as String? ?? 'helper';
-        if (role == 'helper') {
-          helperCount++;
-        } else if (role == 'helpee') {
+        if (role == 'helpee') {
           helpieCount++;
           if (volunteer['volunteer_id'] == request.creatorId) {
             creatorAlreadyCountedAsHelpie = true;
@@ -146,7 +201,8 @@ class RequestRepository {
 
         final hydratedStarter = starterRequests.map((request) {
           final userIds = supportsByRequest[request.id] ?? const [];
-          final hasSupported = currentUserId != null && userIds.contains(currentUserId);
+          final hasSupported =
+              currentUserId != null && userIds.contains(currentUserId);
           return request.copyWith(
             supportCount: userIds.length,
             hasSupported: hasSupported,
@@ -214,11 +270,18 @@ class RequestRepository {
           ? RequestContactOption.fromJson(contactChoice)
           : null;
 
+      final helperCount = requestJoins.isEmpty
+          ? request.helperCount
+          : countJoinRole(requestJoins, 'helper');
+      final helpieCount = requestJoins.isEmpty
+          ? request.helpieCount
+          : countJoinRole(requestJoins, 'helpee');
+
       if (myJoin == null) {
         return request.copyWith(
-          helperCount: request.helperCount,
-          helpieCount: request.helpieCount,
-          volunteersCount: request.helperCount + request.helpieCount,
+          helperCount: helperCount,
+          helpieCount: helpieCount,
+          volunteersCount: helperCount + helpieCount,
         );
       }
 
@@ -226,9 +289,9 @@ class RequestRepository {
         myVolunteerStatus: 'joined',
         communityJoinRole: myJoin['join_role'] as String? ?? 'helpee',
         joinedContactOption: joinedOption,
-        helperCount: request.helperCount,
-        helpieCount: request.helpieCount,
-        volunteersCount: request.helperCount + request.helpieCount,
+        helperCount: helperCount,
+        helpieCount: helpieCount,
+        volunteersCount: helperCount + helpieCount,
       );
     }).toList();
   }
@@ -731,19 +794,23 @@ class RequestRepository {
       }
     }
 
+    final dedupedRpcContacts = deduplicateContacts(
+      rpcContacts.whereType<Map<String, dynamic>>().toList(),
+    );
+
     if (requestId.startsWith('starter:')) {
-      return rpcContacts;
+      return dedupedRpcContacts;
     }
 
     final fallbackContacts = await _fetchRequestContactsFallback(requestId);
     if (fallbackContacts.isEmpty) {
-      return rpcContacts;
+      return dedupedRpcContacts;
     }
-    if (rpcContacts.isEmpty) {
+    if (dedupedRpcContacts.isEmpty) {
       return fallbackContacts;
     }
 
-    return _mergeContactRows(fallbackContacts, rpcContacts);
+    return _mergeContactRows(fallbackContacts, dedupedRpcContacts);
   }
 
   Future<List<Map<String, dynamic>>> _fetchRequestContactsFallback(
@@ -783,7 +850,8 @@ class RequestRepository {
             .eq('request_id', requestId)
             .eq('helpie_id', currentUserId);
         for (final conf in confirmations) {
-          confirmedHelpers[conf['helper_id'] as String] = conf['liked'] as bool? ?? false;
+          confirmedHelpers[conf['helper_id'] as String] =
+              conf['liked'] as bool? ?? false;
         }
       } catch (_) {}
     }
@@ -836,10 +904,9 @@ class RequestRepository {
         return const [];
       }
 
-      final joins = await _fetchCommunityStarterJoins(
-        [requestId],
-        _client.auth.currentUser?.id,
-      );
+      final joins = await _fetchCommunityStarterJoins([
+        requestId,
+      ], _client.auth.currentUser?.id);
       if (joins.isEmpty) {
         return const [];
       }
@@ -854,12 +921,15 @@ class RequestRepository {
               .eq('request_id', requestId)
               .eq('helpie_id', currentUserId);
           for (final conf in confirmations) {
-            confirmedHelpers[conf['helper_id'] as String] = conf['liked'] as bool? ?? false;
+            confirmedHelpers[conf['helper_id'] as String] =
+                conf['liked'] as bool? ?? false;
           }
         } catch (_) {}
       }
 
-      final profileIds = joins.map((join) => join['user_id'] as String).toList();
+      final profileIds = joins
+          .map((join) => join['user_id'] as String)
+          .toList();
       final profiles = await _fetchProfiles(profileIds);
       final profilesById = {
         for (final profile in profiles) profile['id'] as String: profile,
@@ -932,7 +1002,8 @@ class RequestRepository {
           'phone': enriched['phone'],
         if ((enriched['status'] as String?)?.trim().isNotEmpty == true)
           'status': enriched['status'],
-        'is_confirmed': enriched['is_confirmed'] ?? base['is_confirmed'] ?? false,
+        'is_confirmed':
+            enriched['is_confirmed'] ?? base['is_confirmed'] ?? false,
         'is_liked': enriched['is_liked'] ?? base['is_liked'] ?? false,
       };
     }

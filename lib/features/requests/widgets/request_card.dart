@@ -512,9 +512,13 @@ class _RequestDetails extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        request.hasSupported ? Icons.favorite : Icons.favorite_border,
+                        request.hasSupported
+                            ? Icons.favorite
+                            : Icons.favorite_border,
                         size: 16,
-                        color: request.hasSupported ? Colors.red : AppColors.textLight,
+                        color: request.hasSupported
+                            ? Colors.red
+                            : AppColors.textLight,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -663,7 +667,28 @@ class _RequestVisual extends StatelessWidget {
       );
     }
 
-    return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      color: AppColors.tan1,
+      alignment: Alignment.center,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(8),
+          topRight: isWide ? Radius.zero : const Radius.circular(8),
+          bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: isWide ? double.infinity : 200,
+          ),
+          child: Image.asset(
+            'art/Screenshot 2026-06-13 160823.png',
+            width: double.infinity,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
   }
 }
 

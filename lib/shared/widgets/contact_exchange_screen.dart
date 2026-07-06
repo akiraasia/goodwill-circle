@@ -124,7 +124,7 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
 
       if (!mounted) return;
       setState(() {
-        _contacts = contacts;
+        _contacts = RequestRepository.deduplicateContacts(contacts);
         _isLoading = false;
         _error = null;
       });
@@ -157,7 +157,11 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(liked ? 'Confirmed and liked!' : 'Confirmed successfully!')),
+        SnackBar(
+          content: Text(
+            liked ? 'Confirmed and liked!' : 'Confirmed successfully!',
+          ),
+        ),
       );
       _fetchContacts(showLoading: false);
     } catch (e) {
@@ -185,9 +189,9 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -206,22 +210,28 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
       orElse: () => <String, dynamic>{},
     );
     final myStatus = myContact['status'] as String? ?? 'accepted';
-    final isDoneRequested = myStatus == 'completion_requested' || myStatus == 'completed';
+    final isDoneRequested =
+        myStatus == 'completion_requested' || myStatus == 'completed';
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      bottomNavigationBar: widget.myRole == 'helper' && widget.entityType == 'request'
+      bottomNavigationBar:
+          widget.myRole == 'helper' && widget.entityType == 'request'
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: ElevatedButton.icon(
-                  onPressed: isDoneRequested
-                      ? null
-                      : _handleDoneWithRequest,
+                  onPressed: isDoneRequested ? null : _handleDoneWithRequest,
                   icon: const Icon(Icons.check_circle_outline),
-                  label: Text(isDoneRequested ? 'Completion Requested' : 'Done with Request'),
+                  label: Text(
+                    isDoneRequested
+                        ? 'Completion Requested'
+                        : 'Done with Request',
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDoneRequested ? Colors.grey : Colors.green,
+                    backgroundColor: isDoneRequested
+                        ? Colors.grey
+                        : Colors.green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -597,11 +607,20 @@ class _ParticipantTile extends StatelessWidget {
             children: [
               _MiniPill(label: status),
               _MiniPill(label: joinType == 'multiple' ? 'Group' : 'Individual'),
-              if (onConfirmHelp != null && participantId != null && (isCompletionRequested || isConfirmed || isAccepted || isCompleted)) ...[
+              if (onConfirmHelp != null &&
+                  participantId != null &&
+                  (isCompletionRequested ||
+                      isConfirmed ||
+                      isAccepted ||
+                      isCompleted)) ...[
                 if (isConfirmed)
                   ElevatedButton.icon(
                     onPressed: null,
-                    icon: const Icon(Icons.check, size: 16, color: Colors.green),
+                    icon: const Icon(
+                      Icons.check,
+                      size: 16,
+                      color: Colors.green,
+                    ),
                     label: const Text('Confirmed'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -820,7 +839,8 @@ class _HubActivityFeedState extends ConsumerState<_HubActivityFeed> {
                   minLines: 1,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: 'Ask for help, share instructions, or post updates...',
+                    hintText:
+                        'Ask for help, share instructions, or post updates...',
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 10,
