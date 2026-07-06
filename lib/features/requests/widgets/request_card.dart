@@ -617,6 +617,9 @@ class _RequestVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authorName = request.creatorName ?? 'Community member';
+    final initial = authorName.isNotEmpty ? authorName[0].toUpperCase() : '?';
+
     if (request.artAssetPath != null && request.artAssetPath!.isNotEmpty) {
       return Container(
         width: double.infinity,
@@ -667,6 +670,31 @@ class _RequestVisual extends StatelessWidget {
       );
     }
 
+    if (request.creatorPhoto != null && request.creatorPhoto!.isNotEmpty) {
+      return Container(
+        width: double.infinity,
+        color: AppColors.tan1,
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(8),
+            topRight: isWide ? Radius.zero : const Radius.circular(8),
+            bottomLeft: isWide ? const Radius.circular(8) : Radius.zero,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: isWide ? double.infinity : 200,
+            ),
+            child: Image.network(
+              request.creatorPhoto!,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       color: AppColors.tan1,
@@ -681,10 +709,18 @@ class _RequestVisual extends StatelessWidget {
           constraints: BoxConstraints(
             maxHeight: isWide ? double.infinity : 200,
           ),
-          child: Image.asset(
-            'art/Screenshot 2026-06-13 160823.png',
+          child: Container(
             width: double.infinity,
-            fit: BoxFit.contain,
+            height: 200,
+            color: AppColors.yellowPale,
+            alignment: Alignment.center,
+            child: Text(
+              initial,
+              style: AppTypography.textTheme.headlineMedium?.copyWith(
+                color: AppColors.tan3,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ),
