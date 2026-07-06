@@ -220,6 +220,7 @@ CREATE OR REPLACE FUNCTION public.request_help_completion_review(
 ) RETURNS void AS $$
 DECLARE
   v_is_starter BOOLEAN;
+  v_updated_count INTEGER;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
   SELECT EXISTS(SELECT 1 FROM public.community_starter_requests WHERE id = p_request_id) INTO v_is_starter;
@@ -228,12 +229,22 @@ BEGIN
     UPDATE public.community_starter_request_joins
     SET status = 'completion_requested'
     WHERE request_id = p_request_id AND user_id = auth.uid() AND join_role = 'helper' AND status IS DISTINCT FROM 'completed';
-    IF NOT FOUND THEN RAISE EXCEPTION 'Helper connection not found for this starter request'; END IF;
+    GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+    IF v_updated_count = 0 THEN
+      INSERT INTO public.community_starter_request_joins (request_id, user_id, join_role, status)
+      VALUES (p_request_id, auth.uid(), 'helper', 'completion_requested')
+      ON CONFLICT (request_id, user_id) DO UPDATE SET status = 'completion_requested';
+    END IF;
   ELSE
     UPDATE public.request_volunteers
     SET status = 'completion_requested', completion_message = NULLIF(trim(COALESCE(p_message, '')), '')
     WHERE request_id = p_request_id AND volunteer_id = auth.uid() AND join_role = 'helper' AND status IS DISTINCT FROM 'completed';
-    IF NOT FOUND THEN RAISE EXCEPTION 'Helper connection not found for this request'; END IF;
+    GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+    IF v_updated_count = 0 THEN
+      INSERT INTO public.request_volunteers (request_id, volunteer_id, join_role, status, completion_message)
+      VALUES (p_request_id, auth.uid(), 'helper', 'completion_requested', NULLIF(trim(COALESCE(p_message, '')), ''))
+      ON CONFLICT (request_id, volunteer_id) DO UPDATE SET status = 'completion_requested', completion_message = NULLIF(trim(COALESCE(p_message, '')), '');
+    END IF;
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
