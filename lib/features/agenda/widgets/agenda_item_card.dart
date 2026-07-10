@@ -165,17 +165,6 @@ class AgendaItemCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Icon(
-                Icons.group,
-                size: 16,
-                color: AppColors.textLight,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                'helpers: ${item.helperCount}, helpies: ${item.helpieCount}',
-                style: AppTypography.textTheme.labelSmall,
-              ),
-              const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
                 borderRadius: BorderRadius.circular(4),

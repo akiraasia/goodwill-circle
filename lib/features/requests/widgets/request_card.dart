@@ -477,13 +477,6 @@ class _RequestDetails extends StatelessWidget {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(Icons.group, size: 16, color: AppColors.textLight),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                'helpers: ${request.helperCount}, helpies: ${request.helpieCount}',
-                style: AppTypography.textTheme.labelSmall,
-                overflow: TextOverflow.ellipsis,
-              ),
               if (request.completedConnectionsCount > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(

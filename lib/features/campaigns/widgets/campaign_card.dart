@@ -137,16 +137,6 @@ class CampaignCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(
-                Icons.group,
-                size: 16,
-                color: AppColors.textLight,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                'helpers: ${campaign.helperCount}, helpies: ${campaign.helpieCount}',
-                style: AppTypography.textTheme.labelSmall,
-              ),
               const SizedBox(width: AppSpacing.sm),
               InkWell(
                 onTap: onToggleSupport,
