@@ -541,6 +541,8 @@ class _RequestDetails extends StatelessWidget {
               isCommunityRequest: isCommunityRequest,
               isCompletionRequested: isCompletionRequested,
               hasCompleted: hasCompleted,
+              helperCount: request.helperCount,
+              helpieCount: request.helpieCount,
               onComplete: onComplete,
               onVolunteer: onVolunteer,
               onCommunityRoleSelected: onCommunityRoleSelected,
@@ -783,6 +785,8 @@ class _ActionButton extends StatelessWidget {
   final bool isCommunityRequest;
   final bool isCompletionRequested;
   final bool hasCompleted;
+  final int helperCount;
+  final int helpieCount;
   final VoidCallback onComplete;
   final Future<void> Function() onVolunteer;
   final void Function(String role) onCommunityRoleSelected;
@@ -795,6 +799,8 @@ class _ActionButton extends StatelessWidget {
     required this.isCommunityRequest,
     required this.isCompletionRequested,
     required this.hasCompleted,
+    required this.helperCount,
+    required this.helpieCount,
     required this.onComplete,
     required this.onVolunteer,
     required this.onCommunityRoleSelected,
@@ -805,12 +811,14 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isCreator) {
+      final canCompleteDirectly = helpieCount <= 1 && helperCount >= 1;
+      final showConfirmButton = isCompletionRequested || canCompleteDirectly;
       return SizedBox(
         height: 34,
         child: ElevatedButton.icon(
-          onPressed: isCompletionRequested ? onComplete : null,
+          onPressed: showConfirmButton ? onComplete : null,
           icon: const Icon(Icons.check_circle, size: 16),
-          label: Text(isCompletionRequested ? 'Confirm' : 'Wait'),
+          label: Text(showConfirmButton ? 'Confirm' : 'Wait'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             padding: const EdgeInsets.symmetric(horizontal: 10),

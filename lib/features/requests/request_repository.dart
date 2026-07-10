@@ -270,12 +270,8 @@ class RequestRepository {
           ? RequestContactOption.fromJson(contactChoice)
           : null;
 
-      final helperCount = requestJoins.isEmpty
-          ? request.helperCount
-          : countJoinRole(requestJoins, 'helper');
-      final helpieCount = requestJoins.isEmpty
-          ? request.helpieCount
-          : countJoinRole(requestJoins, 'helpee');
+      final helperCount = request.helperCount;
+      final helpieCount = request.helpieCount;
 
       if (myJoin == null) {
         return request.copyWith(
@@ -807,10 +803,10 @@ class RequestRepository {
       return dedupedRpcContacts;
     }
     if (dedupedRpcContacts.isEmpty) {
-      return fallbackContacts;
+      return deduplicateContacts(fallbackContacts);
     }
 
-    return _mergeContactRows(fallbackContacts, dedupedRpcContacts);
+    return deduplicateContacts(_mergeContactRows(fallbackContacts, dedupedRpcContacts));
   }
 
   Future<List<Map<String, dynamic>>> _fetchRequestContactsFallback(
@@ -856,9 +852,12 @@ class RequestRepository {
       } catch (_) {}
     }
 
-    final volunteers = await _fetchRequestVolunteers([requestId]);
+    final creatorId = request['creator_id'] as String;
+    final volunteers = (await _fetchRequestVolunteers([requestId]))
+        .where((v) => v['volunteer_id'] != creatorId)
+        .toList();
     final profileIds = <String>{
-      request['creator_id'] as String,
+      creatorId,
       ...volunteers.map((volunteer) => volunteer['volunteer_id'] as String),
     }.toList();
     final profiles = await _fetchProfiles(profileIds);
@@ -1002,6 +1001,12 @@ class RequestRepository {
           'phone': enriched['phone'],
         if ((enriched['status'] as String?)?.trim().isNotEmpty == true)
           'status': enriched['status'],
+        if ((enriched['role'] as String?)?.trim().isNotEmpty == true)
+          'role': enriched['role'],
+        if ((enriched['join_role'] as String?)?.trim().isNotEmpty == true)
+          'join_role': enriched['join_role'],
+        if ((enriched['join_type'] as String?)?.trim().isNotEmpty == true)
+          'join_type': enriched['join_type'],
         'is_confirmed':
             enriched['is_confirmed'] ?? base['is_confirmed'] ?? false,
         'is_liked': enriched['is_liked'] ?? base['is_liked'] ?? false,
