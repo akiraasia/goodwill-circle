@@ -24,6 +24,8 @@ class DefaultFirebaseOptions {
         return android;
       case TargetPlatform.iOS:
         return ios;
+      case TargetPlatform.windows:
+        return web; // Fallback for Windows desktop development
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',

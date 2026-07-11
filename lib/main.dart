@@ -25,12 +25,17 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    print("Firebase initialized");
+
     await FirebaseAuth.instance.signInAnonymously();
-    // firebase_ai uses the Gemini Developer API key tied to this Firebase project.
-    // No explicit API key needed in code — it reads from the Firebase app config.
-    FirebaseAI.googleAI(); // warm-up
-  } catch (_) {
-    // Firebase not yet configured — AI features will show error state gracefully.
+
+    print("Anonymous sign-in successful");
+  } catch (e, st) {
+    print("Firebase startup failed:");
+    print(e);
+    print(st);
+    rethrow;
   }
 
   runApp(const ProviderScope(child: GoodwillCircleApp()));
