@@ -6,6 +6,7 @@ import 'package:goodwill_circle/features/requests/request_controller.dart';
 import 'package:goodwill_circle/features/requests/widgets/request_card.dart';
 import 'package:goodwill_circle/features/trust/trust_repository.dart';
 import 'package:goodwill_circle/features/trust/widgets/platform_impact_overview.dart';
+import 'package:goodwill_circle/shared/widgets/app_chat_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:goodwill_circle/shared/widgets/section_header.dart';
@@ -307,12 +308,37 @@ class _RequestsScreenState extends ConsumerState<RequestsScreen> {
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            context.push('/create-request');
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('New Request'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Global AI navigation chatbot
+            FloatingActionButton(
+              heroTag: 'goodwill_guide_fab',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AppChatScreen(),
+                  ),
+                );
+              },
+              backgroundColor: AppColors.yellowPale,
+              foregroundColor: AppColors.tan3,
+              tooltip: 'Goodwill Guide',
+              child: const Icon(Icons.auto_awesome),
+            ),
+            const SizedBox(height: 12),
+            // New request
+            FloatingActionButton.extended(
+              heroTag: 'new_request_fab',
+              onPressed: () {
+                context.push('/create-request');
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('New Request'),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -738,16 +739,47 @@ class RequestRepository {
     String participantId,
     String message,
   ) async {
-    final result = await _client.rpc(
-      'complete_connection',
-      params: {
-        'p_entity_id': requestId,
-        'p_entity_type': 'request',
-        'p_participant_id': participantId,
-        'p_completion_message': message,
-      },
-    );
-    return result as String?;
+    try {
+      final result = await _client.rpc(
+        'complete_connection',
+        params: {
+          'p_entity_id': requestId,
+          'p_entity_type': 'request',
+          'p_participant_id': participantId,
+          'p_completion_message': message,
+        },
+      );
+
+      // Diagnostic: fetch user_stats for helper (participant) and helpee (current user)
+      try {
+        final helperStats = await _client
+            .from('user_stats')
+            .select('user_id, credits, credits_earned, impact_score')
+            .eq('user_id', participantId)
+            .maybeSingle();
+
+        final helpeeId = _client.auth.currentUser?.id;
+        final helpeeStats = helpeeId == null
+            ? null
+            : await _client
+                .from('user_stats')
+                .select('user_id, credits, credits_earned, impact_score')
+                .eq('user_id', helpeeId)
+                .maybeSingle();
+
+        // Print lightweight diagnostics to the console (visible in Flutter logs)
+        debugPrint('completeRequest RPC result: $result');
+        debugPrint('helper user_stats: ${helperStats ?? 'not found'}');
+        debugPrint('helpee user_stats: ${helpeeStats ?? 'not found'}');
+      } catch (e) {
+        debugPrint('completeRequest: could not fetch user_stats diagnostics: $e');
+      }
+
+      return result as String?;
+    } catch (e) {
+      debugPrint('completeRequest RPC error: $e');
+      rethrow;
+    }
   }
 
   Future<void> requestCompletionReview({

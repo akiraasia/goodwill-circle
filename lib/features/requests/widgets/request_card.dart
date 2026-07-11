@@ -5,6 +5,7 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
+import 'package:goodwill_circle/features/requests/widgets/help_chat_screen.dart';
 import 'package:goodwill_circle/shared/services/external_contact_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -442,12 +443,8 @@ class _RequestDetails extends StatelessWidget {
                 ),
               ),
               _ImpactPill(
-                label: isUrgent && !isCommunityRequest
-                    ? 'URGENT'
-                    : isCommunityRequest
-                    ? '${request.volunteersCount} joined'
-                    : '+${request.goodwillReward}',
-                urgent: isUrgent && !isCommunityRequest,
+                label: isUrgent ? 'URGENT' : '+${request.goodwillReward}',
+                urgent: isUrgent,
               ),
             ],
           ),
@@ -470,6 +467,30 @@ class _RequestDetails extends StatelessWidget {
                 children: request.tags.take(2).map(_TagPill.new).toList(),
               ),
             ],
+          ],
+          // Helper / Helpee count chips
+          if (request.helperCount > 0 || request.helpieCount > 0) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (request.helperCount > 0)
+                  _StatChip(
+                    icon: Icons.volunteer_activism,
+                    label:
+                        '${request.helperCount} helper${request.helperCount != 1 ? 's' : ''}',
+                    color: Colors.blue,
+                  ),
+                if (request.helpieCount > 0)
+                  _StatChip(
+                    icon: Icons.person_outline,
+                    label:
+                        '${request.helpieCount} helpee${request.helpieCount != 1 ? 's' : ''}',
+                    color: Colors.green,
+                  ),
+              ],
+            ),
           ],
           const SizedBox(height: AppSpacing.sm),
           Wrap(
@@ -519,6 +540,26 @@ class _RequestDetails extends StatelessWidget {
                         style: AppTypography.textTheme.labelSmall,
                       ),
                     ],
+                  ),
+                ),
+              ),
+              // AI chatbot icon — opens contextual chat for this request
+              Builder(
+                builder: (context) => InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HelpChatScreen(request: request),
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.smart_toy_outlined,
+                      size: 16,
+                      color: AppColors.textLight,
+                    ),
                   ),
                 ),
               ),
@@ -767,6 +808,43 @@ class _TagPill extends StatelessWidget {
         style: AppTypography.textTheme.labelSmall?.copyWith(
           color: AppColors.tan3,
         ),
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color.withValues(alpha: 0.8)),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: AppTypography.textTheme.labelSmall?.copyWith(
+              fontSize: 10,
+              color: color.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
       ),
     );
   }

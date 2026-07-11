@@ -1,3 +1,5 @@
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,6 +14,18 @@ void main() async {
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+
+  // Initialize Firebase for AI Logic (Gemini Developer API via firebase_ai).
+  // Requires google-services.json (Android) / GoogleService-Info.plist (iOS).
+  // Run `npx firebase-tools init ailogic` once to provision the Gemini service.
+  try {
+    await Firebase.initializeApp();
+    // firebase_ai uses the Gemini Developer API key tied to this Firebase project.
+    // No explicit API key needed in code — it reads from the Firebase app config.
+    FirebaseAI.googleAI(); // warm-up
+  } catch (_) {
+    // Firebase not yet configured — AI features will show error state gracefully.
+  }
 
   runApp(const ProviderScope(child: GoodwillCircleApp()));
 }
