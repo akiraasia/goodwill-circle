@@ -221,7 +221,7 @@ Keep answers concise, warm, and actionable. Do not make up specific contact info
           Expanded(
             child: !_initialized
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null
+                : _error != null && !_isMock
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),

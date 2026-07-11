@@ -277,7 +277,7 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
           Expanded(
             child: !_initialized
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null
+                : _error != null && !_isMock
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
