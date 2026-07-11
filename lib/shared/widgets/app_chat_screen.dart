@@ -21,6 +21,7 @@ class _AppChatScreenState extends State<AppChatScreen> {
   ChatSession? _chatSession;
   bool _isLoading = false;
   bool _initialized = false;
+  bool _isMock = false;
   String? _error;
 
   static const _systemInstruction = '''
@@ -82,32 +83,29 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
       );
 
       _chatSession = model.startChat();
-
-      setState(() {
-        _messages.add(
-          const _ChatMessage(
-            text:
-                'Hi! I\'m **Goodwill** 👋\n\n'
-                'I can help you understand and navigate the Goodwill Circle app — '
-                'how credits work, how to post or join a help request, '
-                'or anything else about the platform.\n\n'
-                'What would you like to know?',
-            isUser: false,
-          ),
-        );
-        _initialized = true;
-      });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _initialized = true;
-      });
+      _isMock = true; // Fallback to a mock chat if Firebase is not configured
     }
+
+    setState(() {
+      _messages.add(
+        const _ChatMessage(
+          text:
+              'Hi! I\'m **Goodwill** 👋\n\n'
+              'I can help you understand and navigate the Goodwill Circle app — '
+              'how credits work, how to post or join a help request, '
+              'or anything else about the platform.\n\n'
+              'What would you like to know?',
+          isUser: false,
+        ),
+      );
+      _initialized = true;
+    });
   }
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _isLoading || _chatSession == null) return;
+    if (text.isEmpty || _isLoading || (_chatSession == null && !_isMock)) return;
 
     _controller.clear();
     setState(() {
@@ -115,6 +113,23 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
       _isLoading = true;
     });
     _scrollToBottom();
+
+    if (_isMock) {
+      setState(() {
+        _messages.add(const _ChatMessage(text: '', isUser: false, isStreaming: true));
+      });
+      await Future.delayed(const Duration(milliseconds: 1000));
+      setState(() {
+        _messages.last = const _ChatMessage(
+          text: 'I am a preview AI assistant. To use the real Gemini AI features, please configure Firebase with a valid google-services.json or GoogleService-Info.plist for this project.',
+          isUser: false,
+          isStreaming: false,
+        );
+        _isLoading = false;
+      });
+      _scrollToBottom();
+      return;
+    }
 
     try {
       final stream = _chatSession!.sendMessageStream(Content.text(text));

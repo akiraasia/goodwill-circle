@@ -23,6 +23,7 @@ class _HelpChatScreenState extends State<HelpChatScreen> {
   ChatSession? _chatSession;
   bool _isLoading = false;
   bool _initialized = false;
+  bool _isMock = false;
   String? _error;
 
   @override
@@ -72,30 +73,27 @@ Keep answers concise, warm, and actionable. Do not make up specific contact info
       );
 
       _chatSession = model.startChat();
-
-      // Greet the user
-      setState(() {
-        _messages.add(
-          _ChatMessage(
-            text:
-                'Hi! I\'m your assistant for this help request: **"${widget.request.title}"**. '
-                'Ask me anything about this need, how to help, or how Goodwill Circle works.',
-            isUser: false,
-          ),
-        );
-        _initialized = true;
-      });
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _initialized = true;
-      });
+      _isMock = true; // Fallback to a mock chat if Firebase is not configured
     }
+
+    // Greet the user
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text:
+              'Hi! I\'m your assistant for this help request: **"${widget.request.title}"**. '
+              'Ask me anything about this need, how to help, or how Goodwill Circle works.',
+          isUser: false,
+        ),
+      );
+      _initialized = true;
+    });
   }
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _isLoading || _chatSession == null) return;
+    if (text.isEmpty || _isLoading || (_chatSession == null && !_isMock)) return;
 
     _controller.clear();
     setState(() {
@@ -103,6 +101,23 @@ Keep answers concise, warm, and actionable. Do not make up specific contact info
       _isLoading = true;
     });
     _scrollToBottom();
+
+    if (_isMock) {
+      setState(() {
+        _messages.add(const _ChatMessage(text: '', isUser: false, isStreaming: true));
+      });
+      await Future.delayed(const Duration(milliseconds: 1000));
+      setState(() {
+        _messages.last = const _ChatMessage(
+          text: 'I am a preview AI assistant. To use the real Gemini AI features, please configure Firebase with a valid google-services.json or GoogleService-Info.plist for this project.',
+          isUser: false,
+          isStreaming: false,
+        );
+        _isLoading = false;
+      });
+      _scrollToBottom();
+      return;
+    }
 
     try {
       final stream = _chatSession!.sendMessageStream(Content.text(text));
@@ -137,7 +152,7 @@ Keep answers concise, warm, and actionable. Do not make up specific contact info
     } catch (e) {
       setState(() {
         _messages.add(
-          _ChatMessage(
+          const _ChatMessage(
             text: 'Sorry, I ran into an error. Please try again.',
             isUser: false,
             isError: true,
@@ -265,21 +280,73 @@ class _ContextBanner extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       color: AppColors.yellowPale,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, size: 13, color: AppColors.tan3),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              'Chatting about: ${request.category} · ${request.title}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.textTheme.labelSmall?.copyWith(
-                color: AppColors.tan3,
-                fontSize: 11,
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 13, color: AppColors.tan3),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Chatting about: ${request.category} · ${request.title}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.textTheme.labelSmall?.copyWith(
+                    color: AppColors.tan3,
+                    fontSize: 11,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          if (request.helperCount > 0 || request.helpieCount > 0) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (request.helperCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.volunteer_activism, size: 12, color: Colors.blue),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${request.helperCount} helper${request.helperCount != 1 ? 's' : ''}',
+                          style: AppTypography.textTheme.labelSmall?.copyWith(fontSize: 10, color: Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (request.helpieCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.person_outline, size: 12, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${request.helpieCount} helpee${request.helpieCount != 1 ? 's' : ''}',
+                          style: AppTypography.textTheme.labelSmall?.copyWith(fontSize: 10, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -468,30 +468,7 @@ class _RequestDetails extends StatelessWidget {
               ),
             ],
           ],
-          // Helper / Helpee count chips
-          if (request.helperCount > 0 || request.helpieCount > 0) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                if (request.helperCount > 0)
-                  _StatChip(
-                    icon: Icons.volunteer_activism,
-                    label:
-                        '${request.helperCount} helper${request.helperCount != 1 ? 's' : ''}',
-                    color: Colors.blue,
-                  ),
-                if (request.helpieCount > 0)
-                  _StatChip(
-                    icon: Icons.person_outline,
-                    label:
-                        '${request.helpieCount} helpee${request.helpieCount != 1 ? 's' : ''}',
-                    color: Colors.green,
-                  ),
-              ],
-            ),
-          ],
+
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
