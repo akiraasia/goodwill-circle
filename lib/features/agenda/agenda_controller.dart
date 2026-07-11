@@ -54,6 +54,7 @@ class AgendaController extends Notifier<AgendaState> {
     required String rewardBadgeId,
     required String certificateTitle,
     required String certificateIssuer,
+    String? imageUrl,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -67,6 +68,7 @@ class AgendaController extends Notifier<AgendaState> {
         rewardBadgeId: rewardBadgeId,
         certificateTitle: certificateTitle,
         certificateIssuer: certificateIssuer,
+        imageUrl: imageUrl,
       );
       await loadAgendaItems();
     } catch (e) {

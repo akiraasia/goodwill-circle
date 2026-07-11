@@ -15,6 +15,7 @@ class NonprofitAgendaItem {
   final String certificateTitle;
   final String certificateIssuer;
   final String status;
+  final String? imageUrl;
   final int helperCount;
   final int helpieCount;
   final int supportCount;
@@ -40,6 +41,7 @@ class NonprofitAgendaItem {
     required this.certificateTitle,
     required this.certificateIssuer,
     required this.status,
+    this.imageUrl,
     this.helperCount = 0,
     this.helpieCount = 0,
     this.supportCount = 0,
@@ -74,6 +76,7 @@ class NonprofitAgendaItem {
       certificateIssuer:
           json['certificate_issuer'] as String? ?? 'Goodwill Circle NGO',
       status: json['status'] as String? ?? 'open',
+      imageUrl: json['image_url'] as String?,
       helperCount: json['helper_count'] as int? ?? 0,
       helpieCount: json['helpie_count'] as int? ?? 0,
       supportCount: json['support_count'] as int? ?? 0,
@@ -86,6 +89,7 @@ class NonprofitAgendaItem {
   NonprofitAgendaItem copyWith({
     String? ngoVerificationStatus,
     String? myParticipantStatus,
+    String? imageUrl,
     int? completedConnectionsCount,
     int? helperCount,
     int? helpieCount,
@@ -110,6 +114,7 @@ class NonprofitAgendaItem {
       certificateTitle: certificateTitle,
       certificateIssuer: certificateIssuer,
       status: status,
+      imageUrl: imageUrl ?? this.imageUrl,
       helperCount: helperCount ?? this.helperCount,
       helpieCount: helpieCount ?? this.helpieCount,
       supportCount: supportCount ?? this.supportCount,

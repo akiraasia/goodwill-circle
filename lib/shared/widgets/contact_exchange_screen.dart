@@ -139,21 +139,15 @@ class _ContactExchangeScreenState extends ConsumerState<ContactExchangeScreen> {
 
   Future<void> _confirmHelpCompletion(String participantId, bool liked) async {
     try {
-      if (widget.entityType == 'request') {
-        await _supabase.rpc(
-          'confirm_and_like_helper',
-          params: {
-            'p_request_id': widget.entityId,
-            'p_helper_id': participantId,
-            'p_liked': liked,
-          },
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Help completion confirmed.')),
-        );
-      }
+      await _supabase.rpc(
+        'confirm_and_like_helper',
+        params: {
+          'p_entity_id': widget.entityId,
+          'p_entity_type': widget.entityType,
+          'p_helper_id': participantId,
+          'p_liked': liked,
+        },
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

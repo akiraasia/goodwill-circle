@@ -107,6 +107,16 @@ class AgendaItemCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSpacing.md),
+          if (item.imageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(item.imageUrl!, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,

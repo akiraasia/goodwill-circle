@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/features/agenda/agenda_controller.dart';
+import 'package:goodwill_circle/shared/services/media_upload_service.dart';
 
 class CreateAgendaScreen extends ConsumerStatefulWidget {
   const CreateAgendaScreen({super.key});
@@ -22,6 +23,8 @@ class _CreateAgendaScreenState extends ConsumerState<CreateAgendaScreen> {
   final _certificateIssuerController = TextEditingController();
   String _selectedSkillArea = 'Education';
   String _selectedBadgeId = 'mentor';
+  String? _imageUrl;
+  bool _isUploadingImage = false;
 
   final List<String> _skillAreas = const [
     'Education',
@@ -66,6 +69,7 @@ class _CreateAgendaScreenState extends ConsumerState<CreateAgendaScreen> {
       rewardBadgeId: _selectedBadgeId,
       certificateTitle: _certificateTitleController.text.trim(),
       certificateIssuer: _certificateIssuerController.text.trim(),
+      imageUrl: _imageUrl,
     );
 
     final state = ref.read(agendaControllerProvider);
@@ -144,6 +148,56 @@ class _CreateAgendaScreenState extends ConsumerState<CreateAgendaScreen> {
                         }
                       },
                     ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _isUploadingImage
+                          ? null
+                          : () async {
+                              final scaffoldMessenger = ScaffoldMessenger.of(
+                                context,
+                              );
+                              setState(() => _isUploadingImage = true);
+                              try {
+                                final url =
+                                    await MediaUploadService.pickAndUploadImage(
+                                      folder: 'agendas',
+                                    );
+                                if (mounted && url != null) {
+                                  setState(() => _imageUrl = url);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Image upload failed: $e'),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isUploadingImage = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.photo_outlined),
+                      label: Text(
+                        _isUploadingImage
+                            ? 'Uploading...'
+                            : _imageUrl == null
+                            ? 'Add agenda photo'
+                            : 'Change agenda photo',
+                      ),
+                    ),
+                    if (_imageUrl != null) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(_imageUrl!, fit: BoxFit.cover),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _locationController,

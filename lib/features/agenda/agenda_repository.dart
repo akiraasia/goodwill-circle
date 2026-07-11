@@ -104,6 +104,7 @@ class AgendaRepository {
     required String rewardBadgeId,
     required String certificateTitle,
     required String certificateIssuer,
+    String? imageUrl,
   }) async {
     await _client.from('nonprofit_agenda_items').insert({
       'ngo_id': _client.auth.currentUser!.id,
@@ -116,6 +117,7 @@ class AgendaRepository {
       'reward_badge_id': rewardBadgeId,
       'certificate_title': certificateTitle,
       'certificate_issuer': certificateIssuer,
+      if (imageUrl != null) 'image_url': imageUrl,
     });
   }
 
