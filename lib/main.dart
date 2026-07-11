@@ -7,6 +7,9 @@ import 'package:goodwill_circle/core/config/supabase_config.dart';
 import 'package:goodwill_circle/core/routing/router.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:goodwill_circle/firebase_options.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -19,7 +22,10 @@ void main() async {
   // Requires google-services.json (Android) / GoogleService-Info.plist (iOS).
   // Run `npx firebase-tools init ailogic` once to provision the Gemini service.
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await FirebaseAuth.instance.signInAnonymously();
     // firebase_ai uses the Gemini Developer API key tied to this Firebase project.
     // No explicit API key needed in code — it reads from the Firebase app config.
     FirebaseAI.googleAI(); // warm-up
