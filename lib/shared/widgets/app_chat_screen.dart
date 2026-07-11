@@ -1,4 +1,5 @@
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
@@ -77,7 +78,7 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
 
   Future<void> _initChat() async {
     try {
-      final model = FirebaseAI.googleAI().generativeModel(
+      final model = FirebaseAI.googleAI(auth: FirebaseAuth.instance).generativeModel(
         model: 'gemini-flash-latest',
         systemInstruction: Content.system(_systemInstruction),
       );
@@ -85,6 +86,8 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
       _chatSession = model.startChat();
     } catch (e) {
       _isMock = true; // Fallback to a mock chat if Firebase is not configured
+      _error = e.toString();
+      print('Firebase AI Init Error: $e');
     }
 
     setState(() {
@@ -120,8 +123,8 @@ Be friendly, warm, concise, and actionable. If you do not know something specifi
       });
       await Future.delayed(const Duration(milliseconds: 1000));
       setState(() {
-        _messages.last = const _ChatMessage(
-          text: 'I am a preview AI assistant. To use the real Gemini AI features, please configure Firebase with a valid google-services.json or GoogleService-Info.plist for this project.',
+        _messages.last = _ChatMessage(
+          text: 'I am a preview AI assistant. To use the real Gemini AI features, please configure Firebase with a valid google-services.json or GoogleService-Info.plist for this project.\n\nError details: $_error',
           isUser: false,
           isStreaming: false,
         );
