@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "793032968256",
+    "project_id": "goodwill-circle",
+    "storage_bucket": "goodwill-circle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793032968256:android:84ca918ed15e14ee6037a5",
+        "android_client_info": {
+          "package_name": "com.goodwillcircle.goodwill_circle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAx6I40Z8yH5tHnHv2vPHrod84hkQPMyk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
