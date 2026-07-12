@@ -30,7 +30,7 @@ CREATE POLICY "Authenticated users can upload goodwill media."
   WITH CHECK (
     bucket_id = 'goodwill-media'
     AND auth.role() = 'authenticated'
-    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions', 'profiles', 'agendas')
     AND (storage.foldername(name))[2] = auth.uid()::text
   );
 
@@ -45,7 +45,7 @@ CREATE POLICY "Users can update their goodwill media."
   WITH CHECK (
     bucket_id = 'goodwill-media'
     AND auth.role() = 'authenticated'
-    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions')
+    AND (storage.foldername(name))[1] IN ('requests', 'campaigns', 'confessions', 'profiles', 'agendas')
     AND (storage.foldername(name))[2] = auth.uid()::text
   );
 

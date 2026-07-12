@@ -303,53 +303,6 @@ class _ContextBanner extends StatelessWidget {
               ),
             ],
           ),
-          if (request.helperCount > 0 || request.helpieCount > 0) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: [
-                if (request.helperCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.volunteer_activism, size: 12, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${request.helperCount} helper${request.helperCount != 1 ? 's' : ''}',
-                          style: AppTypography.textTheme.labelSmall?.copyWith(fontSize: 10, color: Colors.blue),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (request.helpieCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.person_outline, size: 12, color: Colors.green),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${request.helpieCount} helpee${request.helpieCount != 1 ? 's' : ''}',
-                          style: AppTypography.textTheme.labelSmall?.copyWith(fontSize: 10, color: Colors.green),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     );
