@@ -16,6 +16,7 @@ import 'package:goodwill_circle/features/campaigns/campaign_details_screen.dart'
 import 'package:goodwill_circle/features/growth_os/presentation/wish_screen.dart';
 import 'package:goodwill_circle/features/profile/profile_screen.dart';
 import 'package:goodwill_circle/features/trust/trust_screen.dart';
+import 'package:goodwill_circle/features/confessions/confessions_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -85,6 +86,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/wish',
             builder: (context, state) => const WishScreen(),
+          ),
+          GoRoute(
+            path: '/confessions',
+            builder: (context, state) => const ConfessionsScreen(),
           ),
           GoRoute(
             path: '/profile',

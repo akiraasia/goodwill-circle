@@ -101,6 +101,9 @@ class _ShootingStarOverlayState extends State<ShootingStarOverlay>
     await Future.delayed(const Duration(milliseconds: 900));
     await _exitController.forward();
     widget.onComplete();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

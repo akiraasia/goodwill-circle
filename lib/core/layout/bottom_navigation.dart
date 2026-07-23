@@ -64,10 +64,16 @@ class AppBottomNavigation extends StatelessWidget {
             onTap: () => onTap(3),
           ),
           _NavItem(
-            icon: AppIcons.profile,
-            label: 'Profile',
+            icon: Icons.forum,
+            label: 'Confess',
             isSelected: currentIndex == 4,
             onTap: () => onTap(4),
+          ),
+          _NavItem(
+            icon: AppIcons.profile,
+            label: 'Profile',
+            isSelected: currentIndex == 5,
+            onTap: () => onTap(5),
           ),
         ],
       ),
