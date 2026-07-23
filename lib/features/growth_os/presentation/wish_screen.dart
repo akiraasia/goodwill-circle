@@ -554,37 +554,66 @@ class _WishEntryScreenState extends State<_WishEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF020A18), // Cosmic dark background
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.auto_awesome, color: Color(0xFFF5C842), size: 40),
-              const SizedBox(height: 24),
-              const Text(
-                'What is your honest wish?',
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF020A18), Color(0xFF06142B), Color(0xFF0C1F3F)],
               ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _controller,
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(
-                  hintText: 'Type your wish here...',
-                  hintStyle: TextStyle(color: Colors.white38),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFF5C842))),
-                ),
-                onSubmitted: (val) {
-                  if (val.trim().isNotEmpty) widget.onSubmit(val.trim());
-                },
-              ),
-            ],
+            ),
           ),
-        ),
+          // Moon
+          Positioned(
+            top: 80,
+            right: 60,
+            child: Icon(Icons.nightlight_round, color: Colors.white.withOpacity(0.8), size: 80),
+          ),
+          // Stars (simple layout)
+          Positioned(top: 100, left: 50, child: Icon(Icons.star, color: Colors.white.withOpacity(0.5), size: 12)),
+          Positioned(top: 150, left: 150, child: Icon(Icons.star, color: Colors.white.withOpacity(0.7), size: 16)),
+          Positioned(top: 250, right: 100, child: Icon(Icons.star, color: Colors.white.withOpacity(0.4), size: 10)),
+          Positioned(top: 60, right: 200, child: Icon(Icons.star, color: Colors.white.withOpacity(0.6), size: 14)),
+          Positioned(bottom: 200, left: 80, child: Icon(Icons.star, color: Colors.white.withOpacity(0.5), size: 15)),
+          Positioned(bottom: 100, right: 120, child: Icon(Icons.star, color: Colors.white.withOpacity(0.8), size: 12)),
+          
+          // Content
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.auto_awesome, color: Color(0xFFF5C842), size: 40),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'What is your honest wish?',
+                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 40),
+                  TextField(
+                    controller: _controller,
+                    style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 18),
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      filled: false,
+                      hintText: 'Type your wish here...',
+                      hintStyle: TextStyle(color: Colors.white38),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFF5C842))),
+                    ),
+                    onSubmitted: (val) {
+                      if (val.trim().isNotEmpty) widget.onSubmit(val.trim());
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -752,13 +781,20 @@ class _WishInterviewScreenState extends State<_WishInterviewScreen> {
                 Expanded(
                   child: TextField(
                     controller: _inputController,
-                    decoration: const InputDecoration(hintText: 'Share your thoughts...', border: InputBorder.none),
+                    enabled: !_isLoading,
+                    decoration: const InputDecoration(
+                      hintText: 'Share your thoughts...', 
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                    ),
                     onSubmitted: (_) => _submitAnswer(),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send, color: AppColors.red),
-                  onPressed: _submitAnswer,
+                  onPressed: _isLoading ? null : _submitAnswer,
                 ),
               ],
             ),
