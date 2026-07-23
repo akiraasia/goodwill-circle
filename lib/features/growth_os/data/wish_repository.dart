@@ -383,13 +383,17 @@ class AssignedStats {
   final double physical;
   final double mental;
   final double ethical;
-  final List<String> virtues;
+  final Map<String, double> physicalDetails;
+  final Map<String, double> mentalDetails;
+  final Map<String, double> ethicalDetails;
 
   const AssignedStats({
     required this.physical,
     required this.mental,
     required this.ethical,
-    required this.virtues,
+    required this.physicalDetails,
+    required this.mentalDetails,
+    required this.ethicalDetails,
   });
 }
 
@@ -438,7 +442,6 @@ class WishRepository {
     required String physicalCondition,
     required String mentalCondition,
     List<WishInterviewQA> interviewData = const [],
-    List<String> virtueNames = const [],
     AssignedStats? assignedStats,
     String pathMode = 'task',
   }) async {
@@ -457,7 +460,6 @@ class WishRepository {
       'category': 'Self-Improvement',
       'status': 'active',
       'interview_data': interviewData.map((qa) => qa.toJson()).toList(),
-      'virtue_names': virtueNames,
       'path_mode': pathMode,
     };
 
@@ -467,17 +469,31 @@ class WishRepository {
         physical: physicalStart,
         mental: mentalStart,
         ethicalEmotional: ethicalStart,
+        physicalDetails: assignedStats?.physicalDetails ?? {},
+        mentalDetails: assignedStats?.mentalDetails ?? {},
+        ethicalDetails: assignedStats?.ethicalDetails ?? {},
       );
-      _mockVirtues = virtueNames
-          .map((v) => UserVirtue(
-                id: DateTime.now().millisecondsSinceEpoch.toString() + v,
-                userId: userId,
-                virtueName: v,
-                statCategory: kVirtueStatCategory[v] ?? 'ethical',
-                level: 1,
-                xp: 0,
-              ))
-          .toList();
+      
+      // Seed mockup virtues from sub-stats
+      _mockVirtues = [];
+      void addMockVirtues(Map<String, double> details, String category) {
+        details.forEach((key, value) {
+          _mockVirtues.add(UserVirtue(
+            id: DateTime.now().millisecondsSinceEpoch.toString() + key,
+            userId: userId,
+            virtueName: key,
+            statCategory: category,
+            level: value.toInt(),
+            xp: 0,
+          ));
+        });
+      }
+      
+      if (assignedStats != null) {
+        addMockVirtues(assignedStats.physicalDetails, 'physical');
+        addMockVirtues(assignedStats.mentalDetails, 'mental');
+        addMockVirtues(assignedStats.ethicalDetails, 'ethical');
+      }
       return;
     }
 
@@ -500,21 +516,32 @@ class WishRepository {
 
       await _client.from('wishes').insert(wishData);
 
-      // Initialize stats
+      // Initialize stats with specific sub-stats
       await _client.from('hgos_wish_stats').upsert({
         'user_id': userId,
         'physical': physicalStart,
         'mental': mentalStart,
         'ethical_emotional': ethicalStart,
+        'physical_details': assignedStats?.physicalDetails ?? {},
+        'mental_details': assignedStats?.mentalDetails ?? {},
+        'ethical_details': assignedStats?.ethicalDetails ?? {},
       });
 
-      // Create virtue entries
-      for (final virtue in virtueNames) {
+      // Create virtue entries mapping sub-stats to wish_virtues table for the hub views
+      final allSubStats = {
+        ...?assignedStats?.physicalDetails.map((k, v) => MapEntry(k, 'physical')),
+        ...?assignedStats?.mentalDetails.map((k, v) => MapEntry(k, 'mental')),
+        ...?assignedStats?.ethicalDetails.map((k, v) => MapEntry(k, 'ethical')),
+      };
+
+      for (final statEntry in allSubStats.entries) {
         await _client.from('wish_virtues').upsert({
           'user_id': userId,
-          'virtue_name': virtue,
-          'stat_category': kVirtueStatCategory[virtue] ?? 'ethical',
-          'level': 1,
+          'virtue_name': statEntry.key,
+          'stat_category': statEntry.value,
+          'level': assignedStats?.physicalDetails[statEntry.key]?.toInt() ?? 
+                   assignedStats?.mentalDetails[statEntry.key]?.toInt() ?? 
+                   assignedStats?.ethicalDetails[statEntry.key]?.toInt() ?? 1,
           'xp': 0,
         });
       }

@@ -92,9 +92,10 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     );
   }
 
-  void _onInterviewComplete(List<WishInterviewQA> qa) {
+  void _onInterviewComplete(List<WishInterviewQA> qa, AssignedStats stats) {
     setState(() {
       _interviewQA = qa;
+      _assignedStats = stats;
       _onboardingStage = 3; // Move to confirmation
     });
   }
@@ -102,29 +103,10 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   void _onConfirmationComplete() async {
     setState(() => _isLoading = true);
     
-    // Simulate AI stat assignment based on interview
-    await Future.delayed(const Duration(seconds: 2));
+    // Simulate AI final processing
+    await Future.delayed(const Duration(seconds: 1));
     
-    // Simple heuristic for assigning stats and virtues based on wish text
-    final isPhysical = _rawWishText.toLowerCase().contains('health') || _rawWishText.toLowerCase().contains('strong');
-    final isMental = _rawWishText.toLowerCase().contains('learn') || _rawWishText.toLowerCase().contains('focus');
-
-    List<String> assignedVirtues;
-    if (isPhysical) {
-      assignedVirtues = ['Courage', 'Discipline'];
-    } else if (isMental) {
-      assignedVirtues = ['Wisdom', 'Integrity'];
-    } else {
-      assignedVirtues = ['Compassion', 'Courage'];
-    }
-
     setState(() {
-      _assignedStats = AssignedStats(
-        physical: isPhysical ? 15.0 : 10.0,
-        mental: isMental ? 15.0 : 10.0,
-        ethical: (!isPhysical && !isMental) ? 15.0 : 10.0,
-        virtues: assignedVirtues,
-      );
       _onboardingStage = 4; // Move to stat reveal
       _isLoading = false;
     });
@@ -145,7 +127,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       physicalCondition: 'Derived from interview', // Simplification for MVP
       mentalCondition: 'Derived from interview',
       interviewData: _interviewQA,
-      virtueNames: _assignedStats!.virtues,
       assignedStats: _assignedStats,
       pathMode: pathMode,
     );
@@ -303,7 +284,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       case 1:
         return _WishEntryScreen(onSubmit: _onWishEntered);
       case 2:
-        return _WishInterviewScreen(wishText: _rawWishText, onComplete: _onInterviewComplete);
+        return _AIChatOnboardingScreen(wishText: _rawWishText, onComplete: _onInterviewComplete);
       case 3:
         return _TruthConfirmationScreen(qaList: _interviewQA, onConfirm: _onConfirmationComplete);
       case 4:
@@ -413,14 +394,14 @@ class _WishScreenState extends ConsumerState<WishScreen> {
               )),
             const SizedBox(height: AppSpacing.md),
 
-            // Virtues
+            // Virtues (Stat Hubs)
             Text(
-              'MY VIRTUES',
+              'MY STAT HUBS (COMMUNITIES)',
               style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSpacing.sm),
             if (_virtues.isEmpty)
-              const Text('No virtues assigned yet.')
+              const Text('No stats assigned yet.')
             else
               ..._virtues.map((v) => Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
@@ -429,49 +410,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                   onTap: () => setState(() => _selectedVirtue = v),
                 ),
               )),
-            const SizedBox(height: AppSpacing.md),
-            
-            // Global Community
-            Text(
-              'GLOBAL COMMUNITY',
-              style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Global Chat Room opening soon!')));
-                    },
-                    icon: const Icon(Icons.chat),
-                    label: const Text('Chat Room'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white, 
-                      foregroundColor: AppColors.textDark,
-                      elevation: 0,
-                      side: const BorderSide(color: Colors.black12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Global Posting Room opening soon!')));
-                    },
-                    icon: const Icon(Icons.forum),
-                    label: const Text('Posting Room'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white, 
-                      foregroundColor: AppColors.textDark,
-                      elevation: 0,
-                      side: const BorderSide(color: Colors.black12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: AppSpacing.md),
             
             // Path Mode display
@@ -772,92 +710,36 @@ class _WishEntryScreenState extends State<_WishEntryScreen> {
   }
 }
 
-// ─── Stage 2: Interview ──────────────────────────────────────────────────────
+// ─── Stage 2: AI Onboarding Chat ────────────────────────────────────────────────
 
-class _WishInterviewScreen extends StatefulWidget {
+class _AIChatOnboardingScreen extends StatefulWidget {
   final String wishText;
-  final Function(List<WishInterviewQA>) onComplete;
+  final Function(List<WishInterviewQA>, AssignedStats) onComplete;
 
-  const _WishInterviewScreen({required this.wishText, required this.onComplete});
+  const _AIChatOnboardingScreen({required this.wishText, required this.onComplete});
 
   @override
-  State<_WishInterviewScreen> createState() => _WishInterviewScreenState();
+  State<_AIChatOnboardingScreen> createState() => _AIChatOnboardingScreenState();
 }
 
-class _WishInterviewScreenState extends State<_WishInterviewScreen> {
+class _AIChatOnboardingScreenState extends State<_AIChatOnboardingScreen> {
   final List<Map<String, dynamic>> _chatHistory = [];
   final List<WishInterviewQA> _qaList = [];
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isLoading = false;
-  ChatSession? _chatSession;
+
+  final List<String> _questions = [
+    "Let's calibrate your Physical stats. What is your weight, BMI, or current fitness level?",
+    "Next, your Mental stats. What are your current skills, domains, or areas of study?",
+    "Finally, what specific stats or virtues do you require to achieve your wish?",
+  ];
+  int _currentQuestionIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _initChat();
-  }
-
-  Future<void> _initChat() async {
-    try {
-      final model = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-flash-latest',
-        systemInstruction: Content.system(
-          'You are Goodwill, an empathetic AI guide. The user has wished for: "${widget.wishText}". '
-          'Ask 3 thoughtful follow-up questions one by one to understand their motivation, '
-          'current state, and what virtues they need. Keep questions short. '
-          'After 3 answers, say "INTERVIEW_COMPLETE".'
-        ),
-      );
-      _chatSession = model.startChat();
-      _sendMessageToAI('Hello. I am ready for my first question.');
-    } catch (e) {
-      // Fallback
-      setState(() {
-        _chatHistory.add({'text': 'Why do you want this wish so deeply?', 'isBot': true});
-      });
-    }
-  }
-
-  Future<void> _sendMessageToAI(String text) async {
-    if (_chatSession == null) return;
-    setState(() => _isLoading = true);
-    try {
-      final response = await _chatSession!.sendMessage(Content.text(text)).timeout(const Duration(seconds: 5));
-      final reply = response.text ?? '';
-      
-      if (reply.contains('INTERVIEW_COMPLETE')) {
-        widget.onComplete(_qaList);
-      } else {
-        setState(() {
-          _chatHistory.add({'text': reply, 'isBot': true});
-          _isLoading = false;
-        });
-        _scrollToBottom();
-      }
-    } catch (e) {
-      _chatSession = null;
-      setState(() => _isLoading = false);
-      
-      if (_chatHistory.isEmpty) {
-        setState(() {
-          _chatHistory.add({'text': 'Why do you want this wish so deeply?', 'isBot': true});
-        });
-      } else {
-        if (_qaList.length == 1) {
-          setState(() {
-            _chatHistory.add({'text': 'What virtues or strengths do you think you need to achieve this?', 'isBot': true});
-          });
-        } else if (_qaList.length == 2) {
-          setState(() {
-            _chatHistory.add({'text': 'What has been holding you back so far?', 'isBot': true});
-          });
-        } else {
-          widget.onComplete(_qaList);
-        }
-      }
-      _scrollToBottom();
-    }
+    _chatHistory.add({'text': _questions[_currentQuestionIndex], 'isBot': true});
   }
 
   void _submitAnswer() {
@@ -867,34 +749,68 @@ class _WishInterviewScreenState extends State<_WishInterviewScreen> {
 
     setState(() {
       _chatHistory.add({'text': text, 'isBot': false});
-      // Store QA pair
-      String lastQ = 'Why do you want this wish?';
-      for (int i = _chatHistory.length - 2; i >= 0; i--) {
-        if (_chatHistory[i]['isBot']) {
-          lastQ = _chatHistory[i]['text'];
-          break;
-        }
-      }
-      _qaList.add(WishInterviewQA(question: lastQ, answer: text));
+      _qaList.add(WishInterviewQA(question: _questions[_currentQuestionIndex], answer: text));
+      _isLoading = true;
     });
     _scrollToBottom();
     
-    if (_chatSession != null) {
-      _sendMessageToAI(text);
+    // Simulate AI processing the response
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _currentQuestionIndex++;
+        if (_currentQuestionIndex < _questions.length) {
+          _chatHistory.add({'text': _questions[_currentQuestionIndex], 'isBot': true});
+        } else {
+          // Finish onboarding, generate dynamic stats based on responses
+          _generateAndComplete();
+        }
+      });
+      _scrollToBottom();
+    });
+  }
+
+  void _generateAndComplete() {
+    // Basic NLP mock to extract stats from the user's answers
+    final physicalAns = _qaList[0].answer.toLowerCase();
+    final mentalAns = _qaList[1].answer.toLowerCase();
+    final ethicalAns = _qaList[2].answer.toLowerCase();
+
+    Map<String, double> physicalDetails = {};
+    if (physicalAns.contains(RegExp(r'\d+'))) {
+      // Very basic extraction for mockup: if user entered numbers like "75 kg, bmi 22"
+      physicalDetails['Weight'] = 75.0; // Mocked extracted value
+      physicalDetails['BMI'] = 22.0;
     } else {
-      // Mock fallback flow
-      if (_qaList.length == 1) {
-        setState(() {
-          _chatHistory.add({'text': 'What virtues or strengths do you think you need to achieve this?', 'isBot': true});
-        });
-      } else if (_qaList.length == 2) {
-        setState(() {
-          _chatHistory.add({'text': 'What has been holding you back so far?', 'isBot': true});
-        });
-      } else {
-        widget.onComplete(_qaList);
-      }
+      physicalDetails['Fitness'] = 10.0;
     }
+
+    Map<String, double> mentalDetails = {};
+    // Extract words longer than 4 chars as mocked skills
+    final words = mentalAns.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
+    for (var w in words.take(2)) {
+      mentalDetails[w[0].toUpperCase() + w.substring(1)] = 5.0;
+    }
+    if (mentalDetails.isEmpty) mentalDetails['Focus'] = 5.0;
+
+    Map<String, double> ethicalDetails = {};
+    final reqWords = ethicalAns.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
+    for (var w in reqWords.take(2)) {
+      ethicalDetails[w[0].toUpperCase() + w.substring(1)] = 2.0;
+    }
+    if (ethicalDetails.isEmpty) ethicalDetails['Patience'] = 2.0;
+
+    final stats = AssignedStats(
+      physical: 10.0,
+      mental: 10.0,
+      ethical: 10.0,
+      physicalDetails: physicalDetails,
+      mentalDetails: mentalDetails,
+      ethicalDetails: ethicalDetails,
+    );
+
+    widget.onComplete(_qaList, stats);
   }
 
   void _scrollToBottom() {
@@ -1082,15 +998,28 @@ class _StatAssignmentScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 32),
-              const Text('Recommended Virtues:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Your Specific Attributes:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: stats.virtues.map((v) => Chip(
-                  label: Text(v),
-                  backgroundColor: AppColors.yellowPale,
-                  side: const BorderSide(color: AppColors.yellow),
-                )).toList(),
+                runSpacing: 8,
+                children: [
+                  ...stats.physicalDetails.entries.map((e) => Chip(
+                    label: Text('${e.key}: ${e.value.toInt()}'),
+                    backgroundColor: Colors.orange.shade50,
+                    side: const BorderSide(color: Colors.orange),
+                  )),
+                  ...stats.mentalDetails.entries.map((e) => Chip(
+                    label: Text('${e.key}: ${e.value.toInt()}'),
+                    backgroundColor: Colors.blue.shade50,
+                    side: const BorderSide(color: Colors.blue),
+                  )),
+                  ...stats.ethicalDetails.entries.map((e) => Chip(
+                    label: Text('${e.key}: ${e.value.toInt()}'),
+                    backgroundColor: AppColors.yellowPale,
+                    side: const BorderSide(color: AppColors.red),
+                  )),
+                ],
               ),
               const SizedBox(height: 48),
               ElevatedButton(
