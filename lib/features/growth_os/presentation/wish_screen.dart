@@ -670,7 +670,7 @@ class _WishInterviewScreenState extends State<_WishInterviewScreen> {
     if (_chatSession == null) return;
     setState(() => _isLoading = true);
     try {
-      final response = await _chatSession!.sendMessage(Content.text(text));
+      final response = await _chatSession!.sendMessage(Content.text(text)).timeout(const Duration(seconds: 5));
       final reply = response.text ?? '';
       
       if (reply.contains('INTERVIEW_COMPLETE')) {
@@ -683,7 +683,27 @@ class _WishInterviewScreenState extends State<_WishInterviewScreen> {
         _scrollToBottom();
       }
     } catch (e) {
+      _chatSession = null;
       setState(() => _isLoading = false);
+      
+      if (_chatHistory.isEmpty) {
+        setState(() {
+          _chatHistory.add({'text': 'Why do you want this wish so deeply?', 'isBot': true});
+        });
+      } else {
+        if (_qaList.length == 1) {
+          setState(() {
+            _chatHistory.add({'text': 'What virtues or strengths do you think you need to achieve this?', 'isBot': true});
+          });
+        } else if (_qaList.length == 2) {
+          setState(() {
+            _chatHistory.add({'text': 'What has been holding you back so far?', 'isBot': true});
+          });
+        } else {
+          widget.onComplete(_qaList);
+        }
+      }
+      _scrollToBottom();
     }
   }
 
