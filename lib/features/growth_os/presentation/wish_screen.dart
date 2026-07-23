@@ -7,6 +7,7 @@ import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:goodwill_circle/shared/widgets/shooting_star_overlay.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/wish_repository.dart';
 
 class WishScreen extends ConsumerStatefulWidget {
@@ -43,6 +44,12 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _markVisited();
+  }
+
+  Future<void> _markVisited() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_visited_wish_module', true);
   }
 
   @override

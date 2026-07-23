@@ -5,6 +5,7 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/shared/widgets/brand_logo.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum _AuthMode { signUp, signIn }
 
@@ -41,6 +42,14 @@ class _AuthScreenState extends State<AuthScreen> {
     _mode = widget.initialSignUp ? _AuthMode.signUp : _AuthMode.signIn;
     _nameController.text = widget.initialName ?? '';
     _emailController.text = widget.initialEmail ?? '';
+  }
+
+  Future<void> _navigateAfterAuth(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasVisitedWish = prefs.getBool('has_visited_wish_module') ?? false;
+    if (context.mounted) {
+      context.go(hasVisitedWish ? '/app' : '/wish');
+    }
   }
 
   Future<void> _authenticate() async {
@@ -95,7 +104,7 @@ class _AuthScreenState extends State<AuthScreen> {
             }
             await _repairCurrentProfile();
             if (!mounted) return;
-            context.go('/app');
+            await _navigateAfterAuth(context);
             return;
           }
 
@@ -116,7 +125,7 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         await _repairCurrentProfile();
         if (mounted) {
-          context.go('/app');
+          await _navigateAfterAuth(context);
         }
       }
     } on AuthException catch (error) {
@@ -152,7 +161,7 @@ class _AuthScreenState extends State<AuthScreen> {
       );
       await _repairCurrentProfile();
       if (mounted) {
-        context.go('/app');
+        await _navigateAfterAuth(context);
       }
     } on AuthException catch (error) {
       if (mounted) {
@@ -207,7 +216,7 @@ class _AuthScreenState extends State<AuthScreen> {
       );
       await _repairCurrentProfile();
       if (!mounted) return;
-      context.go('/app');
+      await _navigateAfterAuth(context);
     } on AuthException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -429,7 +438,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: _isLoading
                                     ? null
-                                    : () => context.go('/app'),
+                                    : () => _navigateAfterAuth(context),
                                 icon: const Icon(Icons.open_in_new, size: 18),
                                 label: const Text('Open app'),
                               ),

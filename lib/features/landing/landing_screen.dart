@@ -5,6 +5,7 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/shared/widgets/brand_logo.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -101,8 +102,17 @@ class _LandingScreenState extends State<LandingScreen> {
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     ElevatedButton(
-                      onPressed: () =>
-                          context.go(signedIn ? '/app' : '/auth?mode=signup'),
+                      onPressed: () async {
+                        if (signedIn) {
+                          final prefs = await SharedPreferences.getInstance();
+                          final hasVisitedWish = prefs.getBool('has_visited_wish_module') ?? false;
+                          if (context.mounted) {
+                            context.go(hasVisitedWish ? '/app' : '/wish');
+                          }
+                        } else {
+                          context.go('/auth?mode=signup');
+                        }
+                      },
                       child: Text(signedIn ? 'Open app' : 'Open app'),
                     ),
                   ],
