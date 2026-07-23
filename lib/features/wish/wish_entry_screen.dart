@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/widgets/shooting_star_overlay.dart';
+import 'wish_interview_screen.dart';
 
 class WishEntryScreen extends StatefulWidget {
   const WishEntryScreen({Key? key}) : super(key: key);
@@ -20,7 +21,15 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
       
       // Delay to show animation before navigating to interview screen
       Future.delayed(const Duration(seconds: 2), () {
-        // TODO: Navigate to WishInterviewScreen and pass the wish
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => WishInterviewScreen(
+                initialWish: _wishController.text.trim(),
+              ),
+            ),
+          );
+        }
       });
     }
   }

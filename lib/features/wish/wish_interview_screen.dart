@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'path_selection_screen.dart';
 
 class WishInterviewScreen extends StatefulWidget {
   final String initialWish;
@@ -99,8 +100,13 @@ class _WishInterviewScreenState extends State<WishInterviewScreen> {
   }
 
   void _confirmAndProceed() {
-    // TODO: Send data to backend to assign stats (Physical, Mental, Ethical) and Virtues
-    // TODO: Navigate to Path Selection Screen
+    // TODO: Replace dummy stats with real HGOS-assigned values from interview
+    final assignedStats = {'physical': 2, 'mental': 3, 'ethical': 2};
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => PathSelectionScreen(assignedStats: assignedStats),
+      ),
+    );
   }
 
   @override

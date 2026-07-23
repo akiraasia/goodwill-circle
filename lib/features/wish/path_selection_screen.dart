@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tasks/virtue_tasks_screen.dart';
 
 class PathSelectionScreen extends StatelessWidget {
   final Map<String, int> assignedStats; // e.g., {'physical': 2, 'mental': 3, 'ethical': 1}
@@ -75,7 +76,10 @@ class PathSelectionScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to Story Mode (Visual Novel)
+                        // TODO: Navigate to Story Mode (Visual Novel) — coming soon
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Story Mode coming soon!')),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.1),
@@ -101,7 +105,17 @@ class PathSelectionScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to Task Mode (Non-Story)
+                        // Assign virtues from stats — map mental->Wisdom, physical->Discipline, ethical->Integrity
+                        final virtues = <String>[];
+                        if ((assignedStats['mental'] ?? 0) >= 2) virtues.add('Wisdom');
+                        if ((assignedStats['physical'] ?? 0) >= 2) virtues.add('Discipline');
+                        if ((assignedStats['ethical'] ?? 0) >= 2) virtues.add('Integrity');
+                        if (virtues.isEmpty) virtues.add('Courage');
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => VirtueTasksScreen(assignedVirtues: virtues),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
