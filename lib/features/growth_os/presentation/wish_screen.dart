@@ -22,6 +22,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   Map<String, dynamic>? _activeWish;
   WishStats? _stats;
   List<UserVirtue> _virtues = [];
+  List<WishTask> _wishTasks = [];
   List<Novel> _novels = [];
   
   // Navigation State
@@ -65,6 +66,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     if (_activeWish != null) {
       _stats = await repo.getUserStats();
       _virtues = await repo.getUserVirtues();
+      _wishTasks = await repo.getUserTasks();
       _novels = await repo.getNovels();
       _onboardingStage = 0;
     } else {
@@ -176,6 +178,34 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       _sceneChoices = choices;
       _storyLoading = false;
     });
+  }
+
+  Future<void> _completeTask(WishTask task) async {
+    setState(() => _isLoading = true);
+    final repo = ref.read(wishRepositoryProvider);
+    await repo.completeTask(task.id);
+    await _loadData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task completed! You gained stats.'), backgroundColor: Colors.green));
+    }
+  }
+
+  Future<void> _requestTaskForChoice(NovelChoice choice) async {
+    setState(() => _storyLoading = true);
+    final repo = ref.read(wishRepositoryProvider);
+    // Simple AI task generation mock
+    final targetStat = choice.requiredSubStats.keys.isNotEmpty ? choice.requiredSubStats.keys.first : 'general';
+    await repo.assignTask(
+      taskText: 'Train your $targetStat to unlock this path.',
+      targetStatCategory: choice.requiredPhysical > 0 ? 'physical' : (choice.requiredMental > 0 ? 'mental' : 'ethical'),
+      targetSubStat: targetStat,
+      rewardAmount: 2,
+    );
+    await _loadData();
+    if (mounted) {
+      setState(() => _storyLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI assigned a new task! Check your dashboard.'), backgroundColor: AppColors.redSoft));
+    }
   }
 
   Future<void> _makeChoice(NovelChoice choice) async {
@@ -340,19 +370,47 @@ class _WishScreenState extends ConsumerState<WishScreen> {
 
             // Base Stats
             Text(
-              'BASE STATS',
+              'MY STATS',
               style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSpacing.sm),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _StatMiniCard(title: 'Physical', value: _stats!.physical, color: Colors.orange)),
+                Expanded(child: _ExpandableStatCard(title: 'Physical', value: _stats!.physical, color: Colors.orange, details: _stats!.physicalDetails)),
                 const SizedBox(width: 8),
-                Expanded(child: _StatMiniCard(title: 'Mental', value: _stats!.mental, color: Colors.blue)),
+                Expanded(child: _ExpandableStatCard(title: 'Mental', value: _stats!.mental, color: Colors.blue, details: _stats!.mentalDetails)),
                 const SizedBox(width: 8),
-                Expanded(child: _StatMiniCard(title: 'Ethical', value: _stats!.ethicalEmotional, color: AppColors.red)),
+                Expanded(child: _ExpandableStatCard(title: 'Ethical', value: _stats!.ethicalEmotional, color: AppColors.red, details: _stats!.ethicalDetails)),
               ],
             ),
+            const SizedBox(height: AppSpacing.md),
+            
+            // My Tasks
+            Text(
+              'MY TASKS',
+              style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            if (_wishTasks.isEmpty)
+              const Text('No tasks assigned. Keep playing to get some!')
+            else
+              ..._wishTasks.where((t) => t.status != 'completed').map((t) => Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: AppCard(
+                  color: AppColors.white,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(t.taskText, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('+${t.rewardAmount} ${t.targetSubStat} (${t.targetStatCategory})'),
+                    trailing: ElevatedButton(
+                      onPressed: () => _completeTask(t),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.redSoft),
+                      child: const Text('Complete'),
+                    ),
+                  ),
+                ),
+              )),
             const SizedBox(height: AppSpacing.md),
 
             // Virtues
@@ -371,6 +429,49 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                   onTap: () => setState(() => _selectedVirtue = v),
                 ),
               )),
+            const SizedBox(height: AppSpacing.md),
+            
+            // Global Community
+            Text(
+              'GLOBAL COMMUNITY',
+              style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Global Chat Room opening soon!')));
+                    },
+                    icon: const Icon(Icons.chat),
+                    label: const Text('Chat Room'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.white, 
+                      foregroundColor: AppColors.textDark,
+                      elevation: 0,
+                      side: const BorderSide(color: Colors.black12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Global Posting Room opening soon!')));
+                    },
+                    icon: const Icon(Icons.forum),
+                    label: const Text('Posting Room'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.white, 
+                      foregroundColor: AppColors.textDark,
+                      elevation: 0,
+                      side: const BorderSide(color: Colors.black12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.md),
             
             // Path Mode display
@@ -409,6 +510,28 @@ class _WishScreenState extends ConsumerState<WishScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
+      endDrawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              const ListTile(
+                title: Text('AI Guide', style: TextStyle(fontWeight: FontWeight.bold)),
+                leading: Icon(Icons.psychology, color: AppColors.red),
+              ),
+              const Divider(),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    'AI Chatbot coming soon!\n\nHere you can ask for specific tasks, guidance, and clarification on your journey.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textMid),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
         title: Text(_activeNovel!.title),
         leading: IconButton(
@@ -491,7 +614,19 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                                 final meetsPhysical = _stats == null || _stats!.physical >= choice.requiredPhysical;
                                 final meetsMental = _stats == null || _stats!.mental >= choice.requiredMental;
                                 final meetsEthical = _stats == null || _stats!.ethicalEmotional >= choice.requiredEthical;
-                                final isSelectable = meetsPhysical && meetsMental && meetsEthical;
+                                
+                                bool meetsSubStats = true;
+                                if (_stats != null) {
+                                  for (final entry in choice.requiredSubStats.entries) {
+                                    final val = _stats!.physicalDetails[entry.key] ?? _stats!.mentalDetails[entry.key] ?? _stats!.ethicalDetails[entry.key] ?? 0.0;
+                                    if (val < entry.value) {
+                                      meetsSubStats = false;
+                                      break;
+                                    }
+                                  }
+                                }
+
+                                final isSelectable = meetsPhysical && meetsMental && meetsEthical && meetsSubStats;
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
@@ -507,7 +642,18 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                                         side: BorderSide(color: isSelectable ? AppColors.tan1 : Colors.transparent),
                                       ),
                                     ),
-                                    child: Text(choice.choiceText),
+                                    child: isSelectable 
+                                        ? Text(choice.choiceText) 
+                                        : Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(child: Text(choice.choiceText)),
+                                              TextButton(
+                                                onPressed: () => _requestTaskForChoice(choice),
+                                                child: const Text('Get Task', style: TextStyle(color: AppColors.red)),
+                                              ),
+                                            ],
+                                          ),
                                   ),
                                 );
                               }),
@@ -1049,23 +1195,63 @@ class _PathCard extends StatelessWidget {
 
 // ─── Dashboard Helper Widgets ────────────────────────────────────────────────
 
-class _StatMiniCard extends StatelessWidget {
+class _ExpandableStatCard extends StatefulWidget {
   final String title;
   final double value;
   final Color color;
+  final Map<String, double> details;
 
-  const _StatMiniCard({required this.title, required this.value, required this.color});
+  const _ExpandableStatCard({required this.title, required this.value, required this.color, required this.details});
+
+  @override
+  State<_ExpandableStatCard> createState() => _ExpandableStatCardState();
+}
+
+class _ExpandableStatCardState extends State<_ExpandableStatCard> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
       color: AppColors.white,
-      child: Column(
-        children: [
-          Text(title, style: AppTypography.textTheme.labelSmall?.copyWith(color: AppColors.textMid)),
-          const SizedBox(height: 4),
-          Text('Lvl ${value.toInt()}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-        ],
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.title, style: AppTypography.textTheme.labelSmall?.copyWith(color: AppColors.textMid)),
+                    const SizedBox(height: 4),
+                    Text('Lvl ${widget.value.toInt()}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: widget.color)),
+                  ],
+                ),
+                Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: AppColors.textLight),
+              ],
+            ),
+            if (_expanded) ...[
+              const Divider(height: 16),
+              if (widget.details.isEmpty)
+                const Text('No details yet.', style: TextStyle(fontSize: 10, color: AppColors.textLight))
+              else
+                ...widget.details.entries.map((e) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(e.key, style: const TextStyle(fontSize: 11, color: AppColors.textMid)),
+                      Text(e.value.toStringAsFixed(1), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                )),
+            ],
+          ],
+        ),
       ),
     );
   }

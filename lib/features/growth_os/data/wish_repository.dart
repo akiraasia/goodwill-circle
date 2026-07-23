@@ -12,18 +12,35 @@ class WishStats {
   final double physical;
   final double mental;
   final double ethicalEmotional;
+  final Map<String, double> physicalDetails;
+  final Map<String, double> mentalDetails;
+  final Map<String, double> ethicalDetails;
 
   const WishStats({
     required this.physical,
     required this.mental,
     required this.ethicalEmotional,
+    this.physicalDetails = const {},
+    this.mentalDetails = const {},
+    this.ethicalDetails = const {},
   });
 
   factory WishStats.fromJson(Map<String, dynamic> json) {
+    Map<String, double> parseDetails(dynamic data) {
+      if (data == null) return {};
+      if (data is Map) {
+        return data.map((key, value) => MapEntry(key.toString(), (value as num).toDouble()));
+      }
+      return {};
+    }
+
     return WishStats(
       physical: (json['physical'] as num?)?.toDouble() ?? 10.0,
       mental: (json['mental'] as num?)?.toDouble() ?? 10.0,
       ethicalEmotional: (json['ethical_emotional'] as num?)?.toDouble() ?? 10.0,
+      physicalDetails: parseDetails(json['physical_details']),
+      mentalDetails: parseDetails(json['mental_details']),
+      ethicalDetails: parseDetails(json['ethical_details']),
     );
   }
 
@@ -31,7 +48,45 @@ class WishStats {
     'physical': physical,
     'mental': mental,
     'ethical_emotional': ethicalEmotional,
+    'physical_details': physicalDetails,
+    'mental_details': mentalDetails,
+    'ethical_details': ethicalDetails,
   };
+}
+
+class WishTask {
+  final String id;
+  final String userId;
+  final String taskText;
+  final String targetStatCategory;
+  final String targetSubStat;
+  final int rewardAmount;
+  final String status;
+  final DateTime createdAt;
+
+  WishTask({
+    required this.id,
+    required this.userId,
+    required this.taskText,
+    required this.targetStatCategory,
+    required this.targetSubStat,
+    required this.rewardAmount,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory WishTask.fromJson(Map<String, dynamic> json) {
+    return WishTask(
+      id: json['id'] as String,
+      userId: json['user_id'] as String,
+      taskText: json['task_text'] as String,
+      targetStatCategory: json['target_stat_category'] as String,
+      targetSubStat: json['target_sub_stat'] as String,
+      rewardAmount: json['reward_amount'] as int? ?? 1,
+      status: json['status'] as String? ?? 'assigned',
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
 }
 
 class Novel {
@@ -94,6 +149,7 @@ class NovelChoice {
   final double rewardPhysical;
   final double rewardMental;
   final double rewardEthical;
+  final Map<String, double> requiredSubStats;
 
   const NovelChoice({
     required this.id,
@@ -106,6 +162,7 @@ class NovelChoice {
     required this.rewardPhysical,
     required this.rewardMental,
     required this.rewardEthical,
+    this.requiredSubStats = const {},
   });
 
   factory NovelChoice.fromJson(Map<String, dynamic> json) {
@@ -120,7 +177,16 @@ class NovelChoice {
       rewardPhysical: (json['reward_physical'] as num?)?.toDouble() ?? 0.0,
       rewardMental: (json['reward_mental'] as num?)?.toDouble() ?? 0.0,
       rewardEthical: (json['reward_ethical'] as num?)?.toDouble() ?? 0.0,
+      requiredSubStats: _parseSubStats(json['req_sub_stats']),
     );
+  }
+
+  static Map<String, double> _parseSubStats(dynamic data) {
+    if (data == null) return {};
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), (value as num).toDouble()));
+    }
+    return {};
   }
 }
 
@@ -521,6 +587,97 @@ class WishRepository {
     } catch (e) {
       debugPrint('WishRepository: updateStats error: $e');
       _mockStats = WishStats(physical: physical, mental: mental, ethicalEmotional: ethical);
+    }
+  }
+
+  // --- 2.5 Tasks ---
+
+  Future<List<WishTask>> getUserTasks() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return [];
+    
+    try {
+      final data = await _client
+          .from('wish_tasks')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      return data.map((j) => WishTask.fromJson(j)).toList();
+    } catch (e) {
+      debugPrint('WishRepository: getUserTasks error: $e');
+      return [];
+    }
+  }
+
+  Future<void> assignTask({
+    required String taskText,
+    required String targetStatCategory,
+    required String targetSubStat,
+    int rewardAmount = 1,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+    
+    try {
+      await _client.from('wish_tasks').insert({
+        'user_id': userId,
+        'task_text': taskText,
+        'target_stat_category': targetStatCategory,
+        'target_sub_stat': targetSubStat,
+        'reward_amount': rewardAmount,
+        'status': 'assigned',
+      });
+    } catch (e) {
+      debugPrint('WishRepository: assignTask error: $e');
+    }
+  }
+
+  Future<void> completeTask(String taskId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+    
+    try {
+      final data = await _client.from('wish_tasks')
+        .update({'status': 'completed', 'completed_at': DateTime.now().toIso8601String()})
+        .eq('id', taskId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+        
+      // Increment the specific sub-stat and main stat
+      final cat = data['target_stat_category'] as String;
+      final subStat = data['target_sub_stat'] as String;
+      final reward = data['reward_amount'] as int;
+      
+      final currentStats = await getUserStats();
+      
+      // Update logic would need an RPC or complex update. For now, doing it client side.
+      Map<String, double> updatedDetails;
+      if (cat == 'physical') {
+        updatedDetails = Map.from(currentStats.physicalDetails);
+        updatedDetails[subStat] = (updatedDetails[subStat] ?? 0) + reward;
+        await _client.from('hgos_wish_stats').update({
+          'physical': currentStats.physical + reward,
+          'physical_details': updatedDetails,
+        }).eq('user_id', userId);
+      } else if (cat == 'mental') {
+        updatedDetails = Map.from(currentStats.mentalDetails);
+        updatedDetails[subStat] = (updatedDetails[subStat] ?? 0) + reward;
+        await _client.from('hgos_wish_stats').update({
+          'mental': currentStats.mental + reward,
+          'mental_details': updatedDetails,
+        }).eq('user_id', userId);
+      } else if (cat == 'ethical') {
+        updatedDetails = Map.from(currentStats.ethicalDetails);
+        updatedDetails[subStat] = (updatedDetails[subStat] ?? 0) + reward;
+        await _client.from('hgos_wish_stats').update({
+          'ethical_emotional': currentStats.ethicalEmotional + reward,
+          'ethical_details': updatedDetails,
+        }).eq('user_id', userId);
+      }
+      
+    } catch (e) {
+      debugPrint('WishRepository: completeTask error: $e');
     }
   }
 

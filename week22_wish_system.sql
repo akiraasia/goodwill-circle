@@ -17,8 +17,24 @@ CREATE TABLE IF NOT EXISTS public.wish_stats (
     physical_level INTEGER NOT NULL DEFAULT 1,
     mental_level INTEGER NOT NULL DEFAULT 1,
     ethical_level INTEGER NOT NULL DEFAULT 1,
+    physical_details JSONB DEFAULT '{}'::jsonb,
+    mental_details JSONB DEFAULT '{}'::jsonb,
+    ethical_details JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2.5 Create wish_tasks table
+CREATE TABLE IF NOT EXISTS public.wish_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    task_text TEXT NOT NULL,
+    target_stat_category TEXT NOT NULL CHECK (target_stat_category IN ('physical', 'mental', 'ethical')),
+    target_sub_stat TEXT NOT NULL,
+    reward_amount INTEGER DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'assigned' CHECK (status IN ('assigned', 'completed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
 );
 
 -- 3. Visual Novel System Tables
@@ -47,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.wish_novel_choices (
     req_physical INTEGER DEFAULT 1,
     req_mental INTEGER DEFAULT 1,
     req_ethical INTEGER DEFAULT 1,
+    req_sub_stats JSONB DEFAULT '{}'::jsonb,
     reward_physical INTEGER DEFAULT 0,
     reward_mental INTEGER DEFAULT 0,
     reward_ethical INTEGER DEFAULT 0,
@@ -73,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.wish_chat_messages (
 -- 5. RLS Policies
 ALTER TABLE public.wishes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wish_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wish_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wish_novels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wish_novel_scenes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wish_novel_choices ENABLE ROW LEVEL SECURITY;
@@ -86,6 +104,10 @@ CREATE POLICY "Users can update own wishes" ON public.wishes FOR UPDATE USING (a
 CREATE POLICY "Users can read own stats" ON public.wish_stats FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own stats" ON public.wish_stats FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own stats" ON public.wish_stats FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can read own tasks" ON public.wish_tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own tasks" ON public.wish_tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own tasks" ON public.wish_tasks FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Novels are public" ON public.wish_novels FOR SELECT USING (true);
 CREATE POLICY "Scenes are public" ON public.wish_novel_scenes FOR SELECT USING (true);
