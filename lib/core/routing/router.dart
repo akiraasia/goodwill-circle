@@ -13,7 +13,7 @@ import 'package:goodwill_circle/features/agenda/create_agenda_screen.dart';
 import 'package:goodwill_circle/features/campaigns/campaigns_screen.dart';
 import 'package:goodwill_circle/features/campaigns/create_campaign_screen.dart';
 import 'package:goodwill_circle/features/campaigns/campaign_details_screen.dart';
-import 'package:goodwill_circle/features/confessions/confessions_screen.dart';
+import 'package:goodwill_circle/features/growth_os/presentation/wish_screen.dart';
 import 'package:goodwill_circle/features/profile/profile_screen.dart';
 import 'package:goodwill_circle/features/trust/trust_screen.dart';
 
@@ -30,7 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation.startsWith('/campaigns') ||
           state.matchedLocation.startsWith('/agenda') ||
           state.matchedLocation.startsWith('/trust') ||
-          state.matchedLocation.startsWith('/confessions') ||
+          state.matchedLocation.startsWith('/wish') ||
           state.matchedLocation.startsWith('/profile') ||
           state.matchedLocation.startsWith('/create-request') ||
           state.matchedLocation.startsWith('/create-agenda') ||
@@ -83,8 +83,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TrustScreen(),
           ),
           GoRoute(
-            path: '/confessions',
-            builder: (context, state) => const ConfessionsScreen(),
+            path: '/wish',
+            builder: (context, state) => const WishScreen(),
           ),
           GoRoute(
             path: '/profile',

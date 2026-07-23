@@ -58,8 +58,8 @@ class AppBottomNavigation extends StatelessWidget {
             onTap: () => onTap(2),
           ),
           _NavItem(
-            icon: AppIcons.confessions,
-            label: 'Confess',
+            icon: AppIcons.wish,
+            label: 'Wish',
             isSelected: currentIndex == 3,
             onTap: () => onTap(3),
           ),

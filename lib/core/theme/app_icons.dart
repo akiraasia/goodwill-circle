@@ -5,6 +5,7 @@ class AppIcons {
   static const IconData campaign = Icons.campaign;
   static const IconData agenda = Icons.event_note_rounded;
   static const IconData confessions = Icons.forum_rounded;
+  static const IconData wish = Icons.auto_awesome;
   static const IconData premium = Icons.workspace_premium;
   static const IconData trophy = Icons.emoji_events;
   static const IconData analytics = Icons.auto_graph;
