@@ -114,7 +114,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
 
   void _onStatsRevealed() {
     setState(() {
-      _onboardingStage = 5; // Move to path choice
+      _onboardingStage = 4; // Move to path choice
     });
   }
 
@@ -284,12 +284,18 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       case 1:
         return _WishEntryScreen(onSubmit: _onWishEntered);
       case 2:
-        return _AIChatOnboardingScreen(wishText: _rawWishText, onComplete: _onInterviewComplete);
+        return _StatsFormOnboardingScreen(
+          wishText: _rawWishText,
+          onComplete: (stats) {
+            setState(() {
+              _assignedStats = stats;
+              _onboardingStage = 3; // Move to stat reveal
+            });
+          },
+        );
       case 3:
-        return _TruthConfirmationScreen(qaList: _interviewQA, onConfirm: _onConfirmationComplete);
-      case 4:
         return _StatAssignmentScreen(stats: _assignedStats!, onContinue: _onStatsRevealed);
-      case 5:
+      case 4:
         return _PathChoiceScreen(onChoice: _onPathChosen);
       default:
         return const SizedBox.shrink();
@@ -405,13 +411,31 @@ class _WishScreenState extends ConsumerState<WishScreen> {
             else
               ..._virtues.map((v) => Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
-                child: _VirtueCard(
-                  virtue: v,
-                  onTap: () => setState(() => _selectedVirtue = v),
-                ),
+                child: _ExpandableVirtueCard(virtue: v),
               )),
             const SizedBox(height: AppSpacing.md),
             
+            // Current Help Requests
+            Text(
+              'CURRENT HELP REQUESTS',
+              style: AppTypography.textTheme.labelMedium?.copyWith(color: AppColors.textLight, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppCard(
+              color: AppColors.white,
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.handshake, color: AppColors.red),
+                title: const Text('Volunteer needed for local food drive', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Matches your Compassion and Physical stats. Earn +10 XP.'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening request hub...')));
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
             // Path Mode display
             Text(
               'CURRENT PATH: ${_activeWish!['path_mode']?.toString().toUpperCase() ?? 'TASK'} MODE',
@@ -423,15 +447,27 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: AppCard(
                   color: AppColors.white,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(n.description),
-                    trailing: ElevatedButton(
-                      onPressed: () => _startNovel(n),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.redSoft),
-                      child: const Text('Play'),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset('assets/story-cover.png', fit: BoxFit.cover, height: 200),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(n.title, style: AppTypography.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                      const SizedBox(height: 8),
+                      Text(n.description, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textMid)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => _startNovel(n),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('START STORY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                 ),
               )),
@@ -710,253 +746,140 @@ class _WishEntryScreenState extends State<_WishEntryScreen> {
   }
 }
 
-// ─── Stage 2: AI Onboarding Chat ────────────────────────────────────────────────
+// ─── Stage 2: Stats Form Onboarding ──────────────────────────────────────────
 
-class _AIChatOnboardingScreen extends StatefulWidget {
+class _StatsFormOnboardingScreen extends StatefulWidget {
   final String wishText;
-  final Function(List<WishInterviewQA>, AssignedStats) onComplete;
+  final Function(AssignedStats) onComplete;
 
-  const _AIChatOnboardingScreen({required this.wishText, required this.onComplete});
+  const _StatsFormOnboardingScreen({required this.wishText, required this.onComplete});
 
   @override
-  State<_AIChatOnboardingScreen> createState() => _AIChatOnboardingScreenState();
+  State<_StatsFormOnboardingScreen> createState() => _StatsFormOnboardingScreenState();
 }
 
-class _AIChatOnboardingScreenState extends State<_AIChatOnboardingScreen> {
-  final List<Map<String, dynamic>> _chatHistory = [];
-  final List<WishInterviewQA> _qaList = [];
-  final _inputController = TextEditingController();
-  final _scrollController = ScrollController();
-  bool _isLoading = false;
+class _StatsFormOnboardingScreenState extends State<_StatsFormOnboardingScreen> {
+  final _weightController = TextEditingController();
+  final _healthController = TextEditingController();
 
-  final List<String> _questions = [
-    "Let's calibrate your Physical stats. What is your weight, BMI, or current fitness level?",
-    "Next, your Mental stats. What are your current skills, domains, or areas of study?",
-    "Finally, what specific stats or virtues do you require to achieve your wish?",
-  ];
-  int _currentQuestionIndex = 0;
+  final Map<String, bool> _skills = {
+    'Programming': false,
+    'Writing': false,
+    'Design': false,
+    'Communication': false,
+    'Leadership': false,
+    'Problem Solving': false,
+  };
 
-  @override
-  void initState() {
-    super.initState();
-    _chatHistory.add({'text': _questions[_currentQuestionIndex], 'isBot': true});
-  }
-
-  void _submitAnswer() {
-    final text = _inputController.text.trim();
-    if (text.isEmpty || _isLoading) return;
-    _inputController.clear();
-
-    setState(() {
-      _chatHistory.add({'text': text, 'isBot': false});
-      _qaList.add(WishInterviewQA(question: _questions[_currentQuestionIndex], answer: text));
-      _isLoading = true;
-    });
-    _scrollToBottom();
-    
-    // Simulate AI processing the response
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _currentQuestionIndex++;
-        if (_currentQuestionIndex < _questions.length) {
-          _chatHistory.add({'text': _questions[_currentQuestionIndex], 'isBot': true});
-        } else {
-          // Finish onboarding, generate dynamic stats based on responses
-          _generateAndComplete();
-        }
-      });
-      _scrollToBottom();
-    });
-  }
-
-  void _generateAndComplete() {
-    // Basic NLP mock to extract stats from the user's answers
-    final physicalAns = _qaList[0].answer.toLowerCase();
-    final mentalAns = _qaList[1].answer.toLowerCase();
-    final ethicalAns = _qaList[2].answer.toLowerCase();
-
+  void _submit() {
     Map<String, double> physicalDetails = {};
-    if (physicalAns.contains(RegExp(r'\d+'))) {
-      // Very basic extraction for mockup: if user entered numbers like "75 kg, bmi 22"
-      physicalDetails['Weight'] = 75.0; // Mocked extracted value
-      physicalDetails['BMI'] = 22.0;
-    } else {
-      physicalDetails['Fitness'] = 10.0;
+    if (_weightController.text.isNotEmpty) {
+      physicalDetails['Weight'] = double.tryParse(_weightController.text) ?? 70.0;
     }
+    if (_healthController.text.isNotEmpty) {
+      physicalDetails['Health'] = double.tryParse(_healthController.text) ?? 10.0;
+    }
+    if (physicalDetails.isEmpty) physicalDetails['Fitness'] = 10.0;
 
     Map<String, double> mentalDetails = {};
-    // Extract words longer than 4 chars as mocked skills
-    final words = mentalAns.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
-    for (var w in words.take(2)) {
-      mentalDetails[w[0].toUpperCase() + w.substring(1)] = 5.0;
-    }
+    _skills.forEach((key, isChecked) {
+      if (isChecked) {
+        mentalDetails[key] = 5.0;
+      }
+    });
     if (mentalDetails.isEmpty) mentalDetails['Focus'] = 5.0;
 
-    Map<String, double> ethicalDetails = {};
-    final reqWords = ethicalAns.split(RegExp(r'\s+')).where((w) => w.length > 4).toList();
-    for (var w in reqWords.take(2)) {
-      ethicalDetails[w[0].toUpperCase() + w.substring(1)] = 2.0;
-    }
-    if (ethicalDetails.isEmpty) ethicalDetails['Patience'] = 2.0;
+    Map<String, double> ethicalDetails = {
+      'Patience': 2.0,
+      'Empathy': 2.0,
+    };
 
     final stats = AssignedStats(
       physical: 10.0,
-      mental: 10.0,
+      mental: 10.0 + (mentalDetails.length * 2),
       ethical: 10.0,
       physicalDetails: physicalDetails,
       mentalDetails: mentalDetails,
       ethicalDetails: ethicalDetails,
     );
 
-    widget.onComplete(_qaList, stats);
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    widget.onComplete(stats);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(title: const Text('Uncovering Your Wish'), backgroundColor: Colors.transparent, elevation: 0),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _chatHistory.length,
-              itemBuilder: (context, index) {
-                final bubble = _chatHistory[index];
-                final isBot = bubble['isBot'] as bool;
-                return Align(
-                  alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-                    decoration: BoxDecoration(
-                      color: isBot ? AppColors.white : AppColors.redSoft,
-                      borderRadius: BorderRadius.circular(16),
-                      border: isBot ? Border.all(color: AppColors.tan1) : null,
-                    ),
-                    child: Text(
-                      bubble['text'],
-                      style: TextStyle(color: isBot ? AppColors.textDark : Colors.white),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (_isLoading)
-            const Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: AppColors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _inputController,
-                    enabled: !_isLoading,
-                    decoration: const InputDecoration(
-                      hintText: 'Share your thoughts...', 
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                    ),
-                    onSubmitted: (_) => _submitAnswer(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: AppColors.red),
-                  onPressed: _isLoading ? null : _submitAnswer,
-                ),
-              ],
-            ),
-          ),
-        ],
+      appBar: AppBar(
+        title: const Text('Calibrate Your Stats'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-    );
-  }
-}
-
-// ─── Stage 3: Confirmation ───────────────────────────────────────────────────
-
-class _TruthConfirmationScreen extends StatefulWidget {
-  final List<WishInterviewQA> qaList;
-  final VoidCallback onConfirm;
-  const _TruthConfirmationScreen({required this.qaList, required this.onConfirm});
-
-  @override
-  State<_TruthConfirmationScreen> createState() => _TruthConfirmationScreenState();
-}
-
-class _TruthConfirmationScreenState extends State<_TruthConfirmationScreen> {
-  bool _isConfirmed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(title: const Text('Truth Confirmation'), backgroundColor: Colors.transparent, elevation: 0),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Please review your answers. True growth begins with honesty.',
-              style: TextStyle(fontSize: 16, color: AppColors.textMid),
+              'Physical Stats',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: widget.qaList.length,
-                itemBuilder: (context, index) {
-                  final qa = widget.qaList[index];
-                  return AppCard(
-                    color: AppColors.white,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Q: ${qa.question}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
-                        const SizedBox(height: 8),
-                        Text('A: ${qa.answer}', style: const TextStyle(color: AppColors.textMid, fontStyle: FontStyle.italic)),
-                      ],
+            const SizedBox(height: 12),
+            AppCard(
+              color: AppColors.white,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _weightController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Weight (kg)',
+                      border: OutlineInputBorder(),
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _healthController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Overall Health Level (1-10)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              title: const Text('I confirm these answers are true to the best of my knowledge.', style: TextStyle(fontWeight: FontWeight.bold)),
-              value: _isConfirmed,
-              onChanged: (val) => setState(() => _isConfirmed = val ?? false),
-              activeColor: AppColors.red,
+            const SizedBox(height: 24),
+            const Text(
+              'Mental Stats (Skills)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            AppCard(
+              color: AppColors.white,
+              child: Column(
+                children: _skills.keys.map((skill) {
+                  return CheckboxListTile(
+                    title: Text(skill),
+                    value: _skills[skill],
+                    onChanged: (val) {
+                      setState(() {
+                        _skills[skill] = val ?? false;
+                      });
+                    },
+                    activeColor: AppColors.red,
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: _isConfirmed ? widget.onConfirm : null,
+              onPressed: _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.red,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Confirm & Set My Path'),
+              child: const Text('Set My Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -1242,65 +1165,29 @@ class _VirtueCard extends StatelessWidget {
   }
 }
 
-// ─── Virtue Detail Screen ────────────────────────────────────────────────────
-
-class VirtueDetailScreen extends ConsumerStatefulWidget {
+class _ExpandableVirtueCard extends ConsumerStatefulWidget {
   final UserVirtue virtue;
-  final VoidCallback onBack;
-
-  const VirtueDetailScreen({super.key, required this.virtue, required this.onBack});
-
+  const _ExpandableVirtueCard({required this.virtue});
   @override
-  ConsumerState<VirtueDetailScreen> createState() => _VirtueDetailScreenState();
+  ConsumerState<_ExpandableVirtueCard> createState() => _ExpandableVirtueCardState();
 }
 
-class _VirtueDetailScreenState extends ConsumerState<VirtueDetailScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _ExpandableVirtueCardState extends ConsumerState<_ExpandableVirtueCard> {
+  bool _isExpanded = false;
   List<VirtueTask> _tasks = [];
   List<VirtueChatMessage> _chatMessages = [];
   List<VirtueMaterial> _materials = [];
   final _chatInputController = TextEditingController();
-  dynamic _chatSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _loadVirtueData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _chatInputController.dispose();
-    try { _chatSub?.cancel(); } catch (_) {}
-    try { _chatSub?.unsubscribe(); } catch (_) {}
-    super.dispose();
-  }
+  bool _isLoadingData = false;
 
   Future<void> _loadVirtueData() async {
+    if (_isLoadingData) return;
+    setState(() => _isLoadingData = true);
     final repo = ref.read(wishRepositoryProvider);
-    final tasks = await repo.getVirtueTasks(widget.virtue.virtueName);
-    
-    // Seed tasks if empty
-    if (tasks.isEmpty) {
-      await repo.seedVirtueTasks(widget.virtue.virtueName, [
-        VirtueTask(id: '', userId: '', virtueName: widget.virtue.virtueName, taskType: 'individual', title: 'Daily Reflection', description: 'Spend 5 minutes reflecting on how you demonstrated ${widget.virtue.virtueName} today.', xpReward: 10, status: 'pending'),
-        VirtueTask(id: '', userId: '', virtueName: widget.virtue.virtueName, taskType: 'social', title: 'Help Someone', description: 'Find a request on the feed related to ${widget.virtue.virtueName} and offer assistance.', xpReward: 30, status: 'pending'),
-      ]);
-      _tasks = await repo.getVirtueTasks(widget.virtue.virtueName);
-    } else {
-      _tasks = tasks;
-    }
-
+    _tasks = await repo.getVirtueTasks(widget.virtue.virtueName);
     _chatMessages = await repo.getVirtueChatMessages(widget.virtue.virtueName);
     _materials = await repo.getVirtueMaterials(widget.virtue.virtueName);
-
-    _chatSub = repo.subscribeToVirtueChat(widget.virtue.virtueName, (msg) {
-      if (mounted) setState(() => _chatMessages.add(msg));
-    });
-
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _isLoadingData = false);
   }
 
   void _sendChat() async {
@@ -1312,150 +1199,145 @@ class _VirtueDetailScreenState extends ConsumerState<VirtueDetailScreen> with Si
     setState(() {});
   }
 
-  void _completeTask(VirtueTask task) async {
-    await ref.read(wishRepositoryProvider).completeVirtueTask(task.id, widget.virtue.virtueName, task.xpReward);
-    // Reload tasks and virtue stats
-    await _loadVirtueData();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task completed! +${task.xpReward} XP'), backgroundColor: AppColors.redSoft));
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
-        title: Text(widget.virtue.virtueName),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.red,
-          unselectedLabelColor: AppColors.textLight,
-          indicatorColor: AppColors.red,
-          tabs: const [
-            Tab(text: 'Tasks'),
-            Tab(text: 'Chat Room'),
-            Tab(text: 'Materials'),
+    return AppCard(
+      color: AppColors.white,
+      child: ExpansionTile(
+        title: Text(widget.virtue.virtueName, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: widget.virtue.xpProgress == 0 ? 0.05 : widget.virtue.xpProgress,
+                backgroundColor: AppColors.cream,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.yellow),
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('Lvl ${widget.virtue.level} • ${widget.virtue.xp}/${widget.virtue.xpToNextLevel} XP', style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+        onExpansionChanged: (expanded) {
+          setState(() => _isExpanded = expanded);
+          if (expanded) _loadVirtueData();
+        },
         children: [
-          // Tasks Tab
-          ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            itemCount: _tasks.length,
-            itemBuilder: (context, index) {
-              final task = _tasks[index];
-              final isCompleted = task.status == 'completed';
-              return AppCard(
-                color: AppColors.white,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(task.taskType == 'social' ? Icons.group : Icons.person, color: isCompleted ? Colors.green : AppColors.tan3),
-                  title: Text(task.title, style: TextStyle(decoration: isCompleted ? TextDecoration.lineThrough : null)),
-                  subtitle: Text(task.description),
-                  trailing: isCompleted
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : ElevatedButton(
-                          onPressed: () => _completeTask(task),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.redSoft),
-                          child: const Text('Complete'),
+          if (_isExpanded) Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_isLoadingData)
+                  const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                else ...[
+                  const Divider(),
+                  Row(
+                    children: [
+                      const Icon(Icons.forum, size: 16, color: AppColors.redSoft),
+                      const SizedBox(width: 8),
+                      Text('Community Chat (${widget.virtue.virtueName})', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: _chatMessages.isEmpty 
+                      ? const Center(child: Text('No messages yet. Say hi!', style: TextStyle(color: AppColors.textLight, fontSize: 12)))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _chatMessages.length,
+                          itemBuilder: (c, i) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(text: '${_chatMessages[i].senderName}: ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark, fontSize: 13)),
+                                  TextSpan(text: _chatMessages[i].message, style: const TextStyle(color: AppColors.textMid, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                ),
-              );
-            },
-          ),
-
-          // Chat Tab
-          Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  itemCount: _chatMessages.length,
-                  itemBuilder: (context, index) {
-                    final msg = _chatMessages[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: RichText(
-                        text: TextSpan(
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _chatInputController,
+                          decoration: InputDecoration(
+                            hintText: 'Share your progress...',
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                          ),
+                          onSubmitted: (_) => _sendChat(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: AppColors.redSoft,
+                        radius: 18,
+                        child: IconButton(icon: const Icon(Icons.send, size: 16, color: Colors.white), onPressed: _sendChat),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_stories, size: 16, color: AppColors.redSoft),
+                      const SizedBox(width: 8),
+                      const Text('Community Posts (Materials)', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (_materials.isEmpty) const Text('No posts yet.', style: TextStyle(fontSize: 12, color: AppColors.textLight))
+                  else SizedBox(
+                    height: 80,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _materials.length,
+                      itemBuilder: (c, i) => Container(
+                        width: 120,
+                        margin: const EdgeInsets.only(right: 8.0),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cream,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.tan1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            TextSpan(text: '${msg.senderName}: ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
-                            TextSpan(text: msg.message, style: const TextStyle(color: AppColors.textMid)),
+                            Text(_materials[i].title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            const Spacer(),
+                            Text('By ${_materials[i].posterName}', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: AppColors.white,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _chatInputController,
-                        decoration: const InputDecoration(hintText: 'Share your progress...', border: InputBorder.none),
-                        onSubmitted: (_) => _sendChat(),
-                      ),
                     ),
-                    IconButton(icon: const Icon(Icons.send, color: AppColors.red), onPressed: _sendChat),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Materials Tab
-          _materials.isEmpty
-              ? const Center(child: Text('No materials posted yet. Be the first!'))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.8,
                   ),
-                  itemCount: _materials.length,
-                  itemBuilder: (context, index) {
-                    final mat = _materials[index];
-                    return AppCard(
-                      color: AppColors.white,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            mat.materialType == 'book' ? Icons.book : mat.materialType == 'song' ? Icons.music_note : Icons.image,
-                            color: AppColors.tan3,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(mat.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-                          const Spacer(),
-                          Text('By ${mat.posterName}', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                  const SizedBox(height: 8),
+                ]
+              ],
+            ),
+          )
         ],
       ),
-      floatingActionButton: _tabController.index == 2
-          ? FloatingActionButton(
-              onPressed: () {
-                // Future: Show dialog to post new material
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post material feature coming soon!')));
-              },
-              backgroundColor: AppColors.red,
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 }

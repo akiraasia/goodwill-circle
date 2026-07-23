@@ -76,6 +76,7 @@ flutter:
     - goodwill-kindred-loop-main/src/assets/hero-hands.jpg
     - goodwill-kindred-loop-main/src/assets/chain.jpg
     - assets/badges/
+    - assets/story-cover.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

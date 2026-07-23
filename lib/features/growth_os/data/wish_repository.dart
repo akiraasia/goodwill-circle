@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 final wishRepositoryProvider = Provider<WishRepository>((ref) {
   return WishRepository(Supabase.instance.client);
@@ -417,10 +419,28 @@ class WishRepository {
   // --- 1. Wishes ---
 
   Future<Map<String, dynamic>?> getActiveWish() async {
+    final prefs = await SharedPreferences.getInstance();
+    
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
+    if (userId == null) {
+      final cachedStr = prefs.getString('cached_active_wish');
+      if (cachedStr != null) {
+        _mockWish = jsonDecode(cachedStr);
+        _isMock = true;
+        return _mockWish;
+      }
+      return null;
+    }
 
-    if (_isMock) return _mockWish;
+    if (_isMock) {
+      if (_mockWish == null) {
+        final cachedStr = prefs.getString('cached_active_wish');
+        if (cachedStr != null) {
+          _mockWish = jsonDecode(cachedStr);
+        }
+      }
+      return _mockWish;
+    }
 
     try {
       final data = await _client
@@ -429,10 +449,19 @@ class WishRepository {
           .eq('user_id', userId)
           .eq('status', 'active')
           .maybeSingle();
+      if (data != null) {
+        prefs.setString('cached_active_wish', jsonEncode(data));
+      }
       return data;
     } catch (e) {
       debugPrint('WishRepository: getActiveWish error (switching to mock): $e');
       _isMock = true;
+      if (_mockWish == null) {
+        final cachedStr = prefs.getString('cached_active_wish');
+        if (cachedStr != null) {
+          _mockWish = jsonDecode(cachedStr);
+        }
+      }
       return _mockWish;
     }
   }
@@ -494,6 +523,9 @@ class WishRepository {
         addMockVirtues(assignedStats.mentalDetails, 'mental');
         addMockVirtues(assignedStats.ethicalDetails, 'ethical');
       }
+      
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString('cached_active_wish', jsonEncode(_mockWish));
       return;
     }
 
@@ -554,6 +586,8 @@ class WishRepository {
         mental: mentalStart,
         ethicalEmotional: ethicalStart,
       );
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString('cached_active_wish', jsonEncode(_mockWish));
     }
   }
 
