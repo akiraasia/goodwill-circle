@@ -85,7 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/wish',
-            builder: (context, state) => const WishScreen(),
+            builder: (context, state) => const WishEntryScreen(),
           ),
           GoRoute(
             path: '/confessions',

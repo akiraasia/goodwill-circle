@@ -36,6 +36,21 @@ class PathSelectionScreen extends StatelessWidget {
     );
   }
 
+  void _proceedToTasks(BuildContext context) {
+    // Assign virtues from stats — map mental->Wisdom, physical->Discipline, ethical->Integrity
+    final virtues = <String>[];
+    if ((assignedStats['mental'] ?? 0) >= 2) virtues.add('Wisdom');
+    if ((assignedStats['physical'] ?? 0) >= 2) virtues.add('Discipline');
+    if ((assignedStats['ethical'] ?? 0) >= 2) virtues.add('Integrity');
+    if (virtues.isEmpty) virtues.add('Courage');
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VirtueTasksScreen(assignedVirtues: virtues),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,77 +81,36 @@ class PathSelectionScreen extends StatelessWidget {
               _buildStatCard('Ethical', assignedStats['ethical'] ?? 1, Icons.volunteer_activism, Colors.green),
               const SizedBox(height: 48),
               const Text(
-                'Choose Your Path',
+                'Your Journey Awaits',
                 style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Navigate to Story Mode (Visual Novel) — coming soon
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Story Mode coming soon!')),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: const BorderSide(color: Colors.white24),
-                        ),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.auto_stories, size: 32),
-                          SizedBox(height: 12),
-                          Text('Story Mode', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 4),
-                          Text('Visual Novel Choice', style: TextStyle(fontSize: 12, color: Colors.white54)),
-                        ],
-                      ),
-                    ),
+              const SizedBox(height: 12),
+              Text(
+                'Story mode with visual novel choices is coming soon. For now, begin with task mode to start building your virtues through real-world actions.',
+                style: TextStyle(color: Colors.white60, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => _proceedToTasks(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Assign virtues from stats — map mental->Wisdom, physical->Discipline, ethical->Integrity
-                        final virtues = <String>[];
-                        if ((assignedStats['mental'] ?? 0) >= 2) virtues.add('Wisdom');
-                        if ((assignedStats['physical'] ?? 0) >= 2) virtues.add('Discipline');
-                        if ((assignedStats['ethical'] ?? 0) >= 2) virtues.add('Integrity');
-                        if (virtues.isEmpty) virtues.add('Courage');
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => VirtueTasksScreen(assignedVirtues: virtues),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.assignment, size: 32),
-                          SizedBox(height: 12),
-                          Text('Task Mode', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 4),
-                          Text('Real-world Action', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.assignment, size: 32),
+                    SizedBox(height: 12),
+                    Text('Begin Task Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
+                    Text('Start with real-world actions', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  ],
+                ),
               ),
             ],
           ),

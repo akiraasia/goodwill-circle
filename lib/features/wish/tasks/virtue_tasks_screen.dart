@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'virtue_task.dart';
 import 'virtue_task_repository.dart';
 
@@ -21,6 +22,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _showSocial = true; // Toggle: social or individual
+  bool _isGeneratingTasks = false;
 
   // Virtue -> accent color mapping
   static const _virtueColors = {
@@ -47,6 +49,82 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
       length: widget.assignedVirtues.length,
       vsync: this,
     );
+    _generateInitialTasks();
+  }
+
+  Future<void> _generateInitialTasks() async {
+    final repo = ref.read(virtueTaskRepositoryProvider);
+    final existingTasks = await repo.getMyTasks();
+    
+    // Only generate tasks if user has no tasks yet
+    if (existingTasks.isEmpty) {
+      setState(() => _isGeneratingTasks = true);
+      
+      for (final virtue in widget.assignedVirtues) {
+        // Generate individual task
+        await _generateIndividualTask(repo, virtue);
+        
+        // Generate social task if matching requests exist
+        await _generateSocialTask(repo, virtue);
+      }
+      
+      if (mounted) {
+        setState(() => _isGeneratingTasks = false);
+      }
+    }
+  }
+
+  Future<void> _generateIndividualTask(VirtueTaskRepository repo, String virtue) async {
+    final taskDescriptions = {
+      'Courage': 'Do one thing that makes you uncomfortable today. Speak up in a meeting, start a conversation with a stranger, or try something new.',
+      'Wisdom': 'Spend 30 minutes learning something new. Read an article, watch an educational video, or practice a skill.',
+      'Compassion': 'Perform a random act of kindness. Help someone, listen actively, or send a thoughtful message.',
+      'Discipline': 'Complete a task you have been procrastinating. Focus for 25 minutes without distractions.',
+      'Integrity': 'Be completely honest in one interaction today. Admit a mistake or speak your truth respectfully.',
+    };
+
+    await repo.insertTask(
+      virtueName: virtue,
+      taskType: TaskType.individual,
+      title: 'Build $virtue Solo',
+      description: taskDescriptions[virtue] ?? 'Practice $virtue in your daily life.',
+      xpReward: 20,
+    );
+  }
+
+  Future<void> _generateSocialTask(VirtueTaskRepository repo, String virtue) async {
+    // Try to find matching requests for helper role first
+    final helperMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helper');
+    
+    if (helperMatches.isNotEmpty) {
+      final matchedRequest = helperMatches.first;
+      await repo.insertTask(
+        virtueName: virtue,
+        taskType: TaskType.social,
+        title: 'Help: ${matchedRequest['title']}',
+        description: 'Help someone build $virtue by assisting with this request. This will boost your $virtue stat.',
+        xpReward: 50,
+        linkedRequestId: matchedRequest['id'] as String?,
+        socialRole: 'helper',
+      );
+      return;
+    }
+
+    // If no helper matches, try helpee role
+    final helpeeMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helpee');
+    
+    if (helpeeMatches.isNotEmpty) {
+      final matchedRequest = helpeeMatches.first;
+      await repo.insertTask(
+        virtueName: virtue,
+        taskType: TaskType.social,
+        title: 'Learn: ${matchedRequest['title']}',
+        description: 'Join this request to learn and build your $virtue stat through practice.',
+        xpReward: 40,
+        linkedRequestId: matchedRequest['id'] as String?,
+        socialRole: 'helpee',
+      );
+    }
   }
 
   @override
@@ -93,60 +171,74 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
               )
             : null,
       ),
-      body: Column(
-        children: [
-          // ── Social / Individual Toggle ─────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
+      body: _isGeneratingTasks
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _ToggleTab(
-                    label: 'Connect with People',
-                    icon: Icons.people,
-                    isSelected: _showSocial,
-                    onTap: () => setState(() => _showSocial = true),
-                  ),
-                  _ToggleTab(
-                    label: 'Individual Task',
-                    icon: Icons.self_improvement,
-                    isSelected: !_showSocial,
-                    onTap: () => setState(() => _showSocial = false),
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 16),
+                  Text(
+                    'Generating your personalized tasks...',
+                    style: TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
-            ),
-          ),
+            )
+          : Column(
+              children: [
+                // ── Social / Individual Toggle ─────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.07),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: [
+                        _ToggleTab(
+                          label: 'Connect with People',
+                          icon: Icons.people,
+                          isSelected: _showSocial,
+                          onTap: () => setState(() => _showSocial = true),
+                        ),
+                        _ToggleTab(
+                          label: 'Individual Task',
+                          icon: Icons.self_improvement,
+                          isSelected: !_showSocial,
+                          onTap: () => setState(() => _showSocial = false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
-          // ── Virtue Tab Content ─────────────────────────────────────────
-          Expanded(
-            child: widget.assignedVirtues.length > 1
-                ? TabBarView(
-                    controller: _tabController,
-                    children: widget.assignedVirtues
-                        .map((v) => _VirtueTaskList(
-                              virtue: v,
+                // ── Virtue Tab Content ─────────────────────────────────────────
+                Expanded(
+                  child: widget.assignedVirtues.length > 1
+                      ? TabBarView(
+                          controller: _tabController,
+                          children: widget.assignedVirtues
+                              .map((v) => _VirtueTaskList(
+                                    virtue: v,
+                                    showSocial: _showSocial,
+                                    accentColor: _virtueColor(v),
+                                  ))
+                              .toList(),
+                        )
+                      : widget.assignedVirtues.isEmpty
+                          ? const Center(
+                              child: Text('No virtues assigned yet.',
+                                  style: TextStyle(color: Colors.white54)))
+                          : _VirtueTaskList(
+                              virtue: widget.assignedVirtues.first,
                               showSocial: _showSocial,
-                              accentColor: _virtueColor(v),
-                            ))
-                        .toList(),
-                  )
-                : widget.assignedVirtues.isEmpty
-                    ? const Center(
-                        child: Text('No virtues assigned yet.',
-                            style: TextStyle(color: Colors.white54)))
-                    : _VirtueTaskList(
-                        virtue: widget.assignedVirtues.first,
-                        showSocial: _showSocial,
-                        accentColor: _virtueColor(widget.assignedVirtues.first),
-                      ),
-          ),
-        ],
-      ),
+                              accentColor: _virtueColor(widget.assignedVirtues.first),
+                            ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -229,7 +321,37 @@ class _TaskCard extends StatelessWidget {
     switch (task.status) {
       case TaskStatus.completed: return 'Done';
       case TaskStatus.inProgress: return 'In Progress';
-      default: return 'Start';
+      default: return task.isSocial ? 'View Request' : 'Start Task';
+    }
+  }
+
+  void _handleTaskAction(BuildContext context, VirtueTask task) async {
+    final repo = ref.read(virtueTaskRepositoryProvider);
+    
+    if (task.isSocial && task.linkedRequestId != null) {
+      // Navigate to the linked help request
+      if (context.mounted) {
+        context.go('/app'); // Navigate to main app where requests are shown
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigate to request: ${task.linkedRequestId}'),
+            action: SnackBarAction(
+              label: 'Go',
+              onPressed: () {
+                // TODO: Implement direct navigation to specific request
+              },
+            ),
+          ),
+        );
+      }
+    } else {
+      // Individual task - mark as in progress
+      await repo.updateTaskStatus(task.id, TaskStatus.inProgress);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task started! Complete it to earn XP.')),
+        );
+      }
     }
   }
 
@@ -328,9 +450,7 @@ class _TaskCard extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: task.status != TaskStatus.completed
-                        ? () {
-                            // TODO: Navigate to linked HelpRequest or start individual task
-                          }
+                        ? () => _handleTaskAction(context, task)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _statusColor,

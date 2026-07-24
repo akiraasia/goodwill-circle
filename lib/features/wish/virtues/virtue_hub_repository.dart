@@ -105,6 +105,53 @@ class VirtueHubRepository {
       'poster_name': posterName,
     });
   }
+
+  /// Upvote a material post
+  Future<void> upvoteMaterial(String materialId) async {
+    try {
+      // Get current upvotes count
+      final response = await _supabase
+          .from('wish_virtue_materials')
+          .select('upvotes')
+          .eq('id', materialId)
+          .single();
+
+      final currentUpvotes = response['upvotes'] as int? ?? 0;
+
+      // Update with incremented count
+      await _supabase
+          .from('wish_virtue_materials')
+          .update({'upvotes': currentUpvotes + 1})
+          .eq('id', materialId);
+    } catch (e) {
+      throw Exception('Failed to upvote material: $e');
+    }
+  }
+
+  /// Subscribe to realtime materials for a virtue
+  RealtimeChannel subscribeToMaterials({
+    required String virtueName,
+    required void Function(VirtueMaterial material) onMaterialAdded,
+  }) {
+    return _supabase
+        .channel('virtue-materials:$virtueName')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'wish_virtue_materials',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'virtue_name',
+            value: virtueName,
+          ),
+          callback: (payload) {
+            final material = VirtueMaterial.fromJson(
+                payload.newRecord as Map<String, dynamic>);
+            onMaterialAdded(material);
+          },
+        )
+        .subscribe();
+  }
 }
 
 final virtueHubRepositoryProvider = Provider<VirtueHubRepository>((ref) {
@@ -115,4 +162,10 @@ final virtueMaterialsProvider =
     FutureProvider.family<List<VirtueMaterial>, String>((ref, virtue) async {
   final repo = ref.read(virtueHubRepositoryProvider);
   return repo.getMaterials(virtue);
+});
+
+final virtueChatMessagesProvider =
+    FutureProvider.family<List<VirtueChatMessage>, String>((ref, virtue) async {
+  final repo = ref.read(virtueHubRepositoryProvider);
+  return repo.getChatMessages(virtue);
 });

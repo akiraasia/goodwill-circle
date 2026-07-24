@@ -14,24 +14,26 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
   bool _showShootingStar = false;
 
   void _submitWish() {
-    if (_wishController.text.trim().isNotEmpty) {
-      setState(() {
-        _showShootingStar = true;
-      });
-      
-      // Delay to show animation before navigating to interview screen
-      Future.delayed(const Duration(seconds: 2), () {
+    final wishText = _wishController.text.trim();
+    if (wishText.isEmpty) return;
+
+    setState(() {
+      _showShootingStar = true;
+    });
+
+    ShootingStarOverlay.show(
+      context,
+      wishText: wishText,
+      onComplete: () {
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => WishInterviewScreen(
-                initialWish: _wishController.text.trim(),
-              ),
+              builder: (_) => WishInterviewScreen(initialWish: wishText),
             ),
           );
         }
-      });
-    }
+      },
+    );
   }
 
   @override
@@ -69,9 +71,9 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 18),
                     decoration: InputDecoration(
                       hintText: 'I wish to...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.1),
+                      fillColor: Colors.white.withValues(alpha: 0.1),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
