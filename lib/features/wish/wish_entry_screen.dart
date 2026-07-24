@@ -108,8 +108,6 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
               ),
             ),
           ),
-          if (_showShootingStar)
-            const ShootingStarOverlay(),
         ],
       ),
     );

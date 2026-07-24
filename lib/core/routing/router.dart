@@ -85,7 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/wish',
-            builder: (context, state) => const WishEntryScreen(),
+            builder: (context, state) => const WishScreen(),
           ),
           GoRoute(
             path: '/confessions',
@@ -98,6 +98,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 promptVerification: state.uri.queryParameters['verify'] == '1',
               );
             },
+          ),
+          GoRoute(
+            path: '/story',
+            builder: (context, state) => const StoryScreen(),
           ),
         ],
       ),

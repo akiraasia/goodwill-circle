@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'virtue_task.dart';
 import 'virtue_task_repository.dart';
+import 'wish_task_generator.dart';
 
 /// The main Task Mode screen for the Wish Module.
 /// Shows AI-assigned virtue tasks and lets users toggle between
@@ -60,12 +61,75 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     if (existingTasks.isEmpty) {
       setState(() => _isGeneratingTasks = true);
       
+      // We will need the wish text. For now, since this screen is usually accessed
+      // after onboarding, we should fetch it or just use a generic wish string if not available.
+      // Ideally we get it from wishRepositoryProvider.
+      String userWish = 'To grow and become a better person';
+      
+      final taskGenerator = WishTaskGenerator();
+      
       for (final virtue in widget.assignedVirtues) {
-        // Generate individual task
-        await _generateIndividualTask(repo, virtue);
+        // Generate AI tasks
+        final generated = await taskGenerator.generateDualTrackTasks(
+          wish: userWish,
+          virtue: virtue,
+          currentLevel: 1, // default
+        );
         
-        // Generate social task if matching requests exist
-        await _generateSocialTask(repo, virtue);
+        for (final task in generated) {
+          if (task['type'] == 'solo') {
+            await repo.insertTask(
+              virtueName: virtue,
+              taskType: TaskType.individual,
+              title: task['title'] ?? 'Solo $virtue Task',
+              description: task['description'] ?? 'Practice $virtue',
+              xpReward: task['xp'] ?? 20,
+            );
+          } else {
+            // Social task - try to find matching requests first
+            bool matched = false;
+            final helperMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helper');
+            if (helperMatches.isNotEmpty) {
+              final matchedRequest = helperMatches.first;
+              await repo.insertTask(
+                virtueName: virtue,
+                taskType: TaskType.social,
+                title: 'Help: \${matchedRequest['title']}',
+                description: task['description'] ?? 'Help someone build $virtue.',
+                xpReward: task['xp'] ?? 50,
+                linkedRequestId: matchedRequest['id'] as String?,
+                socialRole: 'helper',
+              );
+              matched = true;
+            } else {
+              final helpeeMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helpee');
+              if (helpeeMatches.isNotEmpty) {
+                final matchedRequest = helpeeMatches.first;
+                await repo.insertTask(
+                  virtueName: virtue,
+                  taskType: TaskType.social,
+                  title: 'Learn: \${matchedRequest['title']}',
+                  description: task['description'] ?? 'Join this request to build your $virtue.',
+                  xpReward: task['xp'] ?? 40,
+                  linkedRequestId: matchedRequest['id'] as String?,
+                  socialRole: 'helpee',
+                );
+                matched = true;
+              }
+            }
+            
+            // If no matched request, we still insert it as a generic social task
+            if (!matched) {
+              await repo.insertTask(
+                virtueName: virtue,
+                taskType: TaskType.social,
+                title: task['title'] ?? 'Community $virtue Task',
+                description: task['description'] ?? 'Connect with others.',
+                xpReward: task['xp'] ?? 30,
+              );
+            }
+          }
+        }
       }
       
       if (mounted) {
@@ -74,58 +138,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     }
   }
 
-  Future<void> _generateIndividualTask(VirtueTaskRepository repo, String virtue) async {
-    final taskDescriptions = {
-      'Courage': 'Do one thing that makes you uncomfortable today. Speak up in a meeting, start a conversation with a stranger, or try something new.',
-      'Wisdom': 'Spend 30 minutes learning something new. Read an article, watch an educational video, or practice a skill.',
-      'Compassion': 'Perform a random act of kindness. Help someone, listen actively, or send a thoughtful message.',
-      'Discipline': 'Complete a task you have been procrastinating. Focus for 25 minutes without distractions.',
-      'Integrity': 'Be completely honest in one interaction today. Admit a mistake or speak your truth respectfully.',
-    };
 
-    await repo.insertTask(
-      virtueName: virtue,
-      taskType: TaskType.individual,
-      title: 'Build $virtue Solo',
-      description: taskDescriptions[virtue] ?? 'Practice $virtue in your daily life.',
-      xpReward: 20,
-    );
-  }
-
-  Future<void> _generateSocialTask(VirtueTaskRepository repo, String virtue) async {
-    // Try to find matching requests for helper role first
-    final helperMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helper');
-    
-    if (helperMatches.isNotEmpty) {
-      final matchedRequest = helperMatches.first;
-      await repo.insertTask(
-        virtueName: virtue,
-        taskType: TaskType.social,
-        title: 'Help: ${matchedRequest['title']}',
-        description: 'Help someone build $virtue by assisting with this request. This will boost your $virtue stat.',
-        xpReward: 50,
-        linkedRequestId: matchedRequest['id'] as String?,
-        socialRole: 'helper',
-      );
-      return;
-    }
-
-    // If no helper matches, try helpee role
-    final helpeeMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helpee');
-    
-    if (helpeeMatches.isNotEmpty) {
-      final matchedRequest = helpeeMatches.first;
-      await repo.insertTask(
-        virtueName: virtue,
-        taskType: TaskType.social,
-        title: 'Learn: ${matchedRequest['title']}',
-        description: 'Join this request to learn and build your $virtue stat through practice.',
-        xpReward: 40,
-        linkedRequestId: matchedRequest['id'] as String?,
-        socialRole: 'helpee',
-      );
-    }
-  }
 
   @override
   void dispose() {

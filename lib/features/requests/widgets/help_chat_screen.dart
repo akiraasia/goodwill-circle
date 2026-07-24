@@ -68,7 +68,7 @@ Keep answers concise, warm, and actionable. Do not make up specific contact info
 
   Future<void> _initChat() async {
     try {
-      final model = FirebaseAI.googleAI(auth: FirebaseAuth.instance).generativeModel(
+      final model = FirebaseAI.googleAI().generativeModel(
         model: 'gemini-flash-latest',
         systemInstruction: Content.system(_buildSystemContext()),
       );

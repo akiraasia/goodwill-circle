@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
@@ -9,6 +8,7 @@ import 'package:goodwill_circle/shared/widgets/app_card.dart';
 import 'package:goodwill_circle/shared/widgets/shooting_star_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/wish_repository.dart';
+import '../../wish/wish_interview_screen.dart';
 
 class WishScreen extends ConsumerStatefulWidget {
   const WishScreen({super.key});
@@ -26,9 +26,8 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   List<Novel> _novels = [];
   
   // Navigation State
-  int _onboardingStage = 0; // 0=None/Done, 1=Entry, 2=Interview, 3=Confirm, 4=Stats, 5=Path
-  UserVirtue? _selectedVirtue; // For virtue detail view
-  
+  int _onboardingStage = 0; // 0=None/Done, 1=Entry, 2=Stats, 3=StatReveal, 4=Path
+
   // Onboarding Data
   String _rawWishText = '';
   List<WishInterviewQA> _interviewQA = [];
@@ -90,26 +89,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
         });
       },
     );
-  }
-
-  void _onInterviewComplete(List<WishInterviewQA> qa, AssignedStats stats) {
-    setState(() {
-      _interviewQA = qa;
-      _assignedStats = stats;
-      _onboardingStage = 3; // Move to confirmation
-    });
-  }
-
-  void _onConfirmationComplete() async {
-    setState(() => _isLoading = true);
-    
-    // Simulate AI final processing
-    await Future.delayed(const Duration(seconds: 1));
-    
-    setState(() {
-      _onboardingStage = 4; // Move to stat reveal
-      _isLoading = false;
-    });
   }
 
   void _onStatsRevealed() {
@@ -269,13 +248,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       return _buildNovelPlayer();
     }
 
-    if (_selectedVirtue != null) {
-      return VirtueDetailScreen(
-        virtue: _selectedVirtue!,
-        onBack: () => setState(() => _selectedVirtue = null),
-      );
-    }
-
     return _buildDashboard();
   }
 
@@ -284,17 +256,9 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       case 1:
         return _WishEntryScreen(onSubmit: _onWishEntered);
       case 2:
-        return _StatsFormOnboardingScreen(
-          wishText: _rawWishText,
-          onComplete: (stats) {
-            setState(() {
-              _assignedStats = stats;
-              _onboardingStage = 3; // Move to stat reveal
-            });
-          },
-        );
+        return WishInterviewScreen(initialWish: _rawWishText);
       case 3:
-        return _StatAssignmentScreen(stats: _assignedStats!, onContinue: _onStatsRevealed);
+        return const SizedBox.shrink(); // Handled by PathSelectionScreen now
       case 4:
         return _PathChoiceScreen(onChoice: _onPathChosen);
       default:
@@ -1109,61 +1073,7 @@ class _ExpandableStatCardState extends State<_ExpandableStatCard> {
   }
 }
 
-class _VirtueCard extends StatelessWidget {
-  final UserVirtue virtue;
-  final VoidCallback onTap;
 
-  const _VirtueCard({required this.virtue, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: AppCard(
-        color: AppColors.white,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.cream, shape: BoxShape.circle),
-              child: const Icon(Icons.star, color: AppColors.yellow),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(virtue.virtueName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: virtue.xpProgress == 0 ? 0.05 : virtue.xpProgress,
-                      backgroundColor: AppColors.cream,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.yellow),
-                      minHeight: 6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('Lvl ${virtue.level}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
-                Text('${virtue.xp} / ${virtue.xpToNextLevel} XP', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
-              ],
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: AppColors.tan2),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _ExpandableVirtueCard extends ConsumerStatefulWidget {
   final UserVirtue virtue;
@@ -1174,7 +1084,6 @@ class _ExpandableVirtueCard extends ConsumerStatefulWidget {
 
 class _ExpandableVirtueCardState extends ConsumerState<_ExpandableVirtueCard> {
   bool _isExpanded = false;
-  List<VirtueTask> _tasks = [];
   List<VirtueChatMessage> _chatMessages = [];
   List<VirtueMaterial> _materials = [];
   final _chatInputController = TextEditingController();
@@ -1184,7 +1093,6 @@ class _ExpandableVirtueCardState extends ConsumerState<_ExpandableVirtueCard> {
     if (_isLoadingData) return;
     setState(() => _isLoadingData = true);
     final repo = ref.read(wishRepositoryProvider);
-    _tasks = await repo.getVirtueTasks(widget.virtue.virtueName);
     _chatMessages = await repo.getVirtueChatMessages(widget.virtue.virtueName);
     _materials = await repo.getVirtueMaterials(widget.virtue.virtueName);
     if (mounted) setState(() => _isLoadingData = false);

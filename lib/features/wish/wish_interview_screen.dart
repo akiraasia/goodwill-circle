@@ -19,82 +19,129 @@ class _WishInterviewScreenState extends ConsumerState<WishInterviewScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isAiTyping = false;
   bool _isInterviewComplete = false;
-  final List<String> _interviewQuestions = [
-    'What virtues do you think are most needed for your wish?',
-    'How do you feel about connecting with others to build this virtue, versus working on it individually?',
-    'What challenges might you face on this journey?',
-    'How committed are you to this path?',
-  ];
-  int _currentQuestionIndex = 0;
+  int _interactionCount = 0;
   final Map<String, dynamic> _interviewData = {};
+  
+  late final GenerativeModel _model;
+  late final ChatSession _chat;
 
   @override
   void initState() {
     super.initState();
+    _model = FirebaseAI.googleAI().generativeModel(
+      model: 'gemini-1.5-flash',
+      systemInstruction: Content.system('''
+You are a wise, empathetic guide interviewing someone about their honest wish: "\${widget.initialWish}".
+Your goal is to discover their:
+- motivation
+- obstacles
+- fears
+- strengths
+- weaknesses
+- habits
+- support
+- time
+- confidence
+- desired future
+
+Rules:
+1. Ask ONE thoughtful question at a time.
+2. Keep the tone conversational, empathetic, and encouraging.
+3. Keep responses relatively concise (2-4 sentences max).
+4. Do not list out all the things you are trying to discover.
+5. After you have asked enough questions to gauge their physical, mental, and ethical state (usually 4-5 interactions), you MUST conclude by saying EXACTLY: "[INTERVIEW_COMPLETE]". Do not say anything else after that tag.
+'''),
+    );
+    _chat = _model.startChat();
     _startInterview();
   }
 
-  void _startInterview() {
+  Future<void> _startInterview() async {
     setState(() {
       _messages.add({
         'role': 'user',
-        'text': widget.initialWish,
+        'text': 'My honest wish is: \${widget.initialWish}',
       });
       _interviewData['initial_wish'] = widget.initialWish;
       _isAiTyping = true;
     });
 
-    _askNextQuestion();
-  }
-
-  void _askNextQuestion() {
-    if (_currentQuestionIndex >= _interviewQuestions.length) {
-      _completeInterview();
-      return;
-    }
-
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          _isAiTyping = false;
-          _messages.add({
-            'role': 'ai',
-            'text': _interviewQuestions[_currentQuestionIndex],
-          });
-        });
-        _scrollToBottom();
-      }
-    });
-  }
-
-  Future<void> _analyzeWithAI() async {
     try {
-      final aiLogic = FirebaseAI.instance;
+      final response = await _chat.sendMessage(Content.text('Hello. I am here to understand your wish. Let us begin.'));
+      setState(() {
+        _isAiTyping = false;
+        _messages.add({
+          'role': 'ai',
+          'text': response.text ?? 'Tell me more about this wish.',
+        });
+      });
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _isAiTyping = false;
+        _messages.add({'role': 'ai', 'text': 'How do you feel about this wish?'});
+      });
+    }
+  }
+
+  Future<Map<String, int>> _analyzeWithAI() async {
+    try {
+      final analysisModel = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-1.5-flash',
+      );
       
       final prompt = '''
-Analyze this wish interview and assign stats (physical, mental, ethical) from 1-5 based on the user's responses.
+Analyze this wish interview and assign stats (physical, mental, ethical) from 1-10 based on the user's responses.
 Also suggest 2-3 virtues from: Courage, Wisdom, Compassion, Discipline, Integrity.
 
-Wish: ${widget.initialWish}
-Interview Data: ${_interviewData.toString()}
+Wish: \${widget.initialWish}
+Interview Data: \${_interviewData.toString()}
 
-Return JSON format:
+Return JSON format exactly like this:
 {
-  "physical": 1-5,
-  "mental": 1-5, 
-  "ethical": 1-5,
-  "virtues": ["virtue1", "virtue2"],
+  "physical": 5,
+  "mental": 7, 
+  "ethical": 6,
+  "virtues": ["Courage", "Discipline"],
   "reasoning": "brief explanation"
 }
 ''';
 
-      final response = await aiLogic.generateText(prompt);
+      final response = await analysisModel.generateContent([Content.text(prompt)]);
       
-      // Parse the AI response to extract stats
-      // For now, use a simple heuristic based on interview content
-      final assignedStats = _heuristicStatAssignment();
+      final text = response.text ?? '';
       
-      final virtues = _extractVirtuesFromInterview();
+      int physical = 1;
+      int mental = 1;
+      int ethical = 1;
+      List<String> virtues = [];
+      
+      try {
+        // Very basic manual parsing if JSON decoding fails, but let's try to extract basic patterns
+        final RegExp physicalReg = RegExp(r'"physical"\s*:\s*(\d+)');
+        final RegExp mentalReg = RegExp(r'"mental"\s*:\s*(\d+)');
+        final RegExp ethicalReg = RegExp(r'"ethical"\s*:\s*(\d+)');
+        
+        if (physicalReg.hasMatch(text)) physical = int.parse(physicalReg.firstMatch(text)!.group(1)!);
+        if (mentalReg.hasMatch(text)) mental = int.parse(mentalReg.firstMatch(text)!.group(1)!);
+        if (ethicalReg.hasMatch(text)) ethical = int.parse(ethicalReg.firstMatch(text)!.group(1)!);
+        
+        if (text.contains('Courage')) virtues.add('Courage');
+        if (text.contains('Wisdom')) virtues.add('Wisdom');
+        if (text.contains('Compassion')) virtues.add('Compassion');
+        if (text.contains('Discipline')) virtues.add('Discipline');
+        if (text.contains('Integrity')) virtues.add('Integrity');
+        
+        if (virtues.isEmpty) virtues.add('Courage'); // fallback
+      } catch (e) {
+        // fallback
+      }
+      
+      final assignedStats = {
+        'physical': physical,
+        'mental': mental,
+        'ethical': ethical,
+      };
       
       // Save to wish history
       final repo = ref.read(wishHistoryRepositoryProvider);
@@ -108,73 +155,16 @@ Return JSON format:
       
       return assignedStats;
     } catch (e) {
-      print('AI analysis failed: $e');
-      // Fallback to heuristic assignment
+      print('AI analysis failed: \$e');
       return _heuristicStatAssignment();
     }
   }
 
   Map<String, int> _heuristicStatAssignment() {
-    int physical = 1;
-    int mental = 1;
-    int ethical = 1;
-
-    final text = _interviewData.values.join(' ').toLowerCase();
-    
-    // Simple keyword-based stat assignment
-    if (text.contains('fit') || text.contains('health') || text.contains('body') || text.contains('exercise')) {
-      physical = 3;
-    }
-    if (text.contains('learn') || text.contains('study') || text.contains('knowledge') || text.contains('wisdom')) {
-      mental = 3;
-    }
-    if (text.contains('help') || text.contains('kind') || text.contains('ethical') || text.contains('moral')) {
-      ethical = 3;
-    }
-    
-    // Boost based on wish content
-    final wish = widget.initialWish.toLowerCase();
-    if (wish.contains('anxiety') || wish.contains('fear')) {
-      physical = 2; // Courage relates to physical action
-      mental = 3;
-    }
-    if (wish.contains('learn') || wish.contains('skill') || wish.contains('knowledge')) {
-      mental = 4;
-    }
-    if (wish.contains('relationship') || wish.contains('friend') || wish.contains('connect')) {
-      ethical = 3;
-      mental = 2;
-    }
-
+    int physical = 2;
+    int mental = 2;
+    int ethical = 2;
     return {'physical': physical, 'mental': mental, 'ethical': ethical};
-  }
-
-  List<String> _extractVirtuesFromInterview() {
-    final virtues = <String>[];
-    final text = _interviewData.values.join(' ').toLowerCase() + ' ' + widget.initialWish.toLowerCase();
-    
-    if (text.contains('courage') || text.contains('fear') || text.contains('brave')) {
-      virtues.add('Courage');
-    }
-    if (text.contains('wisdom') || text.contains('learn') || text.contains('knowledge')) {
-      virtues.add('Wisdom');
-    }
-    if (text.contains('compassion') || text.contains('help') || text.contains('kind')) {
-      virtues.add('Compassion');
-    }
-    if (text.contains('discipline') || text.contains('habit') || text.contains('consistent')) {
-      virtues.add('Discipline');
-    }
-    if (text.contains('integrity') || text.contains('honest') || text.contains('truth')) {
-      virtues.add('Integrity');
-    }
-    
-    // Default to Courage if no virtues matched
-    if (virtues.isEmpty) {
-      virtues.add('Courage');
-    }
-    
-    return virtues;
   }
 
   void _completeInterview() {
@@ -182,14 +172,14 @@ Return JSON format:
       _isAiTyping = false;
       _messages.add({
         'role': 'ai',
-        'text': 'I understand. Are you ready to confirm these answers to be true so we can align your path?',
+        'text': 'I understand perfectly. Are you ready to confirm these answers to be true so we can align your path?',
       });
       _isInterviewComplete = true;
     });
     _scrollToBottom();
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
     
     final userText = _messageController.text.trim();
@@ -200,13 +190,32 @@ Return JSON format:
         'role': 'user',
         'text': userText,
       });
-      _interviewData['question_${_currentQuestionIndex}'] = userText;
+      _interactionCount++;
+      _interviewData['interaction_\$_interactionCount'] = userText;
       _isAiTyping = true;
     });
     _scrollToBottom();
 
-    _currentQuestionIndex++;
-    _askNextQuestion();
+    try {
+      final response = await _chat.sendMessage(Content.text(userText));
+      final aiResponse = response.text ?? '';
+      
+      if (aiResponse.contains('[INTERVIEW_COMPLETE]')) {
+        _completeInterview();
+      } else {
+        setState(() {
+          _isAiTyping = false;
+          _messages.add({'role': 'ai', 'text': aiResponse.replaceAll('[INTERVIEW_COMPLETE]', '').trim()});
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() {
+        _isAiTyping = false;
+        _messages.add({'role': 'ai', 'text': 'I had trouble hearing that. Could you repeat?'});
+      });
+      _scrollToBottom();
+    }
   }
 
   void _scrollToBottom() {
