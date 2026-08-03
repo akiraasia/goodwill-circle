@@ -78,7 +78,7 @@ class PathSelectionScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _buildStatCard('Mental / Focus', assignedStats['mental'] ?? 1, Icons.psychology, Colors.blue),
               const SizedBox(height: 16),
-              _buildStatCard('Ethical / Goodwill', assignedStats['ethical'] ?? 1, Icons.volunteer_activism, Colors.emeraldAccent),
+              _buildStatCard('Ethical / Goodwill', assignedStats['ethical'] ?? 1, Icons.volunteer_activism, const Color(0xFF34D399)),
               const SizedBox(height: 40),
               const Text(
                 'Your Transformation Begins',

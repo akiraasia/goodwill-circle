@@ -9,6 +9,9 @@ import '../data/wish_repository.dart';
 import '../../wish/wish_interview_screen.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
 
+const Color _emerald = Color(0xFF10B981);
+const Color _emeraldAccent = Color(0xFF34D399);
+
 class WishScreen extends ConsumerStatefulWidget {
   const WishScreen({super.key});
 
@@ -94,7 +97,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
               Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold))),
             ],
           ),
-          backgroundColor: isNowCompleted ? Colors.emerald : Colors.grey.shade800,
+          backgroundColor: isNowCompleted ? _emerald : Colors.grey.shade800,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
         ),
@@ -462,12 +465,12 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: habit.completedToday 
-                        ? Colors.emerald.withValues(alpha: 0.12)
+                        ? _emerald.withValues(alpha: 0.12)
                         : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: habit.completedToday
-                          ? Colors.emerald.withValues(alpha: 0.4)
+                          ? _emerald.withValues(alpha: 0.4)
                           : Colors.white.withValues(alpha: 0.08),
                     ),
                   ),
@@ -481,9 +484,9 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: habit.completedToday ? Colors.emerald : Colors.transparent,
+                            color: habit.completedToday ? _emerald : Colors.transparent,
                             border: Border.all(
-                              color: habit.completedToday ? Colors.emerald : Colors.white38,
+                              color: habit.completedToday ? _emerald : Colors.white38,
                               width: 2,
                             ),
                           ),
@@ -532,7 +535,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                                 const SizedBox(width: 8),
                                 Text('🔥 ${habit.streakDays}d streak', style: const TextStyle(color: Colors.orangeAccent, fontSize: 11)),
                                 const Spacer(),
-                                Text('+${habit.xpReward} XP', style: const TextStyle(color: Colors.emeraldAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                Text('+${habit.xpReward} XP', style: const TextStyle(color: _emeraldAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ],

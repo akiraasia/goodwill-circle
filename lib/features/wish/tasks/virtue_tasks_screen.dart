@@ -338,7 +338,7 @@ class _TaskCard extends ConsumerWidget {
     }
   }
 
-  void _handleTaskAction(BuildContext context, VirtueTask task) async {
+  void _handleTaskAction(BuildContext context, WidgetRef ref, VirtueTask task) async {
     final repo = ref.read(virtueTaskRepositoryProvider);
     
     if (task.isSocial && task.linkedRequestId != null) {
@@ -463,7 +463,7 @@ class _TaskCard extends ConsumerWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: task.status != TaskStatus.completed
-                        ? () => _handleTaskAction(context, task)
+                        ? () => _handleTaskAction(context, ref, task)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _statusColor,
