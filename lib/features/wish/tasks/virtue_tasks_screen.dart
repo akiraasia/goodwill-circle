@@ -94,7 +94,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
               await repo.insertTask(
                 virtueName: virtue,
                 taskType: TaskType.social,
-                title: 'Help: \${matchedRequest['title']}',
+                title: 'Help: ${matchedRequest["title"]}',
                 description: task['description'] ?? 'Help someone build $virtue.',
                 xpReward: task['xp'] ?? 50,
                 linkedRequestId: matchedRequest['id'] as String?,
@@ -108,7 +108,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
                 await repo.insertTask(
                   virtueName: virtue,
                   taskType: TaskType.social,
-                  title: 'Learn: \${matchedRequest['title']}',
+                  title: 'Learn: ${matchedRequest["title"]}',
                   description: task['description'] ?? 'Join this request to build your $virtue.',
                   xpReward: task['xp'] ?? 40,
                   linkedRequestId: matchedRequest['id'] as String?,
@@ -316,7 +316,7 @@ class _VirtueTaskList extends ConsumerWidget {
 // Task card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TaskCard extends StatelessWidget {
+class _TaskCard extends ConsumerWidget {
   final VirtueTask task;
   final Color accentColor;
 
@@ -369,7 +369,7 @@ class _TaskCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(

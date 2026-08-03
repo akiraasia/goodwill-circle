@@ -10,9 +10,9 @@ class PathSelectionScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -63,31 +63,31 @@ class PathSelectionScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 24),
               const Text(
-                'Stats Aligned',
+                'Path Aligned!',
                 style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               const Text(
-                'Based on your answers, your core path has been assigned the following stats:',
-                style: TextStyle(color: Colors.white60, fontSize: 16),
+                'Based on your answers, your core virtues, habits, and character attributes have been calibrated:',
+                style: TextStyle(color: Colors.white60, fontSize: 15),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              _buildStatCard('Physical', assignedStats['physical'] ?? 1, Icons.fitness_center, Colors.orange),
+              _buildStatCard('Physical / Energy', assignedStats['physical'] ?? 1, Icons.fitness_center, Colors.orange),
               const SizedBox(height: 16),
-              _buildStatCard('Mental', assignedStats['mental'] ?? 1, Icons.psychology, Colors.blue),
+              _buildStatCard('Mental / Focus', assignedStats['mental'] ?? 1, Icons.psychology, Colors.blue),
               const SizedBox(height: 16),
-              _buildStatCard('Ethical', assignedStats['ethical'] ?? 1, Icons.volunteer_activism, Colors.green),
-              const SizedBox(height: 48),
+              _buildStatCard('Ethical / Goodwill', assignedStats['ethical'] ?? 1, Icons.volunteer_activism, Colors.emeraldAccent),
+              const SizedBox(height: 40),
               const Text(
-                'Your Journey Awaits',
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                'Your Transformation Begins',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Story mode with visual novel choices is coming soon. For now, begin with task mode to start building your virtues through real-world actions.',
+              const SizedBox(height: 10),
+              const Text(
+                'Daily habits and virtue tasks have been created for your goal. Track habits, earn XP, level up your character, and connect with Goodwill Circle.',
                 style: TextStyle(color: Colors.white60, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -97,18 +97,18 @@ class PathSelectionScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Column(
                   children: [
-                    Icon(Icons.assignment, size: 32),
-                    SizedBox(height: 12),
-                    Text('Begin Task Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('Start with real-world actions', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                    Icon(Icons.bolt, size: 28),
+                    SizedBox(height: 6),
+                    Text('Activate My Habit & Virtue Path', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 2),
+                    Text('Start building daily habits & character', style: TextStyle(fontSize: 12, color: Colors.black54)),
                   ],
                 ),
               ),

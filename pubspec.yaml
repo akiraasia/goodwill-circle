@@ -74,6 +74,7 @@ flutter:
   assets:
     - week13_schema.sql
     - art/
+    - character/
     - goodwill-kindred-loop-main/src/assets/hero-hands.jpg
     - goodwill-kindred-loop-main/src/assets/chain.jpg
     - assets/badges/

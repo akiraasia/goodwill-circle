@@ -17,80 +17,6 @@ import 'package:goodwill_circle/features/growth_os/presentation/wish_screen.dart
 import 'package:goodwill_circle/features/profile/profile_screen.dart';
 import 'package:goodwill_circle/features/trust/trust_screen.dart';
 import 'package:goodwill_circle/features/confessions/confessions_screen.dart';
-
-final rootNavigatorKey = GlobalKey<NavigatorState>();
-final shellNavigatorKey = GlobalKey<NavigatorState>();
-
-final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
-    navigatorKey: rootNavigatorKey,
-    initialLocation: '/',
-    redirect: (context, state) {
-      final session = Supabase.instance.client.auth.currentSession;
-      final isProtectedRoute =
-          state.matchedLocation.startsWith('/campaigns') ||
-          state.matchedLocation.startsWith('/agenda') ||
-          state.matchedLocation.startsWith('/trust') ||
-          state.matchedLocation.startsWith('/wish') ||
-          state.matchedLocation.startsWith('/profile') ||
-          state.matchedLocation.startsWith('/create-request') ||
-          state.matchedLocation.startsWith('/create-agenda') ||
-          state.matchedLocation.startsWith('/create-campaign') ||
-          state.matchedLocation.startsWith('/campaign/');
-
-      if (session == null && isProtectedRoute) {
-        return '/auth';
-      }
-
-      return null;
-    },
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
-      GoRoute(
-        path: '/auth',
-        builder: (context, state) {
-          final query = state.uri.queryParameters;
-          return AuthScreen(
-            initialSignUp: query['mode'] == 'signup',
-            initialName: query['name'],
-            initialEmail: query['email'],
-          );
-        },
-      ),
-      GoRoute(
-        path: '/reset-password',
-        builder: (context, state) => const ResetPasswordScreen(),
-      ),
-      ShellRoute(
-        navigatorKey: shellNavigatorKey,
-        builder: (context, state, child) {
-          return AppScaffold(body: child);
-        },
-        routes: [
-          GoRoute(
-            path: '/app',
-            builder: (context, state) => const RequestsScreen(),
-          ),
-          GoRoute(
-            path: '/campaigns',
-            builder: (context, state) => const CampaignsScreen(),
-          ),
-          GoRoute(
-            path: '/agenda',
-            builder: (context, state) => const AgendaScreen(),
-          ),
-          GoRoute(
-            path: '/trust',
-            builder: (context, state) => const TrustScreen(),
-          ),
-          GoRoute(
-            path: '/wish',
-            builder: (context, state) => const WishScreen(),
-          ),
-          GoRoute(
-            path: '/confessions',
-            builder: (context, state) => const ConfessionsScreen(),
-          ),
           GoRoute(
             path: '/profile',
             builder: (context, state) {
@@ -98,10 +24,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 promptVerification: state.uri.queryParameters['verify'] == '1',
               );
             },
-          ),
-          GoRoute(
-            path: '/story',
-            builder: (context, state) => const StoryScreen(),
           ),
         ],
       ),

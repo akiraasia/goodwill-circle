@@ -50,3 +50,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# JDK installations (should not be committed)
+oracleJdk-26/
+oracleJdk*/
