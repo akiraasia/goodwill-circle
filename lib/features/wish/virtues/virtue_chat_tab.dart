@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
-import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'virtue_models.dart';
 import 'virtue_hub_repository.dart';

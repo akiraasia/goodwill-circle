@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
-import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'virtue_chat_tab.dart';
 import 'virtue_materials_tab.dart';
 

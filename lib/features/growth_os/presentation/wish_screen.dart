@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
@@ -6,7 +5,6 @@ import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/shared/widgets/mascot_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/wish_repository.dart';
-import '../../wish/wish_interview_screen.dart';
 import '../../wish/wish_entry_screen.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
 
@@ -20,13 +18,11 @@ class WishScreen extends ConsumerStatefulWidget {
 class _WishScreenState extends ConsumerState<WishScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _activeWish;
-  WishStats? _stats;
   List<UserVirtue> _virtues = [];
   List<Habit> _habits = [];
   List<HelpRequest> _communityRequests = [];
 
-  int _onboardingStage = 0; // 0 = Dashboard, 1 = Wish Entry, 2 = Interview
-  String _rawWishText = '';
+  int _onboardingStage = 0; // 0 = Dashboard, 1 = Wish Entry
 
   @override
   void initState() {
@@ -383,7 +379,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   }
 
   Widget _buildDashboard() {
-    final completedHabitsCount = _habits.where((h) => h.completedToday).length;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -640,7 +635,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                       const SizedBox(height: 4),
                       Text(
                         req.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.textMid,
                           fontSize: 13,
                         ),
@@ -652,7 +647,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );

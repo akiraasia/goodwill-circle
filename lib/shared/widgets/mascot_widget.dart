@@ -43,7 +43,6 @@ class MascotWidget extends StatelessWidget {
       case MascotState.welcoming:
       case MascotState.listening:
       case MascotState.idle:
-      default:
         return svgWidget;
     }
   }
