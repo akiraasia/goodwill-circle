@@ -43,7 +43,6 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     if (_activeWish != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_completed_wish', true);
-      _stats = await repo.getUserStats();
       _virtues = await repo.getUserVirtues();
       _habits = await repo.getUserHabits();
       _communityRequests = await repo.getRecommendedHelpRequests('Ethical');
