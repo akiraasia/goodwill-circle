@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
+import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'virtue_models.dart';
 import 'virtue_hub_repository.dart';
 
-/// Real-time chat room for a specific virtue.
-/// Users talk to others building the same virtue.
 class VirtueChatTab extends StatefulWidget {
   final String virtue;
   final Color accentColor;
@@ -92,11 +92,6 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
     );
   }
 
-  bool get _isMyMessage {
-    // Compared by sender name (simple heuristic; real check uses uid)
-    return true;
-  }
-
   String _initials(String name) {
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -106,38 +101,36 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(child: CircularProgressIndicator(color: AppColors.red));
     }
-
-    final myUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
 
     return Column(
       children: [
-        // ── Header ────────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: widget.accentColor.withOpacity(0.08),
+          color: AppColors.redPale,
           child: Row(
             children: [
-              Icon(Icons.people, color: widget.accentColor, size: 18),
+              const Icon(Icons.people, color: AppColors.red, size: 18),
               const SizedBox(width: 8),
               Text(
                 '${widget.virtue} Community Room',
-                style: TextStyle(
-                    color: widget.accentColor,
-                    fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: AppColors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
         ),
 
-        // ── Messages ──────────────────────────────────────────────────────
         Expanded(
           child: _messages.isEmpty
               ? Center(
                   child: Text(
                     'Be the first to speak in the ${widget.virtue} room!',
-                    style: const TextStyle(color: Colors.white38),
+                    style: const TextStyle(color: AppColors.textLight),
                     textAlign: TextAlign.center,
                   ),
                 )
@@ -147,7 +140,6 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
                   itemCount: _messages.length,
                   itemBuilder: (ctx, i) {
                     final msg = _messages[i];
-                    // We treat same userId as "mine" — fallback to name comparison
                     final isMe = msg.senderName == _myName;
 
                     return Padding(
@@ -161,14 +153,14 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
                           if (!isMe) ...[
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor:
-                                  widget.accentColor.withOpacity(0.25),
+                              backgroundColor: AppColors.redPale,
                               child: Text(
                                 _initials(msg.senderName),
-                                style: TextStyle(
-                                    color: widget.accentColor,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: AppColors.red,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -181,37 +173,40 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
                               children: [
                                 if (!isMe)
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 4, left: 4),
+                                    padding: const EdgeInsets.only(bottom: 4, left: 4),
                                     child: Text(
                                       msg.senderName,
-                                      style: TextStyle(
-                                          color: widget.accentColor,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        color: AppColors.red,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 10),
                                   decoration: BoxDecoration(
-                                    color: isMe
-                                        ? widget.accentColor.withOpacity(0.25)
-                                        : Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(16)
-                                        .copyWith(
-                                          bottomRight: isMe
-                                              ? const Radius.circular(4)
-                                              : const Radius.circular(16),
-                                          bottomLeft: isMe
-                                              ? const Radius.circular(16)
-                                              : const Radius.circular(4),
-                                        ),
+                                    color: isMe ? AppColors.red : AppColors.white,
+                                    borderRadius: BorderRadius.circular(16).copyWith(
+                                      bottomRight: isMe
+                                          ? const Radius.circular(4)
+                                          : const Radius.circular(16),
+                                      bottomLeft: isMe
+                                          ? const Radius.circular(16)
+                                          : const Radius.circular(4),
+                                    ),
+                                    border: Border.all(
+                                      color: isMe ? AppColors.red : AppColors.tan1,
+                                      width: 1.5,
+                                    ),
                                   ),
                                   child: Text(
                                     msg.message,
-                                    style: const TextStyle(
-                                        color: Colors.white, fontSize: 14),
+                                    style: TextStyle(
+                                      color: isMe ? AppColors.white : AppColors.textDark,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -224,27 +219,25 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
                 ),
         ),
 
-        // ── Input ─────────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          color: Colors.black.withOpacity(0.3),
+          color: AppColors.cream,
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: AppColors.textDark),
                   decoration: InputDecoration(
                     hintText: 'Share your ${widget.virtue} journey...',
-                    hintStyle: const TextStyle(color: Colors.white38),
+                    hintStyle: const TextStyle(color: AppColors.textLight),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
+                    fillColor: AppColors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+                      borderSide: const BorderSide(color: AppColors.tan1),
                     ),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   ),
                   onSubmitted: (_) => _send(),
                 ),
@@ -252,10 +245,10 @@ class _VirtueChatTabState extends State<VirtueChatTab> {
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: _send,
-                child: CircleAvatar(
+                child: const CircleAvatar(
                   radius: 22,
-                  backgroundColor: widget.accentColor,
-                  child: const Icon(Icons.send, color: Colors.black, size: 18),
+                  backgroundColor: AppColors.red,
+                  child: Icon(Icons.send, color: AppColors.white, size: 18),
                 ),
               ),
             ],

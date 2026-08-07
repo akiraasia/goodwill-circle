@@ -35,7 +35,12 @@ class RatController extends ChangeNotifier {
     controller.addListener(notifyListeners);
     controller.addStatusListener(_handleStatus);
     _animationController = controller;
-    controller.repeat();
+    if (_current.loops) {
+      controller.repeat();
+    } else {
+      controller.duration = _current.duration;
+      controller.forward();
+    }
     notifyListeners();
   }
 

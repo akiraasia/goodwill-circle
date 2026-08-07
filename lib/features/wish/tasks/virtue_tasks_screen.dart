@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
+import 'package:goodwill_circle/core/theme/app_theme.dart';
+import 'package:goodwill_circle/shared/widgets/mascot_widget.dart';
 import 'virtue_task.dart';
 import 'virtue_task_repository.dart';
 import 'wish_task_generator.dart';
 
-/// The main Task Mode screen for the Wish Module.
-/// Shows AI-assigned virtue tasks and lets users toggle between
-/// individual (solo) tasks and social tasks that connect them to
-/// real help requests in the community.
 class VirtueTasksScreen extends ConsumerStatefulWidget {
-  /// The virtues the AI assigned to this user based on their wish interview.
   final List<String> assignedVirtues;
 
   const VirtueTasksScreen({Key? key, required this.assignedVirtues}) : super(key: key);
@@ -22,19 +20,17 @@ class VirtueTasksScreen extends ConsumerStatefulWidget {
 class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _showSocial = true; // Toggle: social or individual
+  bool _showSocial = true;
   bool _isGeneratingTasks = false;
 
-  // Virtue -> accent color mapping
   static const _virtueColors = {
-    'Courage': Color(0xFFFF6B6B),
-    'Wisdom': Color(0xFF4ECDC4),
-    'Compassion': Color(0xFFFFE66D),
-    'Discipline': Color(0xFF95E1D3),
-    'Integrity': Color(0xFFA8E6CF),
+    'Courage': AppColors.red,
+    'Wisdom': Color(0xFF3B82F6),
+    'Compassion': Color(0xFFEC4899),
+    'Discipline': Color(0xFF10B981),
+    'Integrity': Color(0xFF8B5CF6),
   };
 
-  // Virtue -> icon mapping
   static const _virtueIcons = {
     'Courage': Icons.local_fire_department,
     'Wisdom': Icons.auto_stories,
@@ -47,7 +43,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: widget.assignedVirtues.length,
+      length: widget.assignedVirtues.isEmpty ? 1 : widget.assignedVirtues.length,
       vsync: this,
     );
     _generateInitialTasks();
@@ -57,23 +53,16 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     final repo = ref.read(virtueTaskRepositoryProvider);
     final existingTasks = await repo.getMyTasks();
     
-    // Only generate tasks if user has no tasks yet
     if (existingTasks.isEmpty) {
       setState(() => _isGeneratingTasks = true);
-      
-      // We will need the wish text. For now, since this screen is usually accessed
-      // after onboarding, we should fetch it or just use a generic wish string if not available.
-      // Ideally we get it from wishRepositoryProvider.
       String userWish = 'To grow and become a better person';
-      
       final taskGenerator = WishTaskGenerator();
       
       for (final virtue in widget.assignedVirtues) {
-        // Generate AI tasks
         final generated = await taskGenerator.generateDualTrackTasks(
           wish: userWish,
           virtue: virtue,
-          currentLevel: 1, // default
+          currentLevel: 1,
         );
         
         for (final task in generated) {
@@ -86,7 +75,6 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
               xpReward: task['xp'] ?? 20,
             );
           } else {
-            // Social task - try to find matching requests first
             bool matched = false;
             final helperMatches = await repo.findMatchedRequests(virtue: virtue, role: 'helper');
             if (helperMatches.isNotEmpty) {
@@ -118,7 +106,6 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
               }
             }
             
-            // If no matched request, we still insert it as a generic social task
             if (!matched) {
               await repo.insertTask(
                 virtueName: virtue,
@@ -138,8 +125,6 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     }
   }
 
-
-
   @override
   void dispose() {
     _tabController.dispose();
@@ -147,7 +132,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
   }
 
   Color _virtueColor(String virtue) =>
-      _virtueColors[virtue] ?? const Color(0xFF9B59B6);
+      _virtueColors[virtue] ?? AppColors.red;
 
   IconData _virtueIcon(String virtue) =>
       _virtueIcons[virtue] ?? Icons.star;
@@ -155,28 +140,48 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: AppColors.cream,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.cream,
         elevation: 0,
-        title: const Text(
-          'Your Path',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
+        title: const Text(
+          'Your Path Tasks',
+          style: TextStyle(
+            color: AppColors.red,
+            fontFamily: 'Georgia',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: TextButton.icon(
+              onPressed: () => context.go('/app'),
+              icon: const Icon(Icons.home, size: 16, color: AppColors.red),
+              label: const Text('Home', style: TextStyle(color: AppColors.red)),
+            ),
+          ),
+        ],
         bottom: widget.assignedVirtues.length > 1
             ? TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                indicatorColor: Colors.white,
+                indicatorColor: AppColors.red,
+                labelColor: AppColors.red,
+                unselectedLabelColor: AppColors.textLight,
                 tabs: widget.assignedVirtues
                     .map((v) => Tab(
                           child: Row(
                             children: [
-                              Icon(_virtueIcon(v),
-                                  color: _virtueColor(v), size: 16),
+                              Icon(_virtueIcon(v), color: _virtueColor(v), size: 16),
                               const SizedBox(width: 6),
-                              Text(v,
-                                  style: const TextStyle(color: Colors.white)),
+                              Text(v),
                             ],
                           ),
                         ))
@@ -189,23 +194,23 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Colors.white),
+                  CircularProgressIndicator(color: AppColors.red),
                   SizedBox(height: 16),
                   Text(
                     'Generating your personalized tasks...',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: AppColors.textMid),
                   ),
                 ],
               ),
             )
           : Column(
               children: [
-                // ── Social / Individual Toggle ─────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: Container(
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.07),
+                      color: AppColors.tan1.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
@@ -226,8 +231,6 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
                     ),
                   ),
                 ),
-
-                // ── Virtue Tab Content ─────────────────────────────────────────
                 Expanded(
                   child: widget.assignedVirtues.length > 1
                       ? TabBarView(
@@ -242,8 +245,11 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
                         )
                       : widget.assignedVirtues.isEmpty
                           ? const Center(
-                              child: Text('No virtues assigned yet.',
-                                  style: TextStyle(color: Colors.white54)))
+                              child: Text(
+                                'No values assigned yet.',
+                                style: TextStyle(color: AppColors.textLight),
+                              ),
+                            )
                           : _VirtueTaskList(
                               virtue: widget.assignedVirtues.first,
                               showSocial: _showSocial,
@@ -255,10 +261,6 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Per-virtue task list
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _VirtueTaskList extends ConsumerWidget {
   final String virtue;
@@ -283,12 +285,11 @@ class _VirtueTaskList extends ConsumerWidget {
       future: tasksAsync,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Colors.white));
+          return const Center(child: CircularProgressIndicator(color: AppColors.red));
         }
 
         final tasks = (snapshot.data ?? [])
-            .where((t) =>
-                showSocial ? t.isSocial : t.isIndividual)
+            .where((t) => showSocial ? t.isSocial : t.isIndividual)
             .toList();
 
         if (tasks.isEmpty) {
@@ -312,10 +313,6 @@ class _VirtueTaskList extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Task card
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _TaskCard extends ConsumerWidget {
   final VirtueTask task;
   final Color accentColor;
@@ -324,17 +321,17 @@ class _TaskCard extends ConsumerWidget {
 
   Color get _statusColor {
     switch (task.status) {
-      case TaskStatus.completed: return Colors.green;
-      case TaskStatus.inProgress: return Colors.amber;
-      default: return Colors.white24;
+      case TaskStatus.completed: return Colors.green.shade600;
+      case TaskStatus.inProgress: return AppColors.red;
+      default: return AppColors.red;
     }
   }
 
   String get _statusLabel {
     switch (task.status) {
-      case TaskStatus.completed: return 'Done';
+      case TaskStatus.completed: return 'Completed 🌱';
       case TaskStatus.inProgress: return 'In Progress';
-      default: return task.isSocial ? 'View Request' : 'Start Task';
+      default: return task.isSocial ? 'View Opportunity' : 'Start Task';
     }
   }
 
@@ -342,27 +339,17 @@ class _TaskCard extends ConsumerWidget {
     final repo = ref.read(virtueTaskRepositoryProvider);
     
     if (task.isSocial && task.linkedRequestId != null) {
-      // Navigate to the linked help request
       if (context.mounted) {
-        context.go('/app'); // Navigate to main app where requests are shown
+        context.go('/app');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Navigate to request: ${task.linkedRequestId}'),
-            action: SnackBarAction(
-              label: 'Go',
-              onPressed: () {
-                // TODO: Implement direct navigation to specific request
-              },
-            ),
-          ),
+          SnackBar(content: Text('Opening community request: ${task.linkedRequestId}')),
         );
       }
     } else {
-      // Individual task - mark as in progress
       await repo.updateTaskStatus(task.id, TaskStatus.inProgress);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Task started! Complete it to earn XP.')),
+          const SnackBar(content: Text('Task started! 🌱')),
         );
       }
     }
@@ -373,59 +360,47 @@ class _TaskCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentColor.withOpacity(0.25), width: 1),
+        border: Border.all(color: AppColors.tan1, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textDark.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header strip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.12),
+              color: AppColors.redPale,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
                 Icon(
                   task.isSocial ? Icons.people : Icons.self_improvement,
-                  color: accentColor,
+                  color: AppColors.red,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     task.title,
-                    style: TextStyle(
-                      color: Colors.white,
+                    style: const TextStyle(
+                      color: AppColors.textDark,
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                    ),
-                  ),
-                ),
-                // XP badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '+${task.xpReward} XP',
-                    style: TextStyle(
-                      color: accentColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-
-          // Body
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -433,32 +408,9 @@ class _TaskCard extends ConsumerWidget {
               children: [
                 Text(
                   task.description,
-                  style: const TextStyle(color: Colors.white70, height: 1.5),
+                  style: const TextStyle(color: AppColors.textMid, height: 1.5, fontSize: 14),
                 ),
-                if (task.isSocial && task.socialRole != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        task.socialRole == 'helper'
-                            ? Icons.volunteer_activism
-                            : Icons.school,
-                        color: accentColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        task.socialRole == 'helper'
-                            ? 'You will act as a Helper'
-                            : 'You will join as a Learner (Helpee)',
-                        style:
-                            TextStyle(color: accentColor, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 16),
-                // Action button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -467,9 +419,9 @@ class _TaskCard extends ConsumerWidget {
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _statusColor,
-                      foregroundColor: Colors.black,
+                      foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(100),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -487,10 +439,6 @@ class _TaskCard extends ConsumerWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty state — shown when no tasks exist yet for this virtue + type
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyTaskState extends StatelessWidget {
   final String virtue;
@@ -511,26 +459,25 @@ class _EmptyTaskState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              showSocial ? Icons.people_outline : Icons.self_improvement,
-              color: accentColor.withOpacity(0.5),
-              size: 64,
-            ),
+            const MascotWidget(height: 120),
             const SizedBox(height: 24),
             Text(
               showSocial
                   ? 'No community tasks yet for $virtue'
                   : 'No solo tasks yet for $virtue',
               style: const TextStyle(
-                  color: Colors.white70, fontSize: 16),
+                color: AppColors.textDark,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               showSocial
                   ? 'We are looking for people in the community who need your help building $virtue together.'
                   : 'Individual tasks for $virtue will be generated based on your wish.',
-              style: const TextStyle(color: Colors.white38, fontSize: 14, height: 1.5),
+              style: const TextStyle(color: AppColors.textMid, fontSize: 13, height: 1.4),
               textAlign: TextAlign.center,
             ),
           ],
@@ -539,10 +486,6 @@ class _EmptyTaskState extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Toggle tab widget
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _ToggleTab extends StatelessWidget {
   final String label;
@@ -563,28 +506,28 @@ class _ToggleTab extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
+            color: isSelected ? AppColors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(26),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 16,
-                  color: isSelected ? Colors.black : Colors.white54),
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.red : AppColors.textMid,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.black : Colors.white54,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 13,
+                  color: isSelected ? AppColors.red : AppColors.textMid,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
                 ),
               ),
             ],

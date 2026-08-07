@@ -46,9 +46,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _navigateAfterAuth(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    final hasVisitedWish = prefs.getBool('has_visited_wish_module') ?? false;
+    final hasCompletedWish = prefs.getBool('has_completed_wish') ?? false;
     if (context.mounted) {
-      context.go(hasVisitedWish ? '/app' : '/wish');
+      context.go(hasCompletedWish ? '/app' : '/wish');
     }
   }
 

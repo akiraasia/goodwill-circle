@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
+import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'virtue_models.dart';
 import 'virtue_hub_repository.dart';
 
-/// Materials board for a specific virtue.
-/// Think of it like a Reddit/Pinterest board for memes, books, songs, etc.
 class VirtueMaterialsTab extends ConsumerStatefulWidget {
   final String virtue;
   final Color accentColor;
@@ -22,35 +22,25 @@ class VirtueMaterialsTab extends ConsumerStatefulWidget {
 }
 
 class _VirtueMaterialsTabState extends ConsumerState<VirtueMaterialsTab> {
-  static const _types = ['meme', 'book', 'song', 'video', 'article'];
-
-  static const _typeIcons = {
-    'meme': Icons.insert_emoticon,
-    'book': Icons.menu_book,
-    'song': Icons.music_note,
-    'video': Icons.play_circle_outline,
-    'article': Icons.article_outlined,
-  };
-
   @override
   Widget build(BuildContext context) {
     final materialsAsync =
         ref.watch(virtueMaterialsProvider(widget.virtue));
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.cream,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: widget.accentColor,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.red,
+        foregroundColor: AppColors.white,
         onPressed: () => _showPostDialog(context),
         icon: const Icon(Icons.add),
-        label: const Text('Post', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text('Share Material', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: materialsAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
+            const Center(child: CircularProgressIndicator(color: AppColors.red)),
         error: (e, _) =>
-            Center(child: Text('Error: $e', style: const TextStyle(color: Colors.red))),
+            Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.red))),
         data: (materials) {
           if (materials.isEmpty) {
             return _EmptyMaterialsState(
@@ -77,7 +67,7 @@ class _VirtueMaterialsTabState extends ConsumerState<VirtueMaterialsTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF141428),
+      backgroundColor: AppColors.cream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -89,10 +79,6 @@ class _VirtueMaterialsTabState extends ConsumerState<VirtueMaterialsTab> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Material card
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _MaterialCard extends StatelessWidget {
   final VirtueMaterial material;
@@ -115,18 +101,23 @@ class _MaterialCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accentColor.withOpacity(0.15)),
+        border: Border.all(color: AppColors.tan1, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textDark.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image preview if available
           if (material.imageUrl != null)
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
               child: Image.network(
                 material.imageUrl!,
                 height: 160,
@@ -135,77 +126,68 @@ class _MaterialCard extends StatelessWidget {
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Type chip + upvotes
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.15),
+                        color: AppColors.redPale,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         children: [
-                          Icon(icon, color: accentColor, size: 13),
+                          Icon(icon, color: AppColors.red, size: 13),
                           const SizedBox(width: 4),
                           Text(
                             material.materialType.toUpperCase(),
-                            style: TextStyle(
-                                color: accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5),
+                            style: const TextStyle(
+                              color: AppColors.red,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const Spacer(),
-                    Icon(Icons.thumb_up_outlined,
-                        color: Colors.white38, size: 14),
+                    const Icon(Icons.thumb_up_outlined, color: AppColors.textLight, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       '${material.upvotes}',
-                      style: const TextStyle(color: Colors.white38, fontSize: 13),
+                      style: const TextStyle(color: AppColors.textLight, fontSize: 13),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-
-                // Title
                 Text(
                   material.title,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold),
+                    color: AppColors.textDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                if (material.description != null &&
-                    material.description!.isNotEmpty) ...[
+                if (material.description != null && material.description!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     material.description!,
-                    style:
-                        const TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
+                    style: const TextStyle(color: AppColors.textMid, fontSize: 13, height: 1.4),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 const SizedBox(height: 10),
-
-                // Footer
                 Row(
                   children: [
                     Text(
                       'by ${material.posterName}',
-                      style:
-                          const TextStyle(color: Colors.white38, fontSize: 12),
+                      style: const TextStyle(color: AppColors.textLight, fontSize: 12),
                     ),
                     const Spacer(),
                     if (material.url != null)
@@ -213,17 +195,14 @@ class _MaterialCard extends StatelessWidget {
                         onPressed: () async {
                           final uri = Uri.tryParse(material.url!);
                           if (uri != null && await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
                           }
                         },
                         icon: const Icon(Icons.open_in_new, size: 14),
                         label: const Text('Open'),
                         style: TextButton.styleFrom(
-                          foregroundColor: accentColor,
+                          foregroundColor: AppColors.red,
                           visualDensity: VisualDensity.compact,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         ),
                       ),
                   ],
@@ -236,10 +215,6 @@ class _MaterialCard extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Post material sheet
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PostMaterialSheet extends StatefulWidget {
   final String virtue;
@@ -330,20 +305,20 @@ class _PostMaterialSheetState extends State<_PostMaterialSheet> {
               Text(
                 'Share to ${widget.virtue} Board',
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
+                  color: AppColors.red,
+                  fontFamily: 'Georgia',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.white54),
+                icon: const Icon(Icons.close, color: AppColors.textMid),
               ),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Type selector
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -355,30 +330,27 @@ class _PostMaterialSheetState extends State<_PostMaterialSheet> {
                 final selected = t == _selectedType;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedType = t),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? widget.accentColor
-                          : Colors.white.withOpacity(0.08),
+                      color: selected ? AppColors.red : AppColors.white,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected ? AppColors.red : AppColors.tan1,
+                      ),
                     ),
                     child: Row(
                       children: [
                         Icon(_typeIcons[t],
                             size: 14,
-                            color: selected ? Colors.black : Colors.white60),
+                            color: selected ? AppColors.white : AppColors.textMid),
                         const SizedBox(width: 4),
                         Text(
                           t[0].toUpperCase() + t.substring(1),
                           style: TextStyle(
-                            color: selected ? Colors.black : Colors.white60,
+                            color: selected ? AppColors.white : AppColors.textMid,
                             fontSize: 13,
-                            fontWeight: selected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ],
@@ -389,39 +361,41 @@ class _PostMaterialSheetState extends State<_PostMaterialSheet> {
             ),
           ),
           const SizedBox(height: 16),
-
-          _Field(controller: _titleController, hint: 'Title *', maxLines: 1),
+          TextField(
+            controller: _titleController,
+            style: const TextStyle(color: AppColors.textDark),
+            decoration: const InputDecoration(hintText: 'Title *'),
+          ),
           const SizedBox(height: 10),
-          _Field(
-              controller: _descController,
-              hint: 'Description (optional)',
-              maxLines: 2),
+          TextField(
+            controller: _descController,
+            style: const TextStyle(color: AppColors.textDark),
+            decoration: const InputDecoration(hintText: 'Description (optional)'),
+            maxLines: 2,
+          ),
           const SizedBox(height: 10),
-          _Field(
-              controller: _urlController,
-              hint: 'Link / URL (optional)',
-              maxLines: 1),
+          TextField(
+            controller: _urlController,
+            style: const TextStyle(color: AppColors.textDark),
+            decoration: const InputDecoration(hintText: 'Link / URL (optional)'),
+          ),
           const SizedBox(height: 20),
-
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isPosting ? null : _post,
               style: ElevatedButton.styleFrom(
-                backgroundColor: widget.accentColor,
-                foregroundColor: Colors.black,
+                backgroundColor: AppColors.red,
+                foregroundColor: AppColors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
               ),
               child: _isPosting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.black))
-                  : const Text('Post to Board',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white))
+                  : const Text('Post to Board', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -429,40 +403,6 @@ class _PostMaterialSheetState extends State<_PostMaterialSheet> {
     );
   }
 }
-
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final int maxLines;
-
-  const _Field(
-      {required this.controller, required this.hint, required this.maxLines});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.07),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty state
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyMaterialsState extends StatelessWidget {
   final String virtue;
@@ -484,21 +424,21 @@ class _EmptyMaterialsState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.collections_bookmark_outlined,
-                color: accentColor.withOpacity(0.4), size: 64),
+                color: AppColors.red.withValues(alpha: 0.5), size: 64),
             const SizedBox(height: 20),
             Text(
               'Nothing shared yet for $virtue',
               style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold),
+                color: AppColors.textDark,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             const Text(
               'Found an inspiring book, meme, or song? Be the first to share it with the community!',
-              style:
-                  TextStyle(color: Colors.white38, fontSize: 14, height: 1.5),
+              style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -507,12 +447,10 @@ class _EmptyMaterialsState extends StatelessWidget {
               icon: const Icon(Icons.add),
               label: const Text('Share Something'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: AppColors.red,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Model for storing user's wish history and story progression
@@ -31,21 +33,33 @@ class WishHistory {
 
   factory WishHistory.fromJson(Map<String, dynamic> json) {
     return WishHistory(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      initialWish: json['initial_wish'] as String,
-      interviewData: json['interview_data'] as Map<String, dynamic>? ?? {},
+      id: json['id'] as String? ?? 'cached_wish',
+      userId: json['user_id'] as String? ?? 'local_user',
+      initialWish: json['initial_wish'] as String? ?? '',
+      interviewData: json['interview_data'] is Map<String, dynamic>
+          ? json['interview_data'] as Map<String, dynamic>
+          : {},
       assignedVirtues: List<String>.from(json['assigned_virtues'] as List? ?? []),
-      assignedStats: Map<String, int>.from(json['assigned_stats'] as Map? ?? {'physical': 1, 'mental': 1, 'ethical': 1}),
+      assignedStats: Map<String, int>.from(
+        json['assigned_stats'] as Map? ?? {'physical': 5, 'mental': 5, 'ethical': 5},
+      ),
       pathMode: json['path_mode'] as String? ?? 'task',
-      storyProgress: json['story_progress'] as Map<String, dynamic>? ?? {},
-      completionStatus: json['completion_status'] as String? ?? 'started',
-      createdAt: DateTime.parse(json['created_at'] as String),
-      lastUpdatedAt: DateTime.parse(json['last_updated_at'] as String),
+      storyProgress: json['story_progress'] is Map<String, dynamic>
+          ? json['story_progress'] as Map<String, dynamic>
+          : {},
+      completionStatus: json['completion_status'] as String? ?? 'completed',
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      lastUpdatedAt: json['last_updated_at'] != null
+          ? DateTime.parse(json['last_updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
     'initial_wish': initialWish,
     'interview_data': interviewData,
     'assigned_virtues': assignedVirtues,
@@ -53,6 +67,8 @@ class WishHistory {
     'path_mode': pathMode,
     'story_progress': storyProgress,
     'completion_status': completionStatus,
+    'created_at': createdAt.toIso8601String(),
+    'last_updated_at': lastUpdatedAt.toIso8601String(),
   };
 }
 
@@ -64,21 +80,43 @@ class WishHistoryRepository {
 
   /// Get or create the current user's wish history
   Future<WishHistory?> getCurrentWish() async {
+    final prefs = await SharedPreferences.getInstance();
+
     final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return null;
+    if (userId == null) {
+      final cached = prefs.getString('cached_wish_history');
+      if (cached != null) {
+        try {
+          return WishHistory.fromJson(jsonDecode(cached));
+        } catch (_) {}
+      }
+      return null;
+    }
 
     try {
       final response = await _supabase
           .from('wish_history')
           .select()
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
-      return WishHistory.fromJson(response as Map<String, dynamic>);
+      if (response != null) {
+        final wish = WishHistory.fromJson(response);
+        await prefs.setString('cached_wish_history', jsonEncode(wish.toJson()));
+        return wish;
+      }
     } catch (e) {
-      // No wish history found
-      return null;
+      // Fall back to SharedPreferences on network or database error
     }
+
+    final cached = prefs.getString('cached_wish_history');
+    if (cached != null) {
+      try {
+        return WishHistory.fromJson(jsonDecode(cached));
+      } catch (_) {}
+    }
+
+    return null;
   }
 
   /// Create a new wish history entry
@@ -89,36 +127,60 @@ class WishHistoryRepository {
     Map<String, int>? assignedStats,
     String pathMode = 'task',
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_completed_wish', true);
+
     final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('User not authenticated');
+    final nowStr = DateTime.now().toIso8601String();
 
-    try {
-      // First, delete any existing wish for this user (upsert)
-      await _supabase
-          .from('wish_history')
-          .delete()
-          .eq('user_id', userId);
-    } catch (_) {
-      // Ignore if no existing record
-    }
-
-    final data = {
-      'user_id': userId,
+    final localData = {
+      'id': 'wish_${DateTime.now().millisecondsSinceEpoch}',
+      'user_id': userId ?? 'local_user',
       'initial_wish': initialWish,
       'interview_data': interviewData ?? {},
-      'assigned_virtues': assignedVirtues ?? [],
-      'assigned_stats': assignedStats ?? {'physical': 1, 'mental': 1, 'ethical': 1},
+      'assigned_virtues': assignedVirtues ?? ['Courage'],
+      'assigned_stats': assignedStats ?? {'physical': 5, 'mental': 5, 'ethical': 5},
       'path_mode': pathMode,
-      'completion_status': 'started',
+      'story_progress': {},
+      'completion_status': 'completed',
+      'created_at': nowStr,
+      'last_updated_at': nowStr,
     };
 
-    final response = await _supabase
-        .from('wish_history')
-        .insert(data)
-        .select()
-        .single();
+    await prefs.setString('cached_wish_history', jsonEncode(localData));
 
-    return WishHistory.fromJson(response as Map<String, dynamic>);
+    if (userId != null) {
+      try {
+        await _supabase
+            .from('wish_history')
+            .delete()
+            .eq('user_id', userId);
+      } catch (_) {}
+
+      try {
+        final response = await _supabase
+            .from('wish_history')
+            .insert({
+              'user_id': userId,
+              'initial_wish': initialWish,
+              'interview_data': interviewData ?? {},
+              'assigned_virtues': assignedVirtues ?? [],
+              'assigned_stats': assignedStats ?? {'physical': 5, 'mental': 5, 'ethical': 5},
+              'path_mode': pathMode,
+              'completion_status': 'completed',
+            })
+            .select()
+            .single();
+
+        final wish = WishHistory.fromJson(response);
+        await prefs.setString('cached_wish_history', jsonEncode(wish.toJson()));
+        return wish;
+      } catch (e) {
+        // Continue with local cached version if remote insert fails
+      }
+    }
+
+    return WishHistory.fromJson(localData);
   }
 
   /// Update existing wish history with new data
@@ -151,7 +213,7 @@ class WishHistoryRepository {
         .select()
         .single();
 
-    return WishHistory.fromJson(response as Map<String, dynamic>);
+    return WishHistory.fromJson(response);
   }
 
   /// Delete wish history (user starts over)

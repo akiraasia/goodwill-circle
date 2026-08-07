@@ -128,14 +128,18 @@ class _RatArtwork extends StatelessWidget {
       fit: StackFit.expand,
       children: <Widget>[
         for (final definition in RatParts.ordered)
-          _RatLayer(definition: definition, pose: pose, unit: unit),
+          Positioned.fill(
+            child: _RatLayer(definition: definition, pose: pose, unit: unit),
+          ),
         if (pose.particles > 0 || pose.glow > 0)
-          IgnorePointer(
-            child: CustomPaint(
-              painter: _RatParticlesPainter(
-                progress: pose.progress,
-                particles: pose.particles,
-                glow: pose.glow,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _RatParticlesPainter(
+                  progress: pose.progress,
+                  particles: pose.particles,
+                  glow: pose.glow,
+                ),
               ),
             ),
           ),
@@ -236,11 +240,12 @@ class _RatPose {
 
     switch (animation) {
       case RatAnimation.idle:
+        final delayedHead = _triangle((t - 0.08 + 1) % 1);
         return _RatPose(
           progress: t,
           bodyScale: 1 + RatConfig.idleBreathScale * triangle * motion,
           bodyY: -RatConfig.idleBodyTravel * triangle * motion,
-          headY: -RatConfig.idleHeadTravel * triangle * motion,
+          headY: -RatConfig.idleHeadTravel * delayedHead * motion,
           earRotation: 0.012 * math.sin(t * math.pi * 2) * motion,
           tailRotation:
               RatConfig.idleTailRotation * math.sin(t * math.pi * 2) * motion,

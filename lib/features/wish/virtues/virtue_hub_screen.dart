@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:goodwill_circle/core/theme/app_colors.dart';
+import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'virtue_chat_tab.dart';
 import 'virtue_materials_tab.dart';
 
-/// The central hub for a single virtue.
-/// Contains two tabs: Community Chat Room and Materials Board.
 class VirtueHubScreen extends StatelessWidget {
   final String virtue;
 
-  // Virtue → accent color
   static const _virtueColors = {
-    'Courage': Color(0xFFFF6B6B),
-    'Wisdom': Color(0xFF4ECDC4),
-    'Compassion': Color(0xFFFFE66D),
-    'Discipline': Color(0xFF95E1D3),
-    'Integrity': Color(0xFFA8E6CF),
+    'Courage': AppColors.red,
+    'Wisdom': Color(0xFF3B82F6),
+    'Compassion': Color(0xFFEC4899),
+    'Discipline': Color(0xFF10B981),
+    'Integrity': Color(0xFF8B5CF6),
   };
 
   static const _virtueIcons = {
@@ -34,7 +33,7 @@ class VirtueHubScreen extends StatelessWidget {
 
   const VirtueHubScreen({Key? key, required this.virtue}) : super(key: key);
 
-  Color get _color => _virtueColors[virtue] ?? const Color(0xFF9B59B6);
+  Color get _color => _virtueColors[virtue] ?? AppColors.red;
   IconData get _icon => _virtueIcons[virtue] ?? Icons.star;
   String get _desc =>
       _virtueDescriptions[virtue] ?? 'Grow together in $virtue.';
@@ -44,13 +43,14 @@ class VirtueHubScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0D0D1A),
+        backgroundColor: AppColors.cream,
         body: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [
             SliverAppBar(
               pinned: true,
               expandedHeight: 160,
-              backgroundColor: const Color(0xFF0D0D1A),
+              backgroundColor: AppColors.cream,
+              iconTheme: const IconThemeData(color: AppColors.textDark),
               flexibleSpace: FlexibleSpaceBar(
                 background: _HubHeader(
                   virtue: virtue,
@@ -60,9 +60,9 @@ class VirtueHubScreen extends StatelessWidget {
                 ),
               ),
               bottom: TabBar(
-                indicatorColor: _color,
-                labelColor: _color,
-                unselectedLabelColor: Colors.white38,
+                indicatorColor: AppColors.red,
+                labelColor: AppColors.red,
+                unselectedLabelColor: AppColors.textLight,
                 tabs: const [
                   Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Chat Room'),
                   Tab(icon: Icon(Icons.collections_bookmark), text: 'Materials'),
@@ -82,7 +82,6 @@ class VirtueHubScreen extends StatelessWidget {
   }
 }
 
-/// Decorative header shown in the SliverAppBar for a virtue hub.
 class _HubHeader extends StatelessWidget {
   final String virtue;
   final Color color;
@@ -99,16 +98,7 @@ class _HubHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withOpacity(0.18),
-            Colors.transparent,
-          ],
-        ),
-      ),
+      color: AppColors.redPale,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -116,20 +106,13 @@ class _HubHeader extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Glow icon
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: AppColors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
+                  border: Border.all(color: AppColors.redMuted),
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
@@ -141,20 +124,21 @@ class _HubHeader extends StatelessWidget {
                   children: [
                     Text(
                       virtue,
-                      style: TextStyle(
-                        color: color,
+                      style: const TextStyle(
+                        color: AppColors.red,
+                        fontFamily: 'Georgia',
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       description,
                       style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 13,
-                          height: 1.3),
+                        color: AppColors.textMid,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
