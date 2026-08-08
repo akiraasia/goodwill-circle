@@ -26,14 +26,14 @@ class _WishInterviewScreenState extends ConsumerState<WishInterviewScreen> {
   bool _isInterviewComplete = false;
   int _interactionCount = 0;
   final Map<String, dynamic> _interviewData = {};
-  
+
   GenerativeModel? _model;
   ChatSession? _chat;
 
   static const List<String> _fallbackQuestions = [
     "That is a deeply meaningful wish. What is your primary motivation behind wanting to achieve this?",
     "What obstacle or fear has held you back from accomplishing this wish in the past?",
-    "Which of your personal strengths or virtues will help you most on this journey?",
+    "Which of your personal strengths or values will help you most on this journey?",
     "What daily habit or small step can you take starting today to build momentum?",
     "How will achieving this wish allow you to contribute to others and pass goodwill forward?",
   ];
@@ -106,8 +106,7 @@ Rules:
     if (_model != null) {
       try {
         final prompt = '''
-Analyze this wish interview and assign stats (physical, mental, ethical) from 1-10 based on the user's responses.
-Also suggest 2-3 virtues from: Courage, Wisdom, Compassion, Discipline, Integrity.
+Analyze this wish interview and suggest 2-3 supporting values from: Courage, Wisdom, Compassion, Discipline, Integrity.
 
 Wish: ${widget.initialWish}
 Interview Data: ${_interviewData.toString()}
@@ -123,14 +122,6 @@ Return JSON format exactly like this:
 
         final response = await _model!.generateContent([Content.text(prompt)]);
         final text = response.text ?? '';
-        
-        final RegExp physicalReg = RegExp(r'"physical"\s*:\s*(\d+)');
-        final RegExp mentalReg = RegExp(r'"mental"\s*:\s*(\d+)');
-        final RegExp ethicalReg = RegExp(r'"ethical"\s*:\s*(\d+)');
-
-        if (physicalReg.hasMatch(text)) physical = int.parse(physicalReg.firstMatch(text)!.group(1)!);
-        if (mentalReg.hasMatch(text)) mental = int.parse(mentalReg.firstMatch(text)!.group(1)!);
-        if (ethicalReg.hasMatch(text)) ethical = int.parse(ethicalReg.firstMatch(text)!.group(1)!);
 
         virtues.clear();
         if (text.contains('Courage')) virtues.add('Courage');
@@ -149,7 +140,7 @@ Return JSON format exactly like this:
       'mental': mental,
       'ethical': ethical,
     };
-    
+
     try {
       final repo = ref.read(wishHistoryRepositoryProvider);
       await repo.createWish(
@@ -162,7 +153,7 @@ Return JSON format exactly like this:
     } catch (e) {
       debugPrint('wishHistoryRepository createWish error: $e');
     }
-    
+
     return assignedStats;
   }
 
@@ -172,7 +163,7 @@ Return JSON format exactly like this:
       _isInterviewComplete = true;
       _messages.add({
         'role': 'ai',
-        'text': 'Your wish has been heard. 🌱 Confirm below to activate your path.',
+        'text': 'Your wish has been heard. 🌱 Whenever you are ready, let us begin your journey.',
       });
     });
     _scrollToBottom();
@@ -180,10 +171,10 @@ Return JSON format exactly like this:
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _isAiTyping || _isInterviewComplete) return;
-    
+
     final userText = _messageController.text.trim();
     _messageController.clear();
-    
+
     setState(() {
       _messages.add({
         'role': 'user',
@@ -242,7 +233,7 @@ Return JSON format exactly like this:
 
   Future<void> _confirmAndProceed() async {
     setState(() => _isAiTyping = true);
-    
+
     final assignedStats = await _analyzeWithAI();
 
     final prefs = await SharedPreferences.getInstance();
@@ -266,7 +257,7 @@ Return JSON format exactly like this:
         ethicalDetails: {'Goodwill': (assignedStats['ethical'] ?? 5).toDouble()},
       ),
     );
-    
+
     if (mounted) {
       setState(() => _isAiTyping = false);
       Navigator.of(context).pushReplacement(
@@ -284,6 +275,7 @@ Return JSON format exactly like this:
     super.dispose();
   }
 
+  // Visual dots indicator instead of "1/5", "2/5"
   Widget _buildProgressIndicator() {
     final count = _interactionCount.clamp(0, 5);
     return Row(
@@ -347,9 +339,9 @@ Return JSON format exactly like this:
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Row(
-                          children: [
-                            const MascotWidget(height: 36, state: MascotState.listening),
-                            const SizedBox(width: 8),
+                          children: const [
+                            MascotWidget(height: 36, state: MascotState.listening),
+                            SizedBox(width: 8),
                             Text(
                               '...',
                               style: TextStyle(color: AppColors.textLight, fontSize: 24),
@@ -359,7 +351,7 @@ Return JSON format exactly like this:
                       ),
                     );
                   }
-                  
+
                   final msg = _messages[index];
                   final isUser = msg['role'] == 'user';
                   return Align(
@@ -422,7 +414,7 @@ Return JSON format exactly like this:
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white),
                         )
                       : const Text(
-                          "I'm Ready",
+                          "I'm ready",
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),

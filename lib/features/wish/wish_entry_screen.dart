@@ -32,6 +32,14 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
     {'label': 'Anxious', 'icon': Icons.sentiment_dissatisfied},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _wishController.addListener(() {
+      setState(() {});
+    });
+  }
+
   void _submitWish() {
     final wishText = _wishController.text.trim();
     if (wishText.isEmpty) return;
@@ -90,7 +98,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Copy
-              Text(
+              const Text(
                 "What's in your heart?",
                 style: TextStyle(
                   fontFamily: 'Georgia',
@@ -100,7 +108,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              const Text(
                 'Share your wish with the universe.',
                 style: TextStyle(
                   fontSize: 14,
@@ -123,11 +131,12 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                       children: [
                         TextField(
                           controller: _wishController,
+                          maxLength: 250,
                           style: const TextStyle(
                             color: AppColors.textDark,
                             fontSize: 16,
                           ),
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             hintText: 'I wish for...',
                             hintStyle: TextStyle(
                               color: AppColors.textLight,
@@ -137,6 +146,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             fillColor: Colors.transparent,
+                            counterText: '',
                           ),
                           maxLines: 4,
                         ),
@@ -150,12 +160,12 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        '0/250',
-                        style: TextStyle(
+                        '${_wishController.text.length}/250',
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textLight,
                         ),
@@ -199,7 +209,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                             Icon(
                               area['icon'] as IconData,
                               color: isSelected ? AppColors.white : AppColors.red,
-                              size: 24,
+                              size: 22,
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -252,7 +262,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                             Icon(
                               mood['icon'] as IconData,
                               color: isSelected ? AppColors.white : AppColors.red,
-                              size: 24,
+                              size: 22,
                             ),
                             const SizedBox(height: 6),
                             Text(

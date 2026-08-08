@@ -60,12 +60,12 @@ class PathSelectionScreen extends StatelessWidget {
               // Mascot Hero Illustration Container
               Container(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.redPale,
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: MascotWidget(height: 160, state: MascotState.celebrating),
+                  child: MascotWidget(height: 150, state: MascotState.celebrating),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -81,7 +81,7 @@ class PathSelectionScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
-              Text(
+              const Text(
                 'The universe is working on it',
                 style: TextStyle(
                   fontSize: 14,
@@ -102,10 +102,10 @@ class PathSelectionScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        const Icon(Icons.eco, color: AppColors.red, size: 20),
-                        const SizedBox(width: 8),
+                        Icon(Icons.eco, color: AppColors.red, size: 20),
+                        SizedBox(width: 8),
                         Text(
                           'A few values that may help you:',
                           style: TextStyle(

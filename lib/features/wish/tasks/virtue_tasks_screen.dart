@@ -31,7 +31,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
   };
 
   static const _virtueIcons = {
-    'Courage': Icons.local_fire_department,
+    'Courage': Icons.eco,
     'Wisdom': Icons.auto_stories,
     'Compassion': Icons.favorite,
     'Discipline': Icons.timer,
@@ -51,19 +51,19 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
   Future<void> _generateInitialTasks() async {
     final repo = ref.read(virtueTaskRepositoryProvider);
     final existingTasks = await repo.getMyTasks();
-    
+
     if (existingTasks.isEmpty) {
       setState(() => _isGeneratingTasks = true);
       String userWish = 'To grow and become a better person';
       final taskGenerator = WishTaskGenerator();
-      
+
       for (final virtue in widget.assignedVirtues) {
         final generated = await taskGenerator.generateDualTrackTasks(
           wish: userWish,
           virtue: virtue,
           currentLevel: 1,
         );
-        
+
         for (final task in generated) {
           if (task['type'] == 'solo') {
             await repo.insertTask(
@@ -104,7 +104,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
                 matched = true;
               }
             }
-            
+
             if (!matched) {
               await repo.insertTask(
                 virtueName: virtue,
@@ -117,7 +117,7 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
           }
         }
       }
-      
+
       if (mounted) {
         setState(() => _isGeneratingTasks = false);
       }
@@ -215,13 +215,13 @@ class _VirtueTasksScreenState extends ConsumerState<VirtueTasksScreen>
                     child: Row(
                       children: [
                         _ToggleTab(
-                          label: 'Connect with People',
+                          label: 'Community Task',
                           icon: Icons.people,
                           isSelected: _showSocial,
                           onTap: () => setState(() => _showSocial = true),
                         ),
                         _ToggleTab(
-                          label: 'Individual Task',
+                          label: 'Personal Action',
                           icon: Icons.self_improvement,
                           isSelected: !_showSocial,
                           onTap: () => setState(() => _showSocial = false),
@@ -305,6 +305,7 @@ class _VirtueTaskList extends ConsumerWidget {
           itemBuilder: (ctx, i) => _TaskCard(
             task: tasks[i],
             accentColor: accentColor,
+            index: i,
           ),
         );
       },
@@ -315,8 +316,19 @@ class _VirtueTaskList extends ConsumerWidget {
 class _TaskCard extends ConsumerWidget {
   final VirtueTask task;
   final Color accentColor;
+  final int index;
 
-  const _TaskCard({required this.task, required this.accentColor});
+  const _TaskCard({
+    required this.task,
+    required this.accentColor,
+    required this.index,
+  });
+
+  String get _durationLabel {
+    if (index == 0) return '1–2 min'; // Guarantee easy entry 1-2 min option!
+    if (task.isSocial) return '15–20 min';
+    return '5 min';
+  }
 
   Color get _statusColor {
     switch (task.status) {
@@ -336,7 +348,7 @@ class _TaskCard extends ConsumerWidget {
 
   void _handleTaskAction(BuildContext context, WidgetRef ref, VirtueTask task) async {
     final repo = ref.read(virtueTaskRepositoryProvider);
-    
+
     if (task.isSocial && task.linkedRequestId != null) {
       if (context.mounted) {
         context.go('/app');
@@ -375,9 +387,9 @@ class _TaskCard extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.redPale,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
@@ -395,6 +407,14 @@ class _TaskCard extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
+                  ),
+                ),
+                Text(
+                  _durationLabel,
+                  style: const TextStyle(
+                    color: AppColors.red,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
               ],

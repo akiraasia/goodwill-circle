@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Goodwill Circle · Wish Module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream: #fdf1ec;
+    --cream-2: #fbe7df;
+    --card: #fffaf7;
+    --white: #ffffff;
+    --red: #c0392b;
+    --red-deep: #8f2a20;
+    --coral: #e8756a;
+    --coral-soft: #f3a89e;
+    --pink-tint: #f8d9d1;
+    --text-dark: #6b2f28;
+    --text-mid: #9c6f65;
+    --text-soft: #b98f85;
+    --line: #f2ddd5;
+    --shadow: 0 8px 24px rgba(155, 79, 60, 0.10);
+    --shadow-sm: 0 4px 12px rgba(155, 79, 60, 0.08);
+    --radius-lg: 26px;
+    --radius-md: 18px;
+    --radius-sm: 12px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background: #efe2de;
+    font-family: 'Nunito', sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    min-height:100vh;
+    padding: 24px 12px;
+  }
+
+  .phone{
+    width: 390px;
+    max-width: 100%;
+    background: linear-gradient(180deg, var(--cream) 0%, var(--cream-2) 100%);
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(100,40,30,0.22);
+    position: relative;
+    min-height: 780px;
+    display:flex;
+    flex-direction:column;
+    border: 6px solid #ffffff;
+  }
+
+  .screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding: 22px 20px 14px;
+    position:relative;
+    overflow: hidden;
+  }
+
+  .view{
+    display:none;
+    flex-direction:column;
+    flex:1;
+    animation: fadeSlide 0.32s ease;
+  }
+  .view.active{ display:flex; }
+
+  @keyframes fadeSlide{
+    from{ opacity:0; transform: translateY(8px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  h1,h2,h3{ font-family:'Quicksand', sans-serif; color:var(--red); }
+
+  /* ---------- decorative florals ---------- */
+  .floral{
+    position:absolute;
+    pointer-events:none;
+    opacity:0.9;
+  }
+  .floral.tl{ top:-10px; left:-18px; width:120px; transform: rotate(200deg) scaleX(-1); }
+  .floral.br{ bottom:70px; right:-20px; width:110px; }
+
+  /* ================= WISH HOME ================= */
+  .hero{
+    text-align:center;
+    padding-top: 6px;
+    position:relative;
+  }
+  .mascot-wrap{
+    width:150px;
+    height:150px;
+    margin: 4px auto 6px;
+    position:relative;
+  }
+  .wish-title{
+    font-size: 24px;
+    font-weight:700;
+    line-height:1.25;
+    margin-top: 4px;
+  }
+  .wish-sub{
+    color: var(--text-mid);
+    font-size: 13.5px;
+    margin-top: 6px;
+    line-height:1.5;
+    padding: 0 10px;
+  }
+
+  .card{
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 16px 18px;
+  }
+
+  .wish-focus-card{
+    margin-top: 18px;
+    border: 1px solid var(--line);
+  }
+  .wish-focus-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color: var(--red);
+    font-weight:700;
+    font-size: 13px;
+  }
+  .wish-focus-text{
+    margin-top: 6px;
+    color: var(--text-dark);
+    font-size: 14.5px;
+    font-weight:600;
+  }
+
+  .section-label{
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight:700;
+    color: var(--red);
+    font-size: 14px;
+  }
+
+  .task-list{
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+    overflow-y:auto;
+  }
+
+  .task-card{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor:pointer;
+    transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+    user-select:none;
+  }
+  .task-card:active{ transform: scale(0.98); }
+  .task-card.done{
+    background: linear-gradient(0deg, #fdeee9, #fff7f4);
+  }
+  .task-icon{
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--pink-tint);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    color: var(--red);
+  }
+  .task-icon svg{ width:18px; height:18px; }
+  .task-text{ flex:1; }
+  .task-title{ font-weight:700; color: var(--text-dark); font-size: 14px; }
+  .task-sub{ font-size: 11.5px; color: var(--text-soft); margin-top:1px; }
+  .task-check{
+    width: 24px;
+    height: 24px;
+    border-radius:50%;
+    border: 2px solid var(--coral-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    transition: all .2s ease;
+  }
+  .task-check svg{ width:13px; height:13px; opacity:0; transition: opacity .15s ease; }
+  .task-card.done .task-check{
+    background: var(--red);
+    border-color: var(--red);
+  }
+  .task-card.done .task-check svg{ opacity:1; }
+  .task-chevron{ color: var(--coral-soft); font-size: 16px; }
+
+  /* ================= CALENDAR ================= */
+  .cal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 14px;
+  }
+  .cal-nav-btn{
+    width:30px; height:30px;
+    border-radius:50%;
+    border:none;
+    background: var(--white);
+    color: var(--red);
+    font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: var(--shadow-sm);
+    cursor:pointer;
+  }
+  .cal-title{ font-size:17px; font-weight:700; }
+
+  .cal-grid-head{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align:center;
+    color: var(--text-soft);
+    font-size: 11.5px;
+    font-weight:700;
+    margin-bottom: 6px;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .cal-cell{
+    aspect-ratio: 1/1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border-radius: 50%;
+    font-size: 12.5px;
+    color: var(--text-dark);
+    font-weight:600;
+    cursor:pointer;
+    position:relative;
+  }
+  .cal-cell.dim{ color: #d9c1b8; font-weight:500; }
+  .cal-cell.selected{
+    background: var(--red);
+    color: #fff;
+  }
+  .cal-cell .dot{
+    width:4px; height:4px; border-radius:50%;
+    background: var(--coral);
+    margin-top:2px;
+  }
+  .cal-cell.selected .dot{ background:#fff; }
+
+  .cal-today-card{
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    flex:1;
+    overflow-y:auto;
+  }
+  .cal-today-title{
+    color: var(--red);
+    font-weight:700;
+    font-size: 13.5px;
+    margin-bottom: 10px;
+  }
+  .cal-task-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .cal-task-row:last-child{ border-bottom:none; }
+  .cal-task-icon{
+    width: 30px; height:30px;
+    border-radius:50%;
+    background: var(--pink-tint);
+    color: var(--red);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .cal-task-icon svg{ width:14px; height:14px; }
+  .cal-task-text{ flex:1; }
+  .cal-task-title{ font-size:13px; font-weight:700; color:var(--text-dark); }
+  .cal-task-sub{ font-size:10.5px; color:var(--text-soft); }
+  .cal-task-status{
+    width:20px; height:20px;
+    border-radius:50%;
+    border: 2px solid var(--coral-soft);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .cal-task-status svg{ width:11px; height:11px; opacity:0; }
+  .cal-task-row.complete .cal-task-status{ background:var(--red); border-color:var(--red); }
+  .cal-task-row.complete .cal-task-status svg{ opacity:1; }
+
+  .footer-mascot-wrap{
+    display:flex;
+    justify-content:flex-end;
+    margin-top: 10px;
+    height: 66px;
+  }
+
+  /* ================= DIARY ================= */
+  .diary-header{
+    text-align:center;
+    margin-bottom: 16px;
+  }
+  .diary-title{ font-size: 18px; font-weight:700; }
+  .diary-date{ color: var(--text-mid); font-size: 12.5px; margin-top:2px; }
+
+  .diary-scroll{
+    flex:1;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+    padding-bottom: 4px;
+  }
+
+  .diary-card-title{
+    font-weight:700;
+    color: var(--text-dark);
+    font-size: 13.5px;
+    margin-bottom: 10px;
+  }
+
+  .mood-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .mood-btn{
+    width:40px; height:40px;
+    border-radius:50%;
+    border: none;
+    background: var(--pink-tint);
+    font-size: 19px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: all .15s ease;
+    filter: grayscale(0.5) opacity(0.6);
+  }
+  .mood-btn.selected{
+    background: var(--red);
+    filter:none;
+    transform: scale(1.08);
+    box-shadow: 0 4px 10px rgba(192,57,43,0.35);
+  }
+
+  .diary-textarea{
+    width:100%;
+    border:none;
+    resize:none;
+    background:transparent;
+    font-family:'Nunito', sans-serif;
+    font-size: 13px;
+    color: var(--text-dark);
+    outline:none;
+    min-height: 54px;
+  }
+  .diary-textarea::placeholder{ color: var(--text-soft); }
+  .char-count{
+    text-align:right;
+    font-size: 10.5px;
+    color: var(--text-soft);
+    margin-top:4px;
+  }
+
+  .diary-mascot-inline{
+    display:flex;
+    justify-content:flex-end;
+    margin-top: -6px;
+  }
+
+  /* ================= CHAT BAR ================= */
+  .chat-bar{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    background: var(--white);
+    border-radius: 24px;
+    padding: 6px 6px 6px 16px;
+    box-shadow: var(--shadow-sm);
+    margin-top: 12px;
+  }
+  .chat-input{
+    flex:1;
+    border:none;
+    outline:none;
+    background:transparent;
+    font-family:'Nunito', sans-serif;
+    font-size: 13px;
+    color: var(--text-dark);
+  }
+  .chat-input::placeholder{ color: var(--text-soft); }
+  .chat-send{
+    width:36px; height:36px;
+    border-radius:50%;
+    border:none;
+    background: var(--red);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: transform .12s ease;
+  }
+  .chat-send:active{ transform: scale(0.9); }
+  .chat-send svg{ width:15px; height:15px; }
+
+  .chat-log{
+    position:absolute;
+    bottom: 148px;
+    left: 20px;
+    right: 20px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height: 130px;
+    overflow-y:auto;
+    pointer-events:none;
+  }
+  .chat-bubble{
+    align-self:flex-end;
+    background: var(--red);
+    color:#fff;
+    font-size:11.5px;
+    padding: 7px 12px;
+    border-radius: 14px 14px 2px 14px;
+    max-width: 78%;
+    box-shadow: var(--shadow-sm);
+    animation: popIn .2s ease;
+  }
+  .chat-bubble.bot{
+    align-self:flex-start;
+    background: var(--white);
+    color: var(--text-dark);
+    border-radius: 14px 14px 14px 2px;
+  }
+  @keyframes popIn{ from{opacity:0; transform: translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ================= BOTTOM NAV ================= */
+  .bottom-nav{
+    display:flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 4px;
+  }
+  .nav-btn{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 7px;
+    padding: 11px 0;
+    border-radius: 20px;
+    border: none;
+    font-family:'Nunito', sans-serif;
+    font-weight:700;
+    font-size: 13px;
+    cursor:pointer;
+    transition: all .18s ease;
+    background: var(--white);
+    color: var(--text-mid);
+    box-shadow: var(--shadow-sm);
+  }
+  .nav-btn svg{ width:16px; height:16px; }
+  .nav-btn.active{
+    background: var(--coral-soft);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(232,117,106,0.35);
+  }
+
+  /* ================= MASCOT SVG STATES ================= */
+  .mascot-eye{ transition: all .15s ease; }
+  .mascot.winking .eye-r{ transform: scaleY(0.1); transform-origin: center; }
+  .mascot.jump{ animation: jumpUp .55s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes jumpUp{
+    0%{ transform: translateY(0) rotate(0); }
+    30%{ transform: translateY(-14px) rotate(-4deg); }
+    55%{ transform: translateY(-16px) rotate(3deg); }
+    100%{ transform: translateY(0) rotate(0); }
+  }
+
+  .zzz{
+    font-family:'Quicksand', sans-serif;
+    font-weight:700;
+    fill: var(--coral-soft);
+    opacity:0;
+  }
+  .sleeping .zzz{ animation: floatZ 2.2s ease-in-out infinite; }
+  .zzz.z1{ animation-delay: 0s; }
+  .zzz.z2{ animation-delay: .5s; }
+  .zzz.z3{ animation-delay: 1s; }
+  @keyframes floatZ{
+    0%{ opacity:0; transform: translateY(0); }
+    30%{ opacity:1; }
+    100%{ opacity:0; transform: translateY(-14px); }
+  }
+
+  ::-webkit-scrollbar{ width:0; height:0; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+
+    <!-- florals -->
+    <svg class="floral tl" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#e0a89c" stroke-width="1.5" fill="none">
+        <path d="M5 10 Q 40 30 70 15"/>
+        <path d="M20 20 Q 30 5 45 8"/>
+        <path d="M40 25 Q 55 15 65 25"/>
+      </g>
+      <g fill="#f3a89e">
+        <circle cx="22" cy="18" r="3.2"/><circle cx="30" cy="10" r="3"/>
+        <circle cx="47" cy="10" r="3"/><circle cx="58" cy="20" r="3"/>
+        <circle cx="66" cy="27" r="2.6"/>
+      </g>
+    </svg>
+
+    <!-- ============ VIEW: WISH HOME ============ -->
+    <div class="view active" id="view-wish">
+      <div class="hero">
+        <div class="mascot-wrap" id="heroMascotWrap"></div>
+        <h1 class="wish-title">What's your<br>Wish Today?</h1>
+        <p class="wish-sub">Every wish you share,<br>creates ripples of change.</p>
+      </div>
+
+      <div class="card wish-focus-card">
+        <div class="wish-focus-label">♥ Your Wish Focus</div>
+        <div class="wish-focus-text" id="wishFocusText">I wish to become more confident</div>
+      </div>
+
+      <div class="section-label">Today's Options</div>
+      <div class="task-list" id="taskList"></div>
+
+      <div style="flex:1"></div>
+      <div class="chat-bar">
+        <input class="chat-input" id="chatInputHome" placeholder="Chat with your companion..." />
+        <button class="chat-send" onclick="sendChat('home')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: CALENDAR ============ -->
+    <div class="view" id="view-calendar">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="shiftMonth(-1)">&#8249;</button>
+        <div class="cal-title" id="calMonthLabel">May 2026</div>
+        <button class="cal-nav-btn" onclick="shiftMonth(1)">&#8250;</button>
+      </div>
+      <div class="cal-grid-head">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+
+      <div class="cal-today-card">
+        <div class="cal-today-title" id="calTodayLabel">Today · May 14</div>
+        <div id="calTaskRows"></div>
+      </div>
+
+      <div class="footer-mascot-wrap" id="calMascotWrap"></div>
+
+      <div class="chat-bar">
+        <input class="chat-input" id="chatInputCal" placeholder="Chat with your companion..." />
+        <button class="chat-send" onclick="sendChat('cal')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: DIARY ============ -->
+    <div class="view" id="view-diary">
+      <div class="diary-header">
+        <div class="diary-title">My Diary</div>
+        <div class="diary-date" id="diaryDateLabel">May 14, 2026</div>
+      </div>
+
+      <div class="diary-scroll">
+        <div class="card">
+          <div class="diary-card-title">How are you feeling?</div>
+          <div class="mood-row" id="moodRow"></div>
+        </div>
+
+        <div class="card">
+          <div class="diary-card-title">Today's Reflection</div>
+          <textarea class="diary-textarea" id="reflectionInput" maxlength="500" placeholder="Write your thoughts here..."></textarea>
+          <div class="char-count"><span id="reflCount">0</span>/500</div>
+        </div>
+
+        <div class="card">
+          <div class="diary-card-title">Gratitude for today</div>
+          <textarea class="diary-textarea" id="gratitudeInput" maxlength="300" placeholder="What are you grateful for today?" style="min-height:34px"></textarea>
+          <div class="char-count"><span id="gratCount">0</span>/300</div>
+          <div class="diary-mascot-inline" id="diaryMascotWrap"></div>
+        </div>
+      </div>
+
+      <div class="chat-bar">
+        <input class="chat-input" id="chatInputDiary" placeholder="Chat with your companion..." />
+        <button class="chat-send" onclick="sendChat('diary')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="chat-log" id="chatLog"></div>
+
+    <!-- ============ BOTTOM NAV (persistent) ============ -->
+    <div class="bottom-nav">
+      <button class="nav-btn" id="navCalendar" onclick="toggleView('calendar')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        Calendar
+      </button>
+      <button class="nav-btn" id="navDiary" onclick="toggleView('diary')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M4 4v13a3 3 0 0 0 3 3h11"/></svg>
+        Diary
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ MASCOT SVG (shared, cute mouse) ============ */
+function mascotSVG(id, size, opts){
+  opts = opts || {};
+  const armsUp = opts.armsUp !== false;
+  return `
+  <svg id="${id}" class="mascot" viewBox="0 0 140 140" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="70" cy="128" rx="34" ry="6" fill="#e9c9bd" opacity="0.5"/>
+    <!-- tail -->
+    <path d="M96 100 Q 122 95 118 70" stroke="#c98d78" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- ears -->
+    <circle cx="42" cy="38" r="14" fill="#d9a48f"/>
+    <circle cx="42" cy="38" r="8" fill="#f3cfc2"/>
+    <circle cx="90" cy="34" r="15" fill="#d9a48f"/>
+    <circle cx="90" cy="34" r="9" fill="#f3cfc2"/>
+    <!-- body -->
+    <ellipse cx="68" cy="88" rx="38" ry="34" fill="#d9a48f"/>
+    <ellipse cx="68" cy="96" rx="24" ry="20" fill="#f5ddd0"/>
+    <!-- head -->
+    <circle cx="66" cy="58" r="30" fill="#d9a48f"/>
+    <ellipse cx="66" cy="66" rx="17" ry="13" fill="#f5ddd0"/>
+    <!-- scarf -->
+    <path d="M46 76 Q66 88 88 76 L84 68 Q66 78 50 68 Z" fill="#c0392b"/>
+    <path d="M78 78 l6 14 -10 -2 z" fill="#a8291d"/>
+    <!-- whiskers -->
+    <g stroke="#b98f7e" stroke-width="1.3">
+      <path d="M40 62 L22 58 M40 66 L22 68"/>
+      <path d="M92 62 L110 58 M92 66 L110 68"/>
+    </g>
+    <!-- eyes -->
+    <g class="mascot-eyes">
+      <circle class="mascot-eye eye-l" cx="56" cy="58" r="3.4" fill="#5a3226"/>
+      <circle class="mascot-eye eye-r" cx="76" cy="58" r="3.4" fill="#5a3226"/>
+    </g>
+    <!-- closed eyes (sleeping) -->
+    <g class="mascot-eyes-closed" style="display:none">
+      <path d="M52 58 q4 3 8 0" stroke="#5a3226" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M72 58 q4 3 8 0" stroke="#5a3226" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- nose -->
+    <ellipse cx="66" cy="66" rx="3" ry="2.2" fill="#a8291d"/>
+    <!-- blush -->
+    <circle cx="48" cy="66" r="4" fill="#f3a89e" opacity="0.6"/>
+    <circle cx="84" cy="66" r="4" fill="#f3a89e" opacity="0.6"/>
+    <!-- arms -->
+    ${armsUp ? `
+    <path d="M38 90 Q 20 70 28 50" stroke="#d9a48f" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M98 90 Q 118 68 112 48" stroke="#d9a48f" stroke-width="10" fill="none" stroke-linecap="round"/>
+    ` : `
+    <path d="M36 92 Q 28 104 40 112" stroke="#d9a48f" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M100 92 Q 108 104 96 112" stroke="#d9a48f" stroke-width="10" fill="none" stroke-linecap="round"/>
+    `}
+    <!-- zzz for sleeping -->
+    <text x="98" y="30" class="zzz z1" font-size="16">z</text>
+    <text x="108" y="18" class="zzz z2" font-size="12">z</text>
+    <text x="116" y="8" class="zzz z3" font-size="9">z</text>
+  </svg>`;
+}
+
+document.getElementById('heroMascotWrap').innerHTML = mascotSVG('heroMascot', 150, {armsUp:true});
+document.getElementById('calMascotWrap').innerHTML = mascotSVG('calMascot', 60, {armsUp:false});
+document.getElementById('diaryMascotWrap').innerHTML = mascotSVG('diaryMascot', 54, {armsUp:false});
+
+function setSleeping(svgId, sleeping){
+  const el = document.getElementById(svgId);
+  if(!el) return;
+  el.classList.toggle('sleeping', sleeping);
+  el.querySelector('.mascot-eyes').style.display = sleeping ? 'none' : '';
+  el.querySelector('.mascot-eyes-closed').style.display = sleeping ? '' : 'none';
+}
+
+function isNighttime(){
+  const h = new Date().getHours();
+  return (h >= 21 || h < 6);
+}
+
+function applyNightState(){
+  const night = isNighttime();
+  setSleeping('calMascot', night);
+  setSleeping('diaryMascot', night);
+}
+
+function winkOnce(){
+  const hero = document.getElementById('heroMascot');
+  if(!hero) return;
+  hero.classList.add('winking');
+  setTimeout(()=> hero.classList.remove('winking'), 260);
+}
+
+function jumpMascot(){
+  const hero = document.getElementById('heroMascot');
+  if(!hero) return;
+  hero.classList.remove('jump');
+  void hero.offsetWidth;
+  hero.classList.add('jump');
+}
+
+/* ============ TASK DATA ============ */
+const taskIcons = {
+  reflect: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  connect: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.1C.5 8.4 2.4 5 6 5c2 0 3.4 1 4.5 2.4C11.6 6 13 5 15 5c3.6 0 5.5 3.4 4 6.9-2.5 4.5-10 9.1-10 9.1z"/></svg>`,
+  browse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3.2"/><path d="M2 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/><circle cx="18" cy="9" r="2.4"/><path d="M14.5 21c.3-3 2-5 4-5s4.5 1.8 4.9 5"/></svg>`
+};
+
+const tasks = [
+  { id:'reflect', title:"Take a 5-minute reflection", sub:"Personal", icon:'reflect', done:true },
+  { id:'connect', title:"Speak to someone new today", sub:"Personal", icon:'connect', done:false },
+  { id:'browse', title:"Browse a community request", sub:"Help Others", icon:'browse', done:false },
+];
+
+function renderTasks(){
+  const list = document.getElementById('taskList');
+  list.innerHTML = tasks.map(t => `
+    <div class="task-card ${t.done ? 'done':''}" onclick="toggleTask('${t.id}')">
+      <div class="task-icon">${taskIcons[t.icon]}</div>
+      <div class="task-text">
+        <div class="task-title">${t.title}</div>
+        <div class="task-sub">${t.sub}</div>
+      </div>
+      <div class="task-check">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M4 12l6 6L20 6"/></svg>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTask(id){
+  const t = tasks.find(x=>x.id===id);
+  t.done = !t.done;
+  renderTasks();
+  renderCalTasks();
+  renderCalGrid();
+  jumpMascot();
+}
+
+/* ============ CALENDAR ============ */
+const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+let calDate = new Date(2026, 4, 1); // May 2026
+const selectedDay = 14;
+
+function renderCalGrid(){
+  const grid = document.getElementById('calGrid');
+  document.getElementById('calMonthLabel').textContent = `${monthNames[calDate.getMonth()]} ${calDate.getFullYear()}`;
+
+  const firstOfMonth = new Date(calDate.getFullYear(), calDate.getMonth(), 1);
+  let startOffset = firstOfMonth.getDay() - 1; // Monday-first
+  if(startOffset < 0) startOffset = 6;
+  const daysInMonth = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0).getDate();
+  const daysInPrevMonth = new Date(calDate.getFullYear(), calDate.getMonth(), 0).getDate();
+
+  let cells = [];
+  for(let i=startOffset; i>0; i--){
+    cells.push({num: daysInPrevMonth - i + 1, dim:true});
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    cells.push({num:d, dim:false});
+  }
+  while(cells.length % 7 !== 0){
+    cells.push({num: cells.length - (startOffset+daysInMonth) + 1, dim:true});
+  }
+
+  const isCurrentMonthView = calDate.getMonth()===4 && calDate.getFullYear()===2026;
+  const hasActivity = (d) => isCurrentMonthView && d===14; // mock: only May14 has logged tasks
+
+  grid.innerHTML = cells.map(c => {
+    const isSelected = isCurrentMonthView && !c.dim && c.num === selectedDay;
+    return `<div class="cal-cell ${c.dim?'dim':''} ${isSelected?'selected':''}">
+      <span>${c.num}</span>
+      ${(!c.dim && hasActivity(c.num)) ? '<span class="dot"></span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function shiftMonth(dir){
+  calDate.setMonth(calDate.getMonth()+dir);
+  renderCalGrid();
+}
+
+function renderCalTasks(){
+  const wrap = document.getElementById('calTaskRows');
+  wrap.innerHTML = tasks.map(t => `
+    <div class="cal-task-row ${t.done ? 'complete':''}">
+      <div class="cal-task-icon">${taskIcons[t.icon]}</div>
+      <div class="cal-task-text">
+        <div class="cal-task-title">${t.title}</div>
+        <div class="cal-task-sub">${t.sub}</div>
+      </div>
+      <div class="cal-task-status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M4 12l6 6L20 6"/></svg>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============ DIARY ============ */
+const moods = ['😄','🙂','😐','😕','😢'];
+let selectedMood = 0;
+
+function renderMoods(){
+  const row = document.getElementById('moodRow');
+  row.innerHTML = moods.map((m,i)=>`
+    <button class="mood-btn ${i===selectedMood?'selected':''}" onclick="selectMood(${i})">${m}</button>
+  `).join('');
+}
+function selectMood(i){
+  selectedMood = i;
+  renderMoods();
+  jumpMascot();
+}
+
+document.getElementById('reflectionInput').addEventListener('input', e=>{
+  document.getElementById('reflCount').textContent = e.target.value.length;
+});
+document.getElementById('gratitudeInput').addEventListener('input', e=>{
+  document.getElementById('gratCount').textContent = e.target.value.length;
+});
+
+/* ============ NAV / VIEW SWITCHING ============ */
+let currentView = 'wish';
+
+function toggleView(name){
+  if(currentView === name){
+    switchView('wish');
+  } else {
+    switchView(name);
+  }
+}
+
+function switchView(name){
+  currentView = name;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+
+  document.getElementById('navCalendar').classList.toggle('active', name==='calendar');
+  document.getElementById('navDiary').classList.toggle('active', name==='diary');
+
+  if(name==='calendar'){ renderCalGrid(); renderCalTasks(); }
+  if(name==='diary'){ renderMoods(); }
+}
+
+/* ============ CHAT ============ */
+const botReplies = [
+  "That's wonderful to hear! Keep going 🌸",
+  "I'm proud of you for showing up today.",
+  "Every small step counts. You're doing great.",
+  "Thank you for sharing that with me."
+];
+
+function sendChat(from){
+  const inputMap = { home:'chatInputHome', cal:'chatInputCal', diary:'chatInputDiary' };
+  const input = document.getElementById(inputMap[from]);
+  const text = input.value.trim();
+  if(!text) return;
+
+  const log = document.getElementById('chatLog');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  bubble.textContent = text;
+  log.appendChild(bubble);
+  input.value = '';
+
+  setTimeout(()=>{
+    const reply = document.createElement('div');
+    reply.className = 'chat-bubble bot';
+    reply.textContent = botReplies[Math.floor(Math.random()*botReplies.length)];
+    log.appendChild(reply);
+    log.scrollTop = log.scrollHeight;
+    while(log.children.length > 4){ log.removeChild(log.firstChild); }
+  }, 500);
+
+  log.scrollTop = log.scrollHeight;
+}
+
+['chatInputHome','chatInputCal','chatInputDiary'].forEach((id, i)=>{
+  const from = ['home','cal','diary'][i];
+  document.getElementById(id).addEventListener('keydown', e=>{
+    if(e.key === 'Enter') sendChat(from);
+  });
+});
+
+/* ============ INIT ============ */
+renderTasks();
+renderCalGrid();
+renderCalTasks();
+renderMoods();
+applyNightState();
+setTimeout(winkOnce, 500);
+setInterval(applyNightState, 60000);
+</script>
+
+</body>
+</html>
