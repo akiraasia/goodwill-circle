@@ -514,6 +514,69 @@
   }
 
   ::-webkit-scrollbar{ width:0; height:0; }
+
+  /* ================= ONBOARDING & PROGRESS ================= */
+  .onboarding-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .focus-btn {
+    background: var(--white);
+    border: 1px solid var(--line);
+    color: var(--text-dark);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .focus-btn.selected {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  .primary-btn {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 24px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease;
+    width: 100%;
+    text-align: center;
+  }
+  .primary-btn:active {
+    transform: scale(0.98);
+  }
+  .progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .progress-bar {
+    background: var(--pink-tint);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    background: var(--red);
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    font-size: 11px;
+    color: var(--text-soft);
+    text-align: right;
+  }
 </style>
 </head>
 <body>
@@ -535,8 +598,44 @@
       </g>
     </svg>
 
+    <!-- ============ VIEW: ONBOARDING ============ -->
+    <div class="view active" id="view-onboarding">
+      <div class="hero" style="padding-top:12px;">
+        <h1 class="wish-title">What's in your heart?</h1>
+        <p class="wish-sub" style="margin-top: 8px;">Please write your wish honestly and carefully.<br>It cannot be changed until completed.</p>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <textarea class="diary-textarea" id="onboardingWishInput" placeholder="I wish for..." style="min-height: 80px; font-size: 15px;"></textarea>
+      </div>
+
+      <div class="section-label">Focus Area</div>
+      <div class="onboarding-buttons" id="focusAreaBtns">
+         <button class="focus-btn">Physical</button>
+         <button class="focus-btn">Mental</button>
+         <button class="focus-btn">Ethical</button>
+      </div>
+
+      <div class="section-label">Qualities to Develop</div>
+      <div class="onboarding-buttons qualities" id="qualitiesBtns">
+         <button class="focus-btn">Courage</button>
+         <button class="focus-btn">Virtue</button>
+         <button class="focus-btn">Discipline</button>
+         <button class="focus-btn">Compassion</button>
+         <button class="focus-btn">Wisdom</button>
+         <button class="focus-btn">Resilience</button>
+      </div>
+
+      <div style="flex:1"></div>
+      
+      <button class="primary-btn" onclick="completeOnboarding()" style="margin-top:20px;">Begin Journey</button>
+      <div style="text-align: center; margin-top: 12px; margin-bottom: 6px;">
+        <button onclick="deleteAccount()" style="background:none; border:none; color:var(--text-soft); font-size: 11px; text-decoration:underline; cursor:pointer;">Delete Account (Reset)</button>
+      </div>
+    </div>
+
     <!-- ============ VIEW: WISH HOME ============ -->
-    <div class="view active" id="view-wish">
+    <div class="view" id="view-wish">
       <div class="hero">
         <div class="mascot-wrap" id="heroMascotWrap"></div>
         <h1 class="wish-title">What's your<br>Wish Today?</h1>
@@ -546,6 +645,13 @@
       <div class="card wish-focus-card">
         <div class="wish-focus-label">♥ Your Wish Focus</div>
         <div class="wish-focus-text" id="wishFocusText">I wish to become more confident</div>
+        <div class="progress-wrap" style="margin-top: 12px;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="wishProgressFill" style="width: 0%"></div>
+          </div>
+          <div class="progress-text" id="wishProgressText">0% Completed</div>
+        </div>
+        <button id="completeWishBtn" class="primary-btn" style="margin-top: 12px; display: none;" onclick="finishWish()">Complete Wish</button>
       </div>
 
       <div class="section-label">Today's Options</div>
@@ -771,6 +877,7 @@ function toggleTask(id){
   renderCalTasks();
   renderCalGrid();
   jumpMascot();
+  updateProgressUI();
 }
 
 /* ============ CALENDAR ============ */
@@ -918,6 +1025,81 @@ function sendChat(from){
   });
 });
 
+/* ============ ONBOARDING ============ */
+function checkOnboarding() {
+  const wish = localStorage.getItem('user_wish');
+  if (!wish) {
+    document.querySelector('.bottom-nav').style.display = 'none';
+    switchView('onboarding');
+  } else {
+    document.querySelector('.bottom-nav').style.display = 'flex';
+    document.getElementById('wishFocusText').textContent = wish;
+    switchView('wish');
+    updateProgressUI();
+  }
+}
+
+function completeOnboarding() {
+  const wishText = document.getElementById('onboardingWishInput').value.trim();
+  if (!wishText) {
+    alert("Please write your wish honestly and carefully.");
+    return;
+  }
+  localStorage.setItem('user_wish', wishText);
+  document.querySelector('.bottom-nav').style.display = 'flex';
+  document.getElementById('wishFocusText').textContent = wishText;
+  tasks.forEach(t => t.done = false); // reset tasks
+  renderTasks();
+  renderCalTasks();
+  updateProgressUI();
+  switchView('wish');
+}
+
+function updateProgressUI() {
+  const completedTasks = tasks.filter(t => t.done).length;
+  const totalTasks = tasks.length;
+  const pct = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+  document.getElementById('wishProgressFill').style.width = pct + '%';
+  document.getElementById('wishProgressText').textContent = pct + '% Completed';
+  
+  const btn = document.getElementById('completeWishBtn');
+  if (pct === 100) {
+    btn.style.display = 'block';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function finishWish() {
+  localStorage.removeItem('user_wish');
+  tasks.forEach(t => t.done = false);
+  document.getElementById('onboardingWishInput').value = '';
+  document.querySelectorAll('.focus-btn').forEach(b => b.classList.remove('selected'));
+  checkOnboarding();
+}
+
+function deleteAccount() {
+  localStorage.clear();
+  tasks.forEach(t => t.done = false);
+  document.getElementById('onboardingWishInput').value = '';
+  document.querySelectorAll('.focus-btn').forEach(b => b.classList.remove('selected'));
+  checkOnboarding();
+}
+
+// Button selection logic
+document.querySelectorAll('.onboarding-buttons').forEach(container => {
+  container.addEventListener('click', e => {
+    if(e.target.classList.contains('focus-btn')) {
+      if (container.classList.contains('qualities')) {
+         e.target.classList.toggle('selected');
+      } else {
+         container.querySelectorAll('.focus-btn').forEach(b => b.classList.remove('selected'));
+         e.target.classList.add('selected');
+      }
+    }
+  });
+});
+
 /* ============ INIT ============ */
 renderTasks();
 renderCalGrid();
@@ -926,6 +1108,7 @@ renderMoods();
 applyNightState();
 setTimeout(winkOnce, 500);
 setInterval(applyNightState, 60000);
+checkOnboarding();
 </script>
 
 </body>

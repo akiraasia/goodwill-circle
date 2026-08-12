@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/shared/widgets/mascot_widget.dart';
@@ -44,6 +45,8 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   // Companion Chat state
   final TextEditingController _chatController = TextEditingController();
   final List<Map<String, String>> _chatMessages = [];
+  GenerativeModel? _chatModel;
+  ChatSession? _aiSession;
 
   static const List<String> _botReplies = [
     "That's wonderful to hear! Keep going 🌸",
@@ -100,10 +103,27 @@ class _WishScreenState extends ConsumerState<WishScreen> {
       _habits = await repo.getUserHabits();
       _communityRequests = await repo.getRecommendedHelpRequests('Ethical');
       _onboardingStage = 0;
+      _initAi();
     } else {
       _onboardingStage = 1;
     }
     setState(() => _isLoading = false);
+  }
+
+  void _initAi() {
+    try {
+      _chatModel = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-1.5-flash',
+        systemInstruction: Content.system('''
+You are a warm, encouraging companion helping the user on their growth journey. 
+Their active wish is: "${_activeWish?['wish_statement'] ?? 'Unknown'}".
+Keep your responses very concise (1-2 sentences), warm, and supportive. Use occasional emojis.
+'''),
+      );
+      _aiSession = _chatModel?.startChat();
+    } catch (e) {
+      debugPrint('FirebaseAI initialization error: $e');
+    }
   }
 
   Future<void> _toggleHabit(Habit habit) async {
@@ -113,7 +133,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     _triggerMascotJump();
   }
 
-  void _sendChatMessage() {
+  Future<void> _sendChatMessage() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
@@ -123,6 +143,24 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     });
 
     _triggerMascotJump();
+
+    if (_aiSession != null) {
+      try {
+        final response = await _aiSession!.sendMessage(Content.text(text));
+        final aiText = response.text;
+        if (mounted && aiText != null && aiText.isNotEmpty) {
+          setState(() {
+            _chatMessages.add({'role': 'bot', 'text': aiText.trim()});
+            if (_chatMessages.length > 6) {
+              _chatMessages.removeAt(0);
+            }
+          });
+        }
+        return;
+      } catch (e) {
+        debugPrint('Companion AI error: $e');
+      }
+    }
 
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
