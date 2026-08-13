@@ -5,7 +5,7 @@ import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/core/theme/app_typography.dart';
 import 'package:goodwill_circle/shared/widgets/brand_logo.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:firebase_ai/firebase_ai.dart';
-import 'package:goodwill_circle/features/wish/tasks/virtue_task_repository.dart';
+
 
 class WishTaskGenerator {
   final GenerativeModel _model;
