@@ -42,6 +42,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/auth';
       }
 
+      // Phase 0 users enter the wish module first so the first in-app moment
+      // is the wish experience, not a different feature tab.
+      if (session != null && state.matchedLocation == '/') {
+        return '/wish';
+      }
+
       return null;
     },
     routes: [

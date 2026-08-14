@@ -1,35 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/shared/widgets/mascot_widget.dart';
-import '../../shared/widgets/shooting_star_overlay.dart';
-import 'wish_interview_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../growth_os/data/wish_agent_service.dart';
+import '../growth_os/data/wish_module_models.dart';
+import '../growth_os/data/wish_repository.dart';
 
-class WishEntryScreen extends StatefulWidget {
-  const WishEntryScreen({Key? key}) : super(key: key);
+class WishEntryScreen extends ConsumerStatefulWidget {
+  const WishEntryScreen({super.key});
 
   @override
-  State<WishEntryScreen> createState() => _WishEntryScreenState();
+  ConsumerState<WishEntryScreen> createState() => _WishEntryScreenState();
 }
 
-class _WishEntryScreenState extends State<WishEntryScreen> {
+class _WishEntryScreenState extends ConsumerState<WishEntryScreen> {
   final TextEditingController _wishController = TextEditingController();
   bool _showShootingStar = false;
+  bool _isSaving = false;
   String _selectedFocus = 'Personal';
   String _selectedMood = 'Hopeful';
 
   final List<Map<String, dynamic>> _focusAreas = [
-    {'label': 'Personal', 'icon': Icons.eco},
-    {'label': 'Relationships', 'icon': Icons.favorite},
-    {'label': 'Growth', 'icon': Icons.park},
-    {'label': 'World', 'icon': Icons.public},
+    {'label': 'Physical', 'icon': Icons.directions_run},
+    {'label': 'Mental', 'icon': Icons.psychology_outlined},
+    {'label': 'Ethical', 'icon': Icons.favorite_outline},
   ];
 
   final List<Map<String, dynamic>> _moods = [
     {'label': 'Hopeful', 'icon': Icons.sentiment_satisfied_alt},
     {'label': 'Excited', 'icon': Icons.wb_sunny},
-    {'label': 'Peaceful', 'icon': Icons.spa},
-    {'label': 'Anxious', 'icon': Icons.sentiment_dissatisfied},
+    {'label': 'Courage', 'icon': Icons.shield_outlined},
+    {'label': 'Wisdom', 'icon': Icons.lightbulb_outline},
   ];
 
   @override
@@ -40,27 +43,52 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
     });
   }
 
-  void _submitWish() {
+  Future<void> _submitWish() async {
     final wishText = _wishController.text.trim();
     if (wishText.isEmpty) return;
 
     setState(() {
       _showShootingStar = true;
+      _isSaving = true;
     });
-
-    ShootingStarOverlay.show(
-      context,
-      wishText: wishText,
-      onComplete: () {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => WishInterviewScreen(initialWish: wishText),
-            ),
-          );
-        }
-      },
-    );
+    try {
+      final repo = ref.read(wishRepositoryProvider);
+      final requests = await repo.getRecommendedHelpRequests(_selectedFocus);
+      final insight = await WishAgentService().analyzeWish(
+        wishText: wishText,
+        focusArea: _selectedFocus,
+        feeling: _selectedMood,
+        requests: requests,
+        streakDays: await repo.getWishStreak(),
+      );
+      final wish = await repo.recordIndividualWish(
+        wishText: wishText,
+        focusArea: _selectedFocus,
+        feeling: _selectedMood,
+        insight: WishAgentInsightData(
+          sentiment: insight.sentiment,
+          primaryVirtue: insight.primaryVirtue,
+        ),
+      );
+      await repo.saveWishModuleTasks(wishId: wish['id'].toString(), drafts: insight.tasks);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_completed_wish', true);
+      await prefs.setBool('has_visited_wish_module', true);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Your wish could not be saved yet: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _showShootingStar = false;
+        });
+      }
+    }
   }
 
   @override
@@ -155,7 +183,7 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                           bottom: 0,
                           child: Opacity(
                             opacity: 0.9,
-                            child: const MascotWidget(height: 70),
+                    child: const MascotWidget(height: 70),
                           ),
                         ),
                       ],
@@ -288,8 +316,8 @@ class _WishEntryScreenState extends State<WishEntryScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _showShootingStar ? null : _submitWish,
                   icon: const Icon(Icons.auto_awesome, color: AppColors.white),
-                  label: const Text(
-                    'Send My Wish',
+                   label: Text(
+                    _isSaving ? 'Listening...' : 'Send My Wish',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(

@@ -1,12 +1,13 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:goodwill_circle/core/theme/app_colors.dart';
 import 'package:goodwill_circle/core/theme/app_theme.dart';
 import 'package:goodwill_circle/shared/widgets/mascot_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/wish_repository.dart';
+import '../data/wish_agent_service.dart';
+import '../data/wish_module_models.dart';
+import 'widgets/wish_mascot.dart';
 import '../../wish/wish_entry_screen.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
 
@@ -23,6 +24,12 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   List<UserVirtue> _virtues = [];
   List<Habit> _habits = [];
   List<HelpRequest> _communityRequests = [];
+  List<WishModuleTask> _moduleTasks = [];
+  Set<String> _diaryDates = {};
+  WishModuleDiaryEntry? _todayDiary;
+  int _streakDays = 0;
+  String _selectedCompanionStyle = 'Warm';
+  final WishAgentService _wishAgent = WishAgentService();
 
   int _onboardingStage = 0; // 0 = Dashboard, 1 = Wish Entry Landing
 
@@ -41,12 +48,12 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   final List<String> _moods = ['😄', '🙂', '😐', '😕', '😢'];
   final TextEditingController _reflectionController = TextEditingController();
   final TextEditingController _gratitudeController = TextEditingController();
+  final TextEditingController _thoughtController = TextEditingController();
 
   // Companion Chat state
   final TextEditingController _chatController = TextEditingController();
   final List<Map<String, String>> _chatMessages = [];
-  GenerativeModel? _chatModel;
-  ChatSession? _aiSession;
+
 
   static const List<String> _botReplies = [
     "That's wonderful to hear! Keep going 🌸",
@@ -60,7 +67,7 @@ class _WishScreenState extends ConsumerState<WishScreen> {
   void initState() {
     super.initState();
     _selectedDay = DateTime.now().day;
-    _loadData();
+    _loadData(showLanding: true);
     _markVisited();
     _triggerWinkOnMount();
   }
@@ -92,43 +99,42 @@ class _WishScreenState extends ConsumerState<WishScreen> {
     await prefs.setBool('has_visited_wish_module', true);
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool showLanding = false}) async {
     setState(() => _isLoading = true);
     final repo = ref.read(wishRepositoryProvider);
-    _activeWish = await repo.getActiveWish();
+    _activeWish = await repo.getActiveWishModule() ?? await repo.getActiveWish();
     if (_activeWish != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_completed_wish', true);
+      final wishId = _activeWish?['id']?.toString();
+      _moduleTasks = wishId == null ? [] : await repo.getWishModuleTasks(wishId);
+      _streakDays = await repo.getWishStreak();
+      _todayDiary = await repo.getDiaryEntry(DateTime.now());
+      _diaryDates = await repo.getDiaryDates(_calDate);
+      _reflectionController.text = _todayDiary?.reflection ?? '';
+      _gratitudeController.text = _todayDiary?.gratitude ?? '';
+      _thoughtController.text = _todayDiary?.thoughtOfDay ?? '';
+      if (_todayDiary != null) _selectedMood = _todayDiary!.moodIndex;
       _virtues = await repo.getUserVirtues();
       _habits = await repo.getUserHabits();
       _communityRequests = await repo.getRecommendedHelpRequests('Ethical');
-      _onboardingStage = 0;
-      _initAi();
+      _onboardingStage = showLanding ? 1 : 0;
     } else {
       _onboardingStage = 1;
     }
     setState(() => _isLoading = false);
   }
 
-  void _initAi() {
-    try {
-      _chatModel = FirebaseAI.googleAI().generativeModel(
-        model: 'gemini-1.5-flash',
-        systemInstruction: Content.system('''
-You are a warm, encouraging companion helping the user on their growth journey. 
-Their active wish is: "${_activeWish?['wish_statement'] ?? 'Unknown'}".
-Keep your responses very concise (1-2 sentences), warm, and supportive. Use occasional emojis.
-'''),
-      );
-      _aiSession = _chatModel?.startChat();
-    } catch (e) {
-      debugPrint('FirebaseAI initialization error: $e');
-    }
-  }
-
   Future<void> _toggleHabit(Habit habit) async {
     final repo = ref.read(wishRepositoryProvider);
     await repo.toggleHabit(habit.id);
+    await _loadData();
+    _triggerMascotJump();
+  }
+
+  Future<void> _completeModuleTask(WishModuleTask task) async {
+    if (task.isCompleted) return;
+    await ref.read(wishRepositoryProvider).completeWishModuleTask(task);
     await _loadData();
     _triggerMascotJump();
   }
@@ -144,35 +150,20 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
 
     _triggerMascotJump();
 
-    if (_aiSession != null) {
-      try {
-        final response = await _aiSession!.sendMessage(Content.text(text));
-        final aiText = response.text;
-        if (mounted && aiText != null && aiText.isNotEmpty) {
-          setState(() {
-            _chatMessages.add({'role': 'bot', 'text': aiText.trim()});
-            if (_chatMessages.length > 6) {
-              _chatMessages.removeAt(0);
-            }
-          });
-        }
-        return;
-      } catch (e) {
-        debugPrint('Companion AI error: $e');
-      }
+    final generatedReply = await _wishAgent.reply(
+      wishText: _activeWish?['wish_text']?.toString() ?? _activeWish?['wish_statement']?.toString() ?? 'growing every day',
+      currentView: _currentView,
+      replyStyle: _selectedCompanionStyle,
+      message: text,
+      sentiment: _activeWish?['sentiment']?.toString() ?? 'neutral',
+    );
+    final reply = generatedReply.isEmpty ? _botReplies.first : generatedReply;
+    if (mounted) {
+      setState(() {
+        _chatMessages.add({'role': 'bot', 'text': reply});
+        if (_chatMessages.length > 6) _chatMessages.removeAt(0);
+      });
     }
-
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        final randomReply = _botReplies[Random().nextInt(_botReplies.length)];
-        setState(() {
-          _chatMessages.add({'role': 'bot', 'text': randomReply});
-          if (_chatMessages.length > 6) {
-            _chatMessages.removeAt(0);
-          }
-        });
-      }
-    });
   }
 
   void _toggleView(String name) {
@@ -193,10 +184,17 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
     return '5 min';
   }
 
+  int get _moduleProgress {
+    if (_moduleTasks.isEmpty) return (_activeWish?['progress_percent'] as num?)?.toInt() ?? 0;
+    final completed = _moduleTasks.where((task) => task.isCompleted).length;
+    return ((completed / _moduleTasks.length) * 100).round();
+  }
+
   @override
   void dispose() {
     _reflectionController.dispose();
     _gratitudeController.dispose();
+    _thoughtController.dispose();
     _chatController.dispose();
     super.dispose();
   }
@@ -321,16 +319,36 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
           ),
           IconButton(
             icon: const Icon(Icons.auto_awesome, color: AppColors.red, size: 22),
-            tooltip: 'Make a New Wish',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WishEntryScreen()),
-              ).then((_) => _loadData());
-            },
+            tooltip: 'Change Wish',
+            onPressed: _openWishEntry,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openWishEntry() async {
+    final wishId = _activeWish?['id']?.toString();
+    if (wishId != null && !wishId.startsWith('local-')) {
+      final unlocked = await ref.read(wishRepositoryProvider).canChangeWish(wishId);
+      if (!unlocked && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Complete at least one quarter of your current path before changing your wish.')),
+        );
+        return;
+      }
+    } else if (_moduleTasks.isNotEmpty) {
+      final completed = _moduleTasks.where((task) => task.isCompleted).length;
+      if (completed / _moduleTasks.length < 0.25 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Complete at least one quarter of your current path before changing your wish.')),
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WishEntryScreen()));
+    if (mounted) await _loadData();
   }
 
   Widget _buildCurrentViewContent() {
@@ -371,7 +389,7 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
       children: [
         // Mascot Hero Section
         const SizedBox(height: 4),
-        MascotWidget(height: 140, state: _mascotState, armsUp: true),
+        WishMascot(height: 140, state: _mascotState, armsUp: true),
         const SizedBox(height: 8),
         const Text(
           "What's your\nWish Today?",
@@ -431,7 +449,7 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
               ),
               const SizedBox(height: 8),
               Text(
-                _activeWish?['wish_statement'] ?? 'I wish to become more confident',
+                _activeWish?['wish_text'] ?? _activeWish?['wish_statement'] ?? 'I wish to become more confident',
                 style: const TextStyle(
                   color: AppColors.textDark,
                   fontSize: 15,
@@ -439,6 +457,21 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
                   fontFamily: 'Georgia',
                   height: 1.3,
                 ),
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  minHeight: 7,
+                  value: _moduleProgress / 100,
+                  backgroundColor: AppColors.redPale,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.red),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '$_moduleProgress% Completed · $_streakDays day streak',
+                style: const TextStyle(color: AppColors.textLight, fontSize: 11.5),
               ),
             ],
           ),
@@ -504,7 +537,9 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
         const SizedBox(height: 10),
 
         // Habit / Task Options List with Time Durations!
-        if (_habits.isNotEmpty)
+        if (_moduleTasks.isNotEmpty)
+          ..._moduleTasks.map(_buildModuleTaskCard)
+        else if (_habits.isNotEmpty)
           ..._habits.asMap().entries.map((entry) {
             final idx = entry.key;
             final habit = entry.value;
@@ -744,6 +779,53 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
     );
   }
 
+  Widget _buildModuleTaskCard(WishModuleTask task) {
+    final isHard = task.difficulty == 'hard';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: task.isCompleted ? null : () => _completeModuleTask(task),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: task.isCompleted ? AppColors.redPale : AppColors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: task.isCompleted ? AppColors.redMuted : AppColors.tan1, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(color: AppColors.redLight, shape: BoxShape.circle),
+                child: Icon(task.isHelpRequest ? Icons.people_outline : (isHard ? Icons.trending_up : Icons.eco), color: AppColors.red, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(task.title, style: TextStyle(color: AppColors.textDark, fontSize: 14, fontWeight: FontWeight.bold, decoration: task.isCompleted ? TextDecoration.lineThrough : null)),
+                    const SizedBox(height: 3),
+                    Text('${task.virtue} · ${task.durationMinutes} min · ${task.rewardPoints} goodwill', style: const TextStyle(color: AppColors.textLight, fontSize: 11.5)),
+                    const SizedBox(height: 3),
+                    Text(task.isHelpRequest ? 'Help request · ${isHard ? 'Hard' : 'Easy'}' : '${isHard ? 'Hard' : 'Easy'} path', style: const TextStyle(color: AppColors.red, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: task.isCompleted ? AppColors.red : Colors.transparent, border: Border.all(color: task.isCompleted ? AppColors.red : AppColors.redMuted, width: 2)),
+                child: task.isCompleted ? const Icon(Icons.check, color: AppColors.white, size: 14) : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ================= VIEW B: CALENDAR =================
   Widget _buildCalendarView() {
     final monthNames = [
@@ -841,7 +923,8 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
             final num = cell['num'] as int;
             final isDim = cell['dim'] as bool;
             final isSelected = !isDim && num == _selectedDay;
-            final hasActivity = !isDim && (num == DateTime.now().day || num == 14);
+             final dateKey = _dateKey(DateTime(year, month, num));
+             final hasActivity = !isDim && (_diaryDates.contains(dateKey) || (num == DateTime.now().day && month == DateTime.now().month && year == DateTime.now().year));
 
             return GestureDetector(
               onTap: isDim
@@ -932,7 +1015,7 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
         // Footer Mascot
         Align(
           alignment: Alignment.centerRight,
-          child: MascotWidget(height: 64, state: _mascotState),
+          child: WishMascot(height: 64, state: _mascotState),
         ),
       ],
     );
@@ -1154,14 +1237,69 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: MascotWidget(height: 52, state: _mascotState),
+                child: WishMascot(height: 52, state: _mascotState),
               ),
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
+
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.tan1, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Thought of the day', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Georgia')),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _thoughtController,
+                maxLength: 240,
+                maxLines: 2,
+                style: const TextStyle(color: AppColors.textDark, fontSize: 13.5),
+                decoration: const InputDecoration(hintText: 'What is on your mind today?', hintStyle: TextStyle(color: AppColors.textLight), border: InputBorder.none, counterStyle: TextStyle(color: AppColors.textLight, fontSize: 11)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ElevatedButton.icon(
+          onPressed: _saveDiaryEntry,
+          icon: const Icon(Icons.bookmark_outline, size: 18),
+          label: const Text('Save today\'s entry'),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.red, foregroundColor: AppColors.white, minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100))),
+        ),
       ],
     );
   }
+
+  Future<void> _saveDiaryEntry() async {
+    final moodLabel = _moods[_selectedMood].toString();
+    final sentiment = _selectedMood <= 1 ? 'positive' : (_selectedMood >= 3 ? 'mixed' : 'neutral');
+    final dateKey = _dateKey(DateTime.now());
+    await ref.read(wishRepositoryProvider).saveDiaryEntry(
+      dateKey: dateKey,
+      moodIndex: _selectedMood,
+      moodLabel: moodLabel,
+      reflection: _reflectionController.text.trim(),
+      gratitude: _gratitudeController.text.trim(),
+      thoughtOfDay: _thoughtController.text.trim(),
+      sentiment: sentiment,
+      wishId: _activeWish?['id']?.toString(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _diaryDates = {..._diaryDates, dateKey};
+      _streakDays = _streakDays < 1 ? 1 : _streakDays;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your diary entry is saved.')));
+  }
+
+  String _dateKey(DateTime date) => '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   // ================= COMPANION CHAT BAR =================
   Widget _buildCompanionChatBar() {
@@ -1181,7 +1319,7 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
       ),
       child: Row(
         children: [
-          const MascotWidget(height: 32),
+          const WishMascot(height: 32),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -1197,6 +1335,11 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
               onSubmitted: (_) => _sendChatMessage(),
             ),
           ),
+          IconButton(
+            tooltip: 'Reply style',
+            icon: const Icon(Icons.tune, color: AppColors.textMid, size: 18),
+            onPressed: _showCompanionStylePicker,
+          ),
           CircleAvatar(
             radius: 17,
             backgroundColor: AppColors.red,
@@ -1209,6 +1352,32 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
         ],
       ),
     );
+  }
+
+  Future<void> _showCompanionStylePicker() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.cream,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: ['Warm', 'Moody', 'Cool', 'Playful', 'Direct'].map((style) => ChoiceChip(
+              label: Text(style),
+              selected: style == _selectedCompanionStyle,
+              selectedColor: AppColors.red,
+              labelStyle: TextStyle(color: style == _selectedCompanionStyle ? AppColors.white : AppColors.textDark),
+              onSelected: (_) => Navigator.of(context).pop(style),
+            )).toList(),
+          ),
+        ),
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() => _selectedCompanionStyle = selected);
+    }
   }
 
   // ================= WISH PERSISTENT NAVIGATION BAR =================
@@ -1315,36 +1484,22 @@ Keep your responses very concise (1-2 sentences), warm, and supportive. Use occa
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 20),
+              const WishMascot(height: 180, state: MascotState.welcoming),
+              const SizedBox(height: 4),
               const Text(
                 "What's your\nWish Today?",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Georgia',
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.red,
-                  height: 1.1,
-                ),
+                style: TextStyle(fontFamily: 'Georgia', fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.red, height: 1.1),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Every wish you share,\ncreates ripples of change.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textMid,
-                  height: 1.4,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textMid, height: 1.4),
               ),
-              const Spacer(),
-              const MascotWidget(height: 180, state: MascotState.welcoming),
-              const Spacer(),
+              const SizedBox(height: AppSpacing.lg),
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const WishEntryScreen()),
-                  ).then((_) => _loadData());
-                },
+                onTap: _openWishEntry,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.md),

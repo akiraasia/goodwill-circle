@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:goodwill_circle/features/requests/models/help_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'wish_module_models.dart';
 
 final wishRepositoryProvider = Provider<WishRepository>((ref) {
   return WishRepository(Supabase.instance.client);
@@ -467,12 +468,15 @@ class WishRepository {
     mental: 10.0,
     ethicalEmotional: 10.0,
   );
-  List<UserVirtue> _mockVirtues = [];
+  final List<UserVirtue> _mockVirtues = [];
   final List<WishChatMessage> _mockChatMessages = [];
   final List<VirtueChatMessage> _mockVirtueChat = [];
   final List<VirtueMaterial> _mockMaterials = [];
   final List<VirtueTask> _mockTasks = [];
   final List<Habit> _mockHabits = [];
+  final List<Map<String, dynamic>> _mockWishModuleWishes = [];
+  final List<WishModuleTask> _mockWishModuleTasks = [];
+  final Map<String, WishModuleDiaryEntry> _mockWishDiary = {};
   final Map<String, String> _userNovelProgress =
       {}; // novelId -> currentSceneId
 
@@ -524,6 +528,260 @@ class WishRepository {
       }
       return _mockWish;
     }
+  }
+
+  Future<Map<String, dynamic>?> getActiveWishModule() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || _isMock) {
+      final active = _mockWishModuleWishes.where((wish) => wish['status'] == 'active').toList();
+      return active.isEmpty ? null : active.last;
+    }
+    try {
+      final data = await _client
+          .from('wish_module_wishes')
+          .select()
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('created_at', ascending: false)
+          .limit(1);
+      return data.isEmpty ? null : Map<String, dynamic>.from(data.first);
+    } catch (e) {
+      debugPrint('WishRepository: getActiveWishModule error: $e');
+      final active = _mockWishModuleWishes.where((wish) => wish['status'] == 'active').toList();
+      return active.isEmpty ? null : active.last;
+    }
+  }
+
+  Future<Map<String, dynamic>> recordIndividualWish({
+    required String wishText,
+    required String focusArea,
+    required String feeling,
+    required WishAgentInsightData insight,
+  }) async {
+    final userId = _client.auth.currentUser?.id ?? 'local_user';
+    final localWish = <String, dynamic>{
+      'id': 'local-wish-${DateTime.now().microsecondsSinceEpoch}',
+      'user_id': userId,
+      'wish_text': wishText,
+      'wish_statement': wishText,
+      'focus_area': focusArea,
+      'feeling': feeling,
+      'sentiment': insight.sentiment,
+      'primary_virtue': insight.primaryVirtue,
+      'progress_percent': 0,
+      'status': 'active',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+    _mockWishModuleWishes
+      ..where((wish) => wish['status'] == 'active').forEach((wish) => wish['status'] = 'completed')
+      ..add(localWish);
+
+    if (userId == 'local_user' || _isMock) return localWish;
+    try {
+      await _client
+          .from('wish_module_wishes')
+          .update({'status': 'completed', 'updated_at': DateTime.now().toIso8601String()})
+          .eq('user_id', userId)
+          .eq('status', 'active');
+      final data = await _client.from('wish_module_wishes').insert({
+        'user_id': userId,
+        'wish_text': wishText,
+        'focus_area': focusArea,
+        'feeling': feeling,
+        'sentiment': insight.sentiment,
+        'primary_virtue': insight.primaryVirtue,
+      }).select().single();
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      debugPrint('WishRepository: recordIndividualWish error: $e');
+      _isMock = true;
+      return localWish;
+    }
+  }
+
+  Future<List<WishModuleTask>> getWishModuleTasks(String wishId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || _isMock) {
+      return _mockWishModuleTasks.where((task) => task.wishId == wishId).toList();
+    }
+    try {
+      final data = await _client
+          .from('wish_module_tasks')
+          .select()
+          .eq('user_id', userId)
+          .eq('wish_id', wishId)
+          .order('created_at');
+      return data.map((json) => WishModuleTask.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('WishRepository: getWishModuleTasks error: $e');
+      return _mockWishModuleTasks.where((task) => task.wishId == wishId).toList();
+    }
+  }
+
+  Future<void> saveWishModuleTasks({
+    required String wishId,
+    required List<WishModuleTaskDraft> drafts,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    for (final draft in drafts) {
+      _mockWishModuleTasks.add(WishModuleTask(
+        id: 'local-task-${DateTime.now().microsecondsSinceEpoch}-${_mockWishModuleTasks.length}',
+        wishId: wishId,
+        title: draft.title,
+        description: draft.description,
+        virtue: draft.virtue,
+        difficulty: draft.difficulty,
+        rewardPoints: draft.rewardPoints,
+        durationMinutes: draft.durationMinutes,
+        linkedRequestId: draft.linkedRequestId,
+        status: 'assigned',
+        createdAt: DateTime.now(),
+      ));
+    }
+    if (userId == null || userId == 'local_user' || _isMock) return;
+    try {
+      await _client.from('wish_module_tasks').insert(drafts.map((draft) => {
+            'user_id': userId,
+            'wish_id': wishId,
+            'task_text': draft.title,
+            'description': draft.description,
+            'virtue': draft.virtue,
+            'difficulty': draft.difficulty,
+            'reward_points': draft.rewardPoints,
+            'duration_minutes': draft.durationMinutes,
+            'linked_request_id': draft.linkedRequestId,
+            'is_help_request': draft.isHelpRequest,
+          }).toList());
+    } catch (e) {
+      debugPrint('WishRepository: saveWishModuleTasks error: $e');
+      _isMock = true;
+    }
+  }
+
+  Future<void> completeWishModuleTask(WishModuleTask task) async {
+    final userId = _client.auth.currentUser?.id;
+    final completedAt = DateTime.now().toIso8601String();
+    final localIndex = _mockWishModuleTasks.indexWhere((item) => item.id == task.id);
+    if (localIndex >= 0) _mockWishModuleTasks[localIndex] = task.copyWith(status: 'completed');
+    if (userId == null || userId == 'local_user' || _isMock) return;
+    try {
+      await _client.from('wish_module_tasks').update({
+        'status': 'completed',
+        'completed_at': completedAt,
+      }).eq('id', task.id).eq('user_id', userId);
+      final tasks = await getWishModuleTasks(task.wishId);
+      final completed = tasks.where((item) => item.isCompleted).length;
+      final progress = tasks.isEmpty ? 0 : ((completed / tasks.length) * 100).round();
+      await _client.from('wish_module_wishes').update({
+        'progress_percent': progress,
+        'change_unlocked': progress >= 25,
+        'updated_at': completedAt,
+      }).eq('id', task.wishId).eq('user_id', userId);
+    } catch (e) {
+      debugPrint('WishRepository: completeWishModuleTask error: $e');
+    }
+  }
+
+  Future<bool> canChangeWish(String wishId) async {
+    final tasks = await getWishModuleTasks(wishId);
+    if (tasks.isEmpty) return false;
+    return tasks.where((task) => task.isCompleted).length / tasks.length >= 0.25;
+  }
+
+  Future<int> getWishStreak() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || _isMock) return _localStreak();
+    try {
+      final data = await _client.from('wish_module_diary')
+          .select('entry_date')
+          .eq('user_id', userId)
+          .order('entry_date', ascending: false)
+          .limit(30);
+      final dates = data.map((row) => DateTime.tryParse(row['entry_date'].toString())).whereType<DateTime>().toList();
+      return _countConsecutiveDates(dates);
+    } catch (_) {
+      return _localStreak();
+    }
+  }
+
+  Future<WishModuleDiaryEntry?> getDiaryEntry(DateTime date) async {
+    final key = _dateKey(date);
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || _isMock) return _mockWishDiary[key];
+    try {
+      final data = await _client.from('wish_module_diary').select().eq('user_id', userId).eq('entry_date', key).maybeSingle();
+      return data == null ? null : WishModuleDiaryEntry.fromJson(data);
+    } catch (_) {
+      return _mockWishDiary[key];
+    }
+  }
+
+  Future<Set<String>> getDiaryDates(DateTime month) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || _isMock) return _mockWishDiary.keys.toSet();
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 1);
+      final data = await _client.from('wish_module_diary').select('entry_date').eq('user_id', userId)
+          .gte('entry_date', _dateKey(start)).lt('entry_date', _dateKey(end));
+      return data.map((row) => row['entry_date'].toString()).toSet();
+    } catch (_) {
+      return _mockWishDiary.keys.toSet();
+    }
+  }
+
+  Future<void> saveDiaryEntry({
+    required String dateKey,
+    required int moodIndex,
+    required String moodLabel,
+    required String reflection,
+    required String gratitude,
+    required String thoughtOfDay,
+    required String sentiment,
+    String? wishId,
+  }) async {
+    final entry = WishModuleDiaryEntry(
+      dateKey: dateKey,
+      moodIndex: moodIndex,
+      moodLabel: moodLabel,
+      reflection: reflection,
+      gratitude: gratitude,
+      thoughtOfDay: thoughtOfDay,
+      sentiment: sentiment,
+    );
+    _mockWishDiary[dateKey] = entry;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null || userId == 'local_user' || _isMock) return;
+    try {
+      await _client.from('wish_module_diary').upsert({
+        'user_id': userId,
+        'wish_id': wishId,
+        'entry_date': dateKey,
+        'mood_index': moodIndex,
+        'mood_label': moodLabel,
+        'reflection': reflection,
+        'gratitude': gratitude,
+        'thought_of_day': thoughtOfDay,
+        'sentiment': sentiment,
+      }, onConflict: 'user_id,entry_date');
+    } catch (e) {
+      debugPrint('WishRepository: saveDiaryEntry error: $e');
+    }
+  }
+
+  String _dateKey(DateTime date) => '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  int _localStreak() => _countConsecutiveDates(_mockWishDiary.keys.map(DateTime.tryParse).whereType<DateTime>().toList());
+
+  int _countConsecutiveDates(List<DateTime> dates) {
+    if (dates.isEmpty) return 0;
+    final normalized = dates.map((date) => DateTime(date.year, date.month, date.day)).toSet().toList()..sort((a, b) => b.compareTo(a));
+    var streak = 1;
+    for (var i = 1; i < normalized.length; i++) {
+      if (normalized[i - 1].difference(normalized[i]).inDays != 1) break;
+      streak++;
+    }
+    return streak;
   }
 
   Future<void> createUserWish({
